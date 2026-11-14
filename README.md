@@ -3,7 +3,7 @@
 A playable, real-time 3D story about NASA's Opportunity rover: discovery,
 attachment, a fading signal, and the things that remain.
 
-**Playable v0.8.** [Play on GitHub Pages](https://orion-north.github.io/last-light/). Built with parallel Codex agents. The game uses NASA's
+**Playable v0.9.** [Play on GitHub Pages](https://orion-north.github.io/last-light/). Built with parallel Codex agents. The game uses NASA's
 textured rover model, a navigable original Mars environment, an original adaptive
 score, and a complete three-act story. No account or AI API is needed by the game
 itself. A hosting provider may apply its own access gate.
@@ -42,10 +42,10 @@ the detailed NASA model alone is 11.91 MB. The optional poster adds about 2 MB.
 - Two brief, skippable passages carry the mission from 2004 to 2015 and 2018; mission-age captions and a subtle rover finish retain those years.
 - A skippable twelve-second in-engine opening introduces the rover, geological evidence and sending memories home. Reduced motion keeps the view still.
 - Scene meaning and the next action sit in the main composition. Close rover framing and a compact left-side glyph guide keep attention on the world.
-- Release both triggers, then squeeze L2 + R2 together to send. Pressure closes the instrument; a brief full squeeze commits once. No touchpad click or cursor aiming. A button alternative remains available.
+- Release both triggers to arm, squeeze L2 + R2 together to charge, then release both to send. Pressure closes around the memory; the memory compresses into a bright signal when it is ready. No touchpad click or cursor aiming. A button alternative remains available.
 - Controller-first: left stick drives during travel and selects in menus; right stick looks and aims. Keyboard/touch remain supported.
 - Follow six local observation markers. Manual travel is about 35% faster, with gentle acceleration and braking; assisted driving is available.
-- Drive, reveal a geological feature and hold the view steady, choose a memory, then squeeze both triggers to send a memory home. Geological targets are
+- Drive, reveal a geological feature and hold the view steady, choose a memory, then squeeze and release both triggers to send a memory home. Geological targets are
   authored 3D reconstructions with readable layers and grains. There is no
   photography system. Brief thoughts appear as centered cinematic captions; discovered science and
   memories remain available in the optional journal (J / □).
@@ -56,8 +56,8 @@ the detailed NASA model alone is 11.91 MB. The optional poster adds about 2 MB.
 - DualSense: left stick or R2/L2 drive; right stick looks; × interacts; D-pad
   selects; ○ goes back; △ resets camera; Options pauses.
 - Terrain rumble follows surface roughness, slope load, speed, and blocked wheels.
-  Optional original DualSense USB adaptive triggers are in Settings. iPad uses standard trigger squeezes or the button alternative. Hardware
-  feel remains untested; see [controller support](docs/CONTROLLERS.md).
+  Optional original DualSense USB adaptive triggers add rising resistance and a final trigger-vibration crescendo; connect them in Settings. iPad uses standard trigger squeezes or the button alternative. Hardware
+  feedback works on the user’s wired DualSense in Chrome; the stronger v0.9 tuning needs playtesting. See [controller support](docs/CONTROLLERS.md).
 - Sound begins on entering the story unless you opt out; mute anytime.
 - Escape opens settings and pauses. Reduced motion, restart, and local progress
   saving are included. The ending contains your downloadable memory archive.

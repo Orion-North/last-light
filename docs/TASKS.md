@@ -350,3 +350,42 @@ fixture verified one-shot squeeze and rearm; direct page checked centered story
 and tablet layout. Independent review caught audio activity ownership and HUD
 overlap; corrected. Windows packaging has a separate sandbox/asset smoke gate
 before its preview artifact can publish. Physical controller feel remains untested.
+
+## SEND-09 — stronger feedback and a satisfying release
+
+User confirmed feedback works in their browser and requested stronger, richer
+sending. Shared develop/v0.9; disjoint ownership:
+- FEEL-09 / Sol: src/input/controller.js, tests/engine/controller.test.js,
+  docs/CONTROLLERS.md, own handoff. Stronger bounded USB resistance and ordinary
+  rumble, finite pressure pulses, distinct charge/send/receipt cues; lifecycle cleanup.
+- VISUAL-09 / Sol: src/ui/upload-terminal.js/css, terminal tests, own handoff.
+  Clear squeeze→charge→release composition, tighter focus, visible signal departure
+  and separate Earth receipt. Preserve controller/touch/keyboard alternatives.
+- SOUND-09 / Sol: src/audio/sound.js, tests/engine/music.test.js, own handoff.
+  Improve pressure build/charge/local send/remote receipt distinction without
+  obscuring silence or making an audio requirement.
+- Codex: release-to-send state machine/tests, main integration, independent
+  review, browser QA and web/Windows publication. All effects remain optional.
+
+Contract: root's createSqueeze now charges at .82 pressure for .55seconds, then
+waits indefinitely for BOTH triggers released to commit once. Early release
+before charge cancels harmlessly. Synthetic neutral/pause cannot send. Output
+stage release/ready/pressing/charged/latched, charge0..1, pressure0..1.
+controller.setUplink({active,progress,charged}); feedback kinds tension/lock/charged/
+transmit/received. Existing send callbacks stay mode-aware; no reply means no
+received cue. CSS --squeeze-left/right, --upload-progress, --charge-progress;
+data-squeeze stage. Sound setActivity adds contactCharged, cue('charged').
+
+User refined SEND-09 during implementation: replace the circular overlay with a
+central memory band compressed by pressure plates, and give the end of charging
+the strongest feedback, including actual trigger vibration where supported.
+FEEL-09 adds documented standard USB Feedback/Vibration effects and finite final
+charge vibration; main passes charge0..1 to controller and contactCharge to audio.
+SOUND-09 uses that hold fraction for a late crescendo. Same disjoint owners.
+
+SEND-09 integrated. User confirmed stronger effects should build both within each
+squeeze and across later transmissions. Transmission profiles now supply effort
+from fading signal; archive effort resets. Independent review found a HID-close
+cancellation gap and it was fixed before publication. All 99 tests, source/build
+checks, isolated controller flow and desktop/tablet layouts pass. Physical tuning
+remains for user playtesting; no native HD-audio claim is made.

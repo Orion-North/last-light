@@ -46,7 +46,7 @@ USB resistance uses output report 02 with a 47-byte payload **excluding the
 report ID**, trigger blocks starting at payload offsets 10 and 21, and only the
 trigger-valid flags (0c). Continuous resistance mode 01 begins at position 80;
 force starts at 24 and rises with roughness, slip, and low dramatized power, capped at 60 (out of 255); blocked movement uses 60.
-These are deliberately mild values; their feel has not been tested on hardware.
+These terrain values remain restrained. Sending uses the separate zoned effects described below; that new tuning awaits a physical feel test.
 No Bluetooth output, calibration, LEDs, microphone, or speaker controls are sent.
 
 Disabling feedback, pausing, hiding, losing focus, stale terrain, or losing the
@@ -66,7 +66,7 @@ polling. Input is `{steer, throttle, lookX, lookY, leftTrigger, rightTrigger, co
 `adaptiveOpen` (open HID handle, including after output failure), and `message`.
 
 Methods: `setEnabled(bool)`, `setPaused(bool)` / `pause(bool = true)`,
-`setHaptics(bool)`, `setInputMode(mode)`, `setUplink({active, progress})`, `feedback(kind)`, `setTerrain({moving, blocked, power, speed, roughness, slip})`,
+`setHaptics(bool)`, `setInputMode(mode)`, `setUplink({active, progress, charge = 0, charged = false, effort = 0})`, `feedback(kind)`, `setTerrain({moving, blocked, power, speed, roughness, slip})`,
 `connectAdaptiveTriggers()`, `disconnectAdaptiveTriggers()`, and `destroy()`.
 Power, roughness, and slip are 0–1; speed is meters per second. Send terrain telemetry while driving; stop updates may explicitly
 set `moving:false`. Connect must be called directly from the settings click to
@@ -74,7 +74,7 @@ preserve browser user activation. It resolves to a success boolean. HID disconne
 and destroy are asynchronous so callers can await final reset/close.
 
 Feedback kinds: `observe` (`arrival` alias), `choice` (`choose` alias), `transmit`,
-`blocked`, `terrain`, `tension`, and `lock`. An optional injected navigator/window/document/clock
+`blocked`, `terrain`, `tension`, `lock`, `charged`, and `received`. An optional injected navigator/window/document/clock
 exists solely for deterministic tests.
 
 ## Sources and verification limits
@@ -92,9 +92,9 @@ exists solely for deterministic tests.
   browser API guarantee.
 
 Automated mocks cover mapping, edges, lifecycle, descriptor rejection, chooser
-cancellation, stale telemetry, report bytes, and write coalescing. No physical
-DualSense, OS HID permissions, Bluetooth pairing, or adaptive force feel has been
-tested here. Test those on actual hardware before describing hardware support
+cancellation, stale telemetry, report bytes, and write coalescing. Automated verification does not establish physical DualSense behavior, OS HID
+permissions, Bluetooth pairing or adaptive force feel; the user separately confirmed
+USB haptics in Chrome on CachyOS. Test those on actual hardware before describing hardware support
 as verified.
 
 ## Surface integration
@@ -170,35 +170,77 @@ frames the current evidence. The twelve-second mission introduction is skippable
 pauses with the game and uses a static view under reduced motion.
 
 
-## v0.8 two-trigger sending
+## v0.9 charge, then release to send
 
-The controller upload uses a deliberate L2 + R2 squeeze. Release both to arm,
-squeeze together, then hold full pressure briefly. The game owns the arm/hold/send
-state machine and sends once; touchpad clicks and a cursor are unnecessary.
-The visible button, keyboard and touch alternatives remain available.
+Release both triggers to arm, then squeeze L2 + R2 together to at least .82
+pressure for .55 seconds. The game owns this state machine. Charging does not
+send: keep holding as long as desired, then release both triggers to commit once.
+Early release cancels harmlessly. Visible button, keyboard and touch alternatives
+remain available.
 
 `setInputMode('uplink')` preserves standard face-button and pause actions, emits
 zero steering/throttle/look axes, and includes raw standard button 6/7 pressure as
-`leftTrigger` / `rightTrigger`, clamped to 0–1. These physical polling samples have
-`connected:true, actualSample:true`. Synthetic neutral events (including mode
-entry and pause) have zero triggers and `actualSample:false`; they must never arm
-a send. Menu and inspection modes keep their existing behavior.
+`leftTrigger` / `rightTrigger`, clamped to 0–1. Physical polling samples have
+`connected:true, actualSample:true`. Synthetic neutral events have zero triggers
+and `actualSample:false`; they must never arm or commit a send.
 
-While the squeeze is active, refresh `setUplink({active:true, progress})` with
-normalized 0–1 progress. The existing opted-in original-DualSense USB path uses
-only the already documented mode 01 at position 80: force rises from 24 to 48.
-`progress:1` or `active:false` releases both actuators with mode 05. Telemetry
-expires after 400 ms without refresh. Terrain resistance and terrain/contact
-rumble are suppressed throughout uplink mode, including after completion.
-`feedback('tension')` is a 40 ms restrained rumble detent; `feedback('lock')` is
-60 ms. The caller fires each threshold once; polling does not repeat detents.
-These are ordinary two-motor rumble cues, not trigger vibration or native HD
-haptics. Standard controllers need no HID permission for squeeze input or rumble.
+Refresh `setUplink({active:true, progress, charge, charged, effort})` while squeezing,
+including while charged. `charge` is the 0–1 full-pressure hold fraction, separate
+from the overall pressure/progress value. The opted-in original-DualSense USB path
+keeps report 02, its 47-byte payload and only trigger-valid flags 0c. Early sending
+uses standard zoned Feedback 21, starting at zone 3 of 0–9, strength 2–5 of 1–8.
+At charge .35 it changes to Vibration 26 in zones 6–9, amplitude 2–5 of 1–8 and
+20–36 Hz as charge grows. First entering charged gives 180 ms at amplitude 5,
+36 Hz, then settles to Feedback 21 strength 4 while waiting for release. Refreshing
+charged telemetry does not restart that burst. The strongest vibration is at the
+end; charged holding cannot create an indefinite confirmation buzz.
+
+`effort` is optional and clamped to 0–1. The game derives it from the dramatized
+signal loss for transmissions/calls; keeping an archive uses 0. At effort 1,
+early resistance spans strength 3–6, final trigger vibration rises to amplitude
+7 of 8 and 42 Hz, then rests at strength 6. Effort 0 uses the values above.
+Charge duration, input thresholds and release-to-send remain unchanged: story
+effort changes the sensation, not the difficulty. Clearing uplink also clears
+effort, so later archive interaction cannot inherit the preceding call's force.
+
+Both zoned effects use a 10-bit zone mask and packed 3-bit (level minus one)
+values. These are not the earlier mode 01 raw force values. Vibration frequency
+occupies trigger-block byte 9; reserved bytes remain zero. `active:false`, release
+or cancellation withdraws both actuators with mode 05. Telemetry expires after
+400 ms without refresh. Terrain remains unchanged at simple mode 01, position 80,
+force 24–60. Terrain feedback stays suppressed throughout uplink mode. With
+`charged:false`, progress 1 retains the previous off behavior.
+
+Fresh active progress above .1 adds finite 100 ms two-motor charge pulses, paced
+at 160 ms without catch-up or a deferred queue. Charged holding rests between
+cues; it does not continuously buzz. Stronger `tension`, `lock`, `charged`,
+`transmit` and `received` cues last 70–320 ms. Charge and charged magnitudes rise from a .7 peak
+to at most .85 with story effort; other cues stay capped at .7.
+The charge pulses crescendo with the full-pressure hold; the charged cue lasts
+180 ms at .7–.85 on both motors and departure lasts 320 ms. Each later cue can replace earlier lower-priority feedback immediately, including
+charge pulses. Promise generations prevent late completions from unlocking newer
+feedback. The caller fires threshold cues once, `transmit` on the actual send,
+and `received` only for a real reply. These are ordinary browser dual-rumble,
+not native audio-driven HD haptics. The optional HID effect separately vibrates
+the trigger mechanism.
 
 Pause, blur, hidden pages, disabling input, changing modes, losing the selected
 Gamepad, turning haptics off, HID disconnect/reconnect and destroy clear pressure
-telemetry. Returning to uplink cannot restore the old resistance. Updates while
-inactive are discarded. Adaptive output remains serialized/coalesced and failure
-stops retries. Software cleanup still cannot guarantee delivery after physical
-unplugging or a browser crash. No new HID modes or device capabilities are used;
-force feel and physical hardware remain untested.
+telemetry and neutralize feedback. Returning cannot restore old resistance;
+inactive updates are discarded. Adaptive output remains serialized/coalesced and
+failure stops retries. Software cannot guarantee cleanup after physical unplugging
+or a browser crash. The sending effects use researched standard trigger modes; no calibration,
+maximum-strength preset, audio, LEDs or other device controls are sent.
+
+The user confirmed ordinary haptics work in Chrome on CachyOS over USB. The
+stronger v0.9 force and cue tuning still require their physical feel test; automated
+mocks verify lifecycle, timing and bytes, not subjective feel.
+
+The sending encoder follows the bit layout documented in
+[Nielk1’s original trigger-effect factories](https://gist.github.com/Nielk1/6d54cc2c00d2201ccb8c2720ad7538db),
+whose notes trace the standard modes to Apple/Steamworks HID captures. This
+supersedes the older stealth-alex page’s incomplete description of mode 26.
+[Valve’s published DualSense interface](https://github.com/ValveSoftware/Proton/blob/proton_11.0/lsteamclient/steamworks_sdk_155/isteamdualsense.h)
+independently documents ten positions, amplitude 0–8 and frequency in Hz. Encoding
+and bounded timing are verified by mocks; physical vibration strength, firmware
+behavior and subjective comfort remain for the user's USB playtest.

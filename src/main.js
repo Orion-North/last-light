@@ -330,7 +330,9 @@ function scan() {
 }
 
 function uploadPrompt() {
-  return controllerConnected ? 'Release both triggers, then squeeze together.' : 'Send this memory when you are ready.';
+  const mode=transmissionProfile(scenes[state.sceneIndex]).mode;
+  const action=mode==='silence'?'call':mode==='archive'?'keep this memory':'send';
+  return controllerConnected ? `Squeeze to charge. Release both triggers to ${action}.` : 'Continue when you are ready.';
 }
 function updateUploadProgress(result) {
   if(!contacting || state.paused)return;
@@ -338,17 +340,27 @@ function updateUploadProgress(result) {
   const progress=$('#upload-progress');if(progress)progress.value=result.progress;
   if(terminal) {
     terminal.style.setProperty('--upload-progress',result.progress);
+    terminal.style.setProperty('--charge-progress',result.charge || 0);
     terminal.style.setProperty('--squeeze-left',result.left || 0);
     terminal.style.setProperty('--squeeze-right',result.right || 0);
     terminal.dataset.squeeze=result.stage;
   }
   const hint=$('#squeeze-hint');
-  const hints={release:'Release both triggers',ready:'Squeeze both triggers',pressing:'Keep squeezing…',latched:'Sent'};
+  const {mode,effort}=transmissionProfile(scenes[state.sceneIndex]);
+  const releaseAction=mode==='silence'?'call':mode==='archive'?'keep this memory':'send';
+  const hints={release:'Release both triggers',ready:'Squeeze both triggers',pressing:'Keep squeezing…',charged:`Release both triggers to ${releaseAction}`,latched:'Released'};
   if(hint && controllerConnected)hint.textContent=hints[result.stage] || hints.release;
-  controller?.setUplink?.({active:result.stage!=='release' && !result.commit,progress:result.progress});
+  const glyphHint=$('#input-hint .controller-hint');
+  if(controllerConnected && glyphHint) {
+    const label=result.stage==='charged'||result.stage==='release'?'Release':'Squeeze';
+    glyphHint.setAttribute('aria-label',`Both triggers: ${label.toLowerCase()}`);
+    const text=glyphHint.querySelector('span:last-child');if(text)text.textContent=label;
+  }
+  controller?.setUplink?.({active:result.stage!=='release' && !result.commit && (result.pressure>.15 || result.stage==='charged'),progress:result.progress,charge:result.charge || 0,charged:result.stage==='charged',effort});
   if(result.cue)controller?.feedback(result.cue);
-  const mode=transmissionProfile(scenes[state.sceneIndex]).mode;
-  sound.setActivity?.({contactActive:['reply','partial'].includes(mode) && result.pressure>0,contactQuality:result.pressure || 0});
+  const audible=['reply','partial'].includes(mode);
+  sound.setActivity?.({contactActive:audible && (result.pressure>0 || result.stage==='charged'),contactQuality:result.pressure || 0,contactCharge:result.charge || 0,contactCharged:result.stage==='charged'});
+  if(audible && result.cue==='charged')sound.cue('charged');
   if(result.commit)sendMemory();
 }
 function resetUpload() {
@@ -371,8 +383,9 @@ function sendMemory() {
   transmitting = true;
   view?.stopDrive?.();
   drive();
-  if (contact.mode !== 'silence') { sound.cue('transmit'); controller?.feedback('transmit'); }
   renderGame();
+  // Mode changes stop old feedback; start the departure pulse after that cleanup.
+  if (contact.mode !== 'silence') { sound.cue('transmit'); controller?.feedback('transmit'); }
   announce(contact.waiting);
   transmissionWait.start(contact.delay,()=>{
     transmitting = false;
@@ -413,7 +426,7 @@ function act(action) {
   renderGame({focus:true});
   if (action.type === 'TRANSMIT') {
     const contact = transmissionProfile(scenes[state.sceneIndex]);
-    if (contact.mode === 'reply') sound.cue('received');
+    if (contact.mode === 'reply') {sound.cue('received');controller?.feedback('received');}
     announce(contact.result);
   }
   if (action.type === 'NEXT') window.scrollTo({top:0,behavior:'instant'});
@@ -659,7 +672,7 @@ controller=createController({
     if(contacting)resetUpload();
     $('#adaptive-connect').disabled=!status.adaptiveSupported || status.adaptiveOpen;
     $('#adaptive-disconnect').hidden=!status.adaptiveOpen;
-    $('#adaptive-status').textContent=status.message || (status.adaptiveConnected?'USB trigger feedback connected.':status.adaptiveSupported?'Optional: original DualSense via USB. Click or tap to connect.':'USB resistance unavailable here. Standard trigger controls still work.');
+    $('#adaptive-status').textContent=status.message || (status.adaptiveConnected?'USB trigger feedback connected.':status.adaptiveSupported?'Optional: original DualSense via USB. Click or tap to connect.':'USB trigger effects unavailable here. Standard trigger controls still work.');
   },
 });
 // An isolated preview can suppress physical pad input while another tab is playtested.

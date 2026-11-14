@@ -2,8 +2,8 @@
 
 A portable Windows x64 edition bundles the same game and assets. It adds a
 Chromium/Electron host for trying the existing experimental original-DualSense
-USB trigger resistance. It does not add native HD haptic audio or new trigger
-protocols. The web edition remains supported.
+USB trigger resistance and vibration. It does not add native HD haptic audio.
+The web edition uses the same effects when its browser supports WebHID.
 
 ## Try it
 
@@ -17,7 +17,8 @@ Only run a build you trust. It is not Microsoft Store packaged or code signed.
 Connect an **original Sony DualSense by USB cable**, press a controller button,
 open the game's Settings, enable vibration, and select **Connect DualSense USB
 features**. Confirm the matching device in the native dialog. L2 + R2 squeeze
-uploads use standard analog input; USB opt-in adds experimental resistance.
+uploads use standard analog input; USB opt-in adds experimental resistance and
+a finite trigger-vibration crescendo near full charge. Release both to send.
 Cancel or use **Disconnect USB features** at any time. Pausing, blur, leaving the
 upload, or disabling feedback releases resistance. The game retains keyboard,
 mouse, screen-button and standard-controller alternatives.

@@ -9,7 +9,8 @@ test('each ready action exposes pressure feedback and one accessible alternative
   for (const mode of ['reply', 'partial', 'silence', 'archive']) {
     const ready = render(mode, 'ready', { input: 'controller' });
     assert.match(ready, new RegExp(`id="upload-progress".*aria-label="${mode === 'silence' ? 'Call' : mode === 'archive' ? 'Archive' : 'Send'} commitment"`));
-    assert.match(ready, /id="squeeze-hint"[^>]*>Release both triggers/);
+    const verb = mode === 'silence' ? 'call' : mode === 'archive' ? 'keep' : 'send';
+    assert.match(ready, new RegExp(`id="squeeze-hint"[^>]*>Squeeze, then release to ${verb}`));
     assert.match(ready, /--squeeze-left:0;--squeeze-right:0/);
     assert.match(ready, /data-squeeze="release"/);
     assert.match(ready, /upload-terminal__half--left/);
@@ -53,4 +54,22 @@ test('memory and response text are escaped, with stable integration containers',
   assert.match(ready, /class="upload-terminal__body"/);
   assert.match(render('reply', 'received'), /&lt;reply&gt;/);
   assert.doesNotMatch(render('reply', 'sending'), /data-action=/);
+});
+
+test('instrument exposes charge and quiet mode-aware receipt marks', () => {
+  const html = render('reply', 'ready', { input: 'controller' });
+  assert.match(html, /--charge-progress:0/);
+  assert.match(html, /upload-terminal__seam/);
+  assert.match(html, /upload-terminal__signal/);
+  assert.doesNotMatch(html, /<svg|SELECTED MEMORY|MEMORY BUFFER/);
+  assert.match(html, /upload-terminal__receipt/);
+  assert.match(html, /aria-hidden="true"/);
+});
+
+test('one memory title belongs inside the pressure apparatus and one live instruction remains', () => {
+  const html = render('reply', 'ready', { input: 'controller' });
+  assert.match(html, /upload-terminal__apparatus[\s\S]*upload-terminal__memory[\s\S]*<h2>&lt;memory&gt;<\/h2>/);
+  assert.equal((html.match(/<h2>/g) || []).length, 1);
+  assert.equal((html.match(/id="squeeze-hint"/g) || []).length, 1);
+  assert.doesNotMatch(html, /upload-terminal__phase|upload-terminal__header/);
 });

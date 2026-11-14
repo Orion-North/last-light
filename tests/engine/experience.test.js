@@ -28,6 +28,10 @@ test('last image is partial, recovery calls unanswered, archive does not simulat
   assert.equal(profile('months').mode, 'archive');
   assert.equal(profile('months').delay, 0);
   assert.ok(profile('earth-listens').delay > profile('first-morning').delay);
+  assert.equal(profile('first-morning').effort, 0);
+  assert.ok(profile('last-image').effort > .9);
+  assert.equal(profile('last-call').effort, 1);
+  assert.equal(profile('months').effort, 0);
 });
 
 test('ending recalls chosen memories, including the last choice, without duplicating short archives', () => {

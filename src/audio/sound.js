@@ -15,8 +15,9 @@ export function createSound() {
   let motorGain = null;
   let gritGain = null;
   let motorFilter = null;
-  let activity = { moving: false, speed: 0, roughness: 0, investigating: false, contactActive: false, contactQuality: 0 };
+  let activity = { moving: false, speed: 0, roughness: 0, investigating: false, contactActive: false, contactQuality: 0, contactCharge: 0, contactCharged: false };
   let activityTime = -Infinity;
+  let chargedTime = -Infinity;
   let muted = false;
   let paused = false;
   let destroyed = false;
@@ -65,11 +66,18 @@ export function createSound() {
     const contact = audible && activity.contactActive;
     const driving = audible && activity.moving && !activity.investigating && !contact;
     const speed = driving ? activity.speed : 0;
-    // Quiet physical contact, never an engine roar: Opportunity has electric motors.
-    smooth(motorGain.gain, contact ? 0.014 : speed * 0.019, 0.09);
-    smooth(gritGain.gain, contact ? (1 - activity.contactQuality) * 0.022 : speed * (0.008 + activity.roughness * 0.027), 0.08);
-    smooth(motorSource.frequency, contact ? 180 + activity.contactQuality * 100 : 42 + speed * 38, 0.13);
-    smooth(motorFilter.frequency, contact ? 580 : 170 + speed * 110, 0.15);
+    // Pressure raises a soft triangle's energy and register; roughness resolves as
+    // the two halves meet. Charged is a finite settle, never an indefinite alarm.
+    const pressure = activity.contactQuality;
+    // Most compression arrives at the end of the deliberate hold, rather than
+    // plateauing as soon as the triggers reach full pressure.
+    const compression = activity.contactCharge ** 3;
+    const chargedTail = Math.max(0, 1 - (context.currentTime - chargedTime) / 0.7);
+    const contactLevel = activity.contactCharged ? 0.025 * chargedTail : 0.020 + pressure * 0.046 + compression * 0.028;
+    smooth(motorGain.gain, contact ? contactLevel : speed * 0.019, contact ? 0.055 : 0.09);
+    smooth(gritGain.gain, contact ? (activity.contactCharged ? 0 : pressure * (1 - pressure) * 0.040) : speed * (0.008 + activity.roughness * 0.027), 0.08);
+    smooth(motorSource.frequency, contact ? (activity.contactCharged ? 220 : 110 + pressure * 110 + compression * 80) : 42 + speed * 38, 0.10);
+    smooth(motorFilter.frequency, contact ? 420 + pressure * 300 + compression * 280 : 170 + speed * 110, 0.15);
   }
 
   function updateVolume() {
@@ -404,8 +412,11 @@ export function createSound() {
       observe: [[74, 0, 0.7, 0.027]],
       investigate: [[50, 0, 0.12, 0.018], [57, 0.11, 0.2, 0.014]],
       choose: [[third, 0, 1.0, 0.035], [69, 0.13, 1.2, 0.018]],
-      transmit: [[74, 0, 0.16, 0.027], [69, 0.24, 0.22, 0.021], [74, 0.54, 0.45, 0.017]],
-      received: [[57, 0, 0.7, 0.033], [62, 0.22, 1.5, 0.028], [third, 0.46, 1.2, 0.019]],
+      // A close, grounded latch; release lifts away quickly. Only a real Earth
+      // response receives the slower, lower answering interval.
+      charged: [[57, 0, 0.12, 0.065], [62, 0.07, 0.24, 0.042]],
+      transmit: [[62, 0, 0.13, 0.070], [74, 0.07, 0.20, 0.053], [81, 0.17, 0.32, 0.033]],
+      received: [[50, 0, 0.38, 0.052], [57, 0.24, 0.85, 0.045], [62, 0.49, 1.1, 0.034]],
       end: [[62, 0, 4.5, 0.040], [69, 0.65, 4, 0.023], [74, 1.4, 4, 0.015]],
     };
     for (const [note, delay, duration, volume] of patterns[kind] || []) {
@@ -455,10 +466,13 @@ export function createSound() {
     cue,
     setActivity(value = {}) {
       const unit = number => Number.isFinite(number) ? Math.max(0, Math.min(1, number)) : 0;
+      const charged = Boolean(value.contactActive && value.contactCharged);
+      if (charged && !activity.contactCharged) chargedTime = context?.currentTime ?? -Infinity;
+      if (!charged) chargedTime = -Infinity;
       activity = {
         moving: Boolean(value.moving), speed: unit(value.speed), roughness: unit(value.roughness),
         investigating: Boolean(value.investigating), contactActive: Boolean(value.contactActive),
-        contactQuality: unit(value.contactQuality),
+        contactQuality: unit(value.contactQuality), contactCharge: unit(value.contactCharge), contactCharged: charged,
       };
       activityTime = context?.currentTime ?? -Infinity;
       updateActivity();

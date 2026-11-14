@@ -395,17 +395,18 @@ test('uplink resistance grows, releases at completion and expires without terrai
   f.driver.setInputMode('uplink'); f.driver.setTerrain({ moving: true, roughness: 1 });
   await settle(); assert.equal(device.reports.at(-1).data[10], 5);
   f.driver.setUplink({ active: true, progress: 0 }); await settle();
-  assert.deepEqual(device.reports.at(-1).data.slice(10, 13), [1, 80, 24]);
+  assert.deepEqual(device.reports.at(-1).data.slice(10, 13), [0x21, 0xf8, 3]);
   f.driver.setUplink({ active: true, progress: .75 }); await settle();
-  assert.deepEqual(device.reports.at(-1).data.slice(21, 24), [1, 80, 42]);
+  assert.deepEqual(device.reports.at(-1).data.slice(21, 24), [0x21, 0xf8, 3]);
   f.driver.setUplink({ active: true, progress: 1 }); await settle();
   assert.equal(device.reports.at(-1).data[10], 5);
   f.driver.setUplink({ active: true, progress: .5 }); f.tick(400); await settle();
   assert.equal(device.reports.at(-1).data[21], 5); assert.equal(f.pulses.length, 0);
   assert.equal(f.driver.feedback('terrain'), false); assert.equal(f.driver.feedback('blocked'), false);
-  for (const kind of ['tension', 'lock']) {
+  for (const [index, kind] of ['tension', 'lock', 'charged', 'transmit', 'received'].entries()) {
+    f.tick(800 + index * 400);
     assert.equal(f.driver.feedback(kind), true); await settle();
-    const effect = f.pulses.at(-1)[1]; assert.ok(effect.duration <= 60 && effect.strongMagnitude <= .16);
+    const effect = f.pulses.at(-1)[1]; assert.ok(effect.duration <= 320 && effect.strongMagnitude <= .7 && effect.weakMagnitude <= .7);
   }
   await f.driver.destroy();
 });
@@ -414,8 +415,8 @@ test('uplink interruption resets both actuators and never revives old pressure o
   for (const interruption of ['pause', 'blur', 'hidden', 'disable', 'mode', 'haptics', 'gamepad', 'hid']) {
     const f = fixture(), device = usb(); f.pads([f.pad]); f.tick();
     f.hid.requestDevice = async () => [device]; await f.driver.connectAdaptiveTriggers();
-    f.driver.setInputMode('uplink'); f.driver.setUplink({ active: true, progress: .6 }); await settle();
-    assert.equal(device.reports.at(-1).data[10], 1, interruption);
+    f.driver.setInputMode('uplink'); f.driver.setUplink({ active: true, progress: 1, charged: true }); await settle();
+    assert.equal(device.reports.at(-1).data[10], 0x26, interruption);
     if (interruption === 'pause') f.driver.setPaused(true);
     if (interruption === 'blur') f.win.dispatchEvent(new Event('blur'));
     if (interruption === 'hidden') { f.doc.hidden = true; f.doc.dispatchEvent(new Event('visibilitychange')); }
@@ -436,4 +437,127 @@ test('uplink interruption resets both actuators and never revives old pressure o
     await settle(); assert.equal(device.reports.at(-1).data[10], 5, interruption);
     await f.driver.destroy();
   }
+});
+
+
+test('charged resistance holds only with fresh telemetry and release neutralizes it', async () => {
+  const f = fixture(), device = usb(); f.pads([f.pad]); f.tick();
+  f.hid.requestDevice = async () => [device]; await f.driver.connectAdaptiveTriggers();
+  f.driver.setInputMode('uplink');
+  for (let time = 0; time <= 2000; time += 200) {
+    f.tick(time); f.driver.setUplink({ active: true, progress: 1, charged: true }); await settle();
+    assert.equal(device.reports.at(-1).data[10], time === 0 ? 0x26 : 0x21);
+  }
+  assert.equal(f.pulses.length, 0); // charged rest has no repeating buzz
+  f.tick(2400); await settle(); assert.equal(device.reports.at(-1).data[10], 5);
+  f.driver.setUplink({ active: true, progress: 1, charged: true }); await settle();
+  f.driver.setUplink({ active: false, progress: 1, charged: true }); await settle();
+  assert.equal(device.reports.at(-1).data[21], 5);
+  await f.driver.destroy();
+});
+
+test('charge pulses are finite, fresh, paced and priority cues preempt without old promise races', async () => {
+  const f = fixture(); f.pads([f.pad]); f.tick(); f.driver.setInputMode('uplink');
+  const completions = [];
+  f.pad.vibrationActuator.playEffect = (...args) => { f.pulses.push(args); return new Promise(resolve => completions.push(resolve)); };
+  f.driver.setUplink({ active: true, progress: .1 }); f.tick(10); assert.equal(f.pulses.length, 0);
+  f.driver.setUplink({ active: true, progress: .5 }); f.tick(20);
+  assert.equal(f.pulses.length, 1); assert.equal(f.pulses[0][1].duration, 100);
+  f.tick(180); assert.equal(f.pulses.length, 1); // unresolved call cannot queue charge pulses
+  assert.equal(f.driver.feedback('lock'), true); assert.equal(f.pulses.length, 2);
+  completions[0](); await settle(); f.tick(300);
+  assert.equal(f.driver.feedback('charge'), false); // old completion cannot unlock new effect
+  completions[1](); await settle(); f.tick(301); assert.equal(f.pulses.length, 3);
+  f.driver.setUplink({ active: true, progress: 1, charged: true });
+  assert.equal(f.driver.feedback('charged'), true);
+  completions[2](); await settle(); f.tick(460); assert.equal(f.pulses.length, 4);
+  f.driver.setUplink({ active: false });
+  assert.equal(f.driver.feedback('transmit'), true);
+  completions[3](); await settle(); assert.equal(f.driver.feedback('charge'), false);
+  f.driver.setPaused(true); completions[4](); await settle();
+  f.driver.setPaused(false); assert.equal(f.driver.feedback('received'), true);
+  f.tick(1000); assert.equal(f.pulses.length, 6);
+  await f.driver.destroy();
+});
+
+
+test('HID disconnect cancels squeeze input before pending output and close settle', async () => {
+  const f = fixture(), device = usb(); f.pads([f.pad]); f.tick();
+  f.hid.requestDevice = async () => [device]; await f.driver.connectAdaptiveTriggers();
+  f.driver.setInputMode('uplink'); f.pad.buttons[6].value = f.pad.buttons[7].value = 1;
+  f.tick(1); assert.equal(f.inputs.at(-1).actualSample, true); await settle();
+  let releaseWrite, releaseClose;
+  device.sendReport = async function(id, data) {
+    this.reports.push({ id, data: Array.from(data) });
+    await new Promise(resolve => { releaseWrite = resolve; });
+  };
+  device.close = async function() { await new Promise(resolve => { releaseClose = resolve; }); this.opened = false; };
+  f.driver.setUplink({ active: true, progress: 1, charged: true });
+  const count = f.inputs.length;
+  const disconnecting = f.driver.disconnectAdaptiveTriggers();
+  assert.equal(f.inputs.length, count + 1);
+  assert.equal(f.inputs.at(-1).actualSample, false);
+  assert.equal(f.inputs.at(-1).leftTrigger, 0); assert.equal(f.inputs.at(-1).rightTrigger, 0);
+  assert.equal(device.opened, true); assert.equal(releaseClose, undefined);
+  releaseWrite(); await settle(); // serialized final off report
+  assert.equal(device.reports.at(-1).data[10], 5);
+  releaseWrite(); await settle(); assert.equal(device.opened, true);
+  releaseClose(); await disconnecting;
+  await f.driver.destroy();
+});
+
+
+test('sending uses zoned feedback and bounded final trigger vibration with a finite charged finish', async () => {
+  const f = fixture(), device = usb(); f.pads([f.pad]); f.tick();
+  f.hid.requestDevice = async () => [device]; await f.driver.connectAdaptiveTriggers();
+  f.driver.setInputMode('uplink'); f.driver.setUplink({ active: true, progress: 0, charge: 0 }); await settle();
+  const block = () => device.reports.at(-1).data.slice(10, 21);
+  assert.deepEqual(block(), [0x21, 0xf8, 3, 0, 0x92, 0x24, 9, 0, 0, 0, 0]);
+  f.driver.setUplink({ active: true, progress: .8, charge: .35 }); await settle();
+  assert.deepEqual(block(), [0x26, 0xc0, 3, 0, 0, 0x24, 9, 0, 0, 20, 0]);
+  f.driver.setUplink({ active: true, progress: 1, charge: 1, charged: true }); await settle();
+  assert.deepEqual(block(), [0x26, 0xc0, 3, 0, 0, 0x90, 0x24, 0, 0, 36, 0]);
+  assert.deepEqual(device.reports.at(-1).data.slice(21, 32), block());
+  f.tick(179); await settle(); assert.equal(block()[0], 0x26);
+  f.tick(180); await settle(); assert.deepEqual(block(), [0x21, 0xf8, 3, 0, 0xb6, 0x6d, 0x1b, 0, 0, 0, 0]);
+  f.driver.setUplink({ active: true, progress: 1, charge: 1, charged: true });
+  f.tick(181); await settle(); assert.equal(block()[0], 0x21); // refresh does not restart burst
+  f.driver.setUplink({ active: false }); await settle(); assert.equal(block()[0], 5);
+  const report = device.reports.at(-2); assert.equal(report.id, 2); assert.equal(report.data.length, 47); assert.equal(report.data[0], 12);
+  await f.driver.destroy();
+});
+
+test('ordinary charge rumble crescendos with hold charge and ends with a distinct finite cue', async () => {
+  const f = fixture(); f.pads([f.pad]); f.tick(); f.driver.setInputMode('uplink');
+  f.driver.setUplink({ active: true, progress: .7, charge: .1 }); f.tick(1); await settle();
+  const early = f.pulses.at(-1)[1];
+  f.driver.setUplink({ active: true, progress: .98, charge: .95 }); f.tick(161); await settle();
+  const late = f.pulses.at(-1)[1];
+  assert.ok(late.strongMagnitude > early.strongMagnitude); assert.ok(late.weakMagnitude > early.weakMagnitude);
+  f.driver.setUplink({ active: true, progress: 1, charge: 1, charged: true });
+  assert.equal(f.driver.feedback('charged'), true); const finish = f.pulses.at(-1)[1];
+  assert.deepEqual(finish, { startDelay: 0, duration: 180, strongMagnitude: .7, weakMagnitude: .7 });
+  f.tick(400); const count = f.pulses.length; f.tick(500); assert.equal(f.pulses.length, count);
+  await f.driver.destroy();
+});
+
+
+test('late-story effort increases end vibration and rest without retaining it for archive', async () => {
+  const f = fixture(), device = usb(); f.pads([f.pad]); f.tick();
+  f.hid.requestDevice = async () => [device]; await f.driver.connectAdaptiveTriggers();
+  f.driver.setInputMode('uplink');
+  const block = () => device.reports.at(-1).data.slice(10, 21);
+  f.driver.setUplink({ active: true, progress: 0, effort: 1 }); await settle();
+  assert.deepEqual(block(), [0x21, 0xf8, 3, 0, 0x24, 0x49, 0x12, 0, 0, 0, 0]);
+  f.driver.setUplink({ active: true, progress: 1, charge: 1, charged: true, effort: 1 }); await settle();
+  assert.deepEqual(block(), [0x26, 0xc0, 3, 0, 0, 0xd8, 0x36, 0, 0, 42, 0]);
+  assert.equal(f.driver.feedback('charged'), true); assert.equal(f.pulses.at(-1)[1].strongMagnitude, .85);
+  f.tick(180); await settle();
+  assert.deepEqual(block(), [0x21, 0xf8, 3, 0, 0xda, 0xb6, 0x2d, 0, 0, 0, 0]);
+  f.driver.setUplink({ active: false }); await settle();
+  f.driver.setUplink({ active: true, progress: 1, charge: 1, charged: true, effort: 0 }); await settle();
+  assert.deepEqual(block(), [0x26, 0xc0, 3, 0, 0, 0x90, 0x24, 0, 0, 36, 0]);
+  f.driver.setUplink({ active: false }); f.driver.setUplink({ active: true, progress: 0, effort: 99 }); await settle();
+  assert.equal(block()[5], 0x49); // external effort is clamped
+  await f.driver.destroy();
 });

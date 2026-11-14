@@ -253,7 +253,11 @@ test('interaction cues distinguish investigation, transmission, and an Earth rep
       return h.sources.slice(before).map(source => source.frequency.value);
     };
     assert.equal(pitches('investigate').length, 2);
+    const charged = pitches('charged');
+    assert.equal(charged.length, 2);
     const sent = pitches('transmit');
+    assert.ok(sent.at(-1) > sent[0], 'departure rises away');
+    assert.ok(Math.max(...charged) < Math.max(...sent));
     const reply = pitches('received');
     assert.equal(sent.length, 3);
     assert.equal(reply.length, 3, 'a distinct cue is not suppressed by another cue type');
@@ -289,11 +293,12 @@ test('contact alignment reuses the motor graph and cleans up on silence and dest
     const grit = h.sources.filter(source => source.loop)[1];
     const gritGain = grit.connections[0].connections[0];
     const count = h.sources.length;
-    sound.setActivity({ contactActive: true, contactQuality: 0 });
-    assert.equal(motor.frequency.target, 180);
+    sound.setActivity({ contactActive: true, contactQuality: 0.5 });
+    assert.equal(motor.frequency.target, 165);
     assert.ok(gritGain.gain.target > 0);
     sound.setActivity({ contactActive: true, contactQuality: 4 });
-    assert.equal(motor.frequency.target, 280, 'quality clamps before pitch mapping');
+    assert.equal(motor.frequency.target, 220, 'pressure clamps before pitch mapping');
+    assert.ok(gain.gain.target > 0.06);
     assert.equal(gritGain.gain.target, 0, 'clear alignment removes radio grit');
     assert.equal(h.sources.length, count);
     sound.setNarrative(7, 'received');
@@ -301,5 +306,81 @@ test('contact alignment reuses the motor graph and cleans up on silence and dest
     h.assertAmbienceSilent();
     sound.destroy();
     assert.ok(h.sources.every(source => source.stopped <= h.contexts[0].currentTime), 'persistent activity sources also stop on teardown');
+  });
+});
+
+
+test('charged contact settles once while held, resets, and stops on stale input', async () => {
+  await withMusic(async (sound, h) => {
+    await sound.start();
+    const motor = h.sources.find(source => source.kind === 'oscillator' && source.stopped === undefined);
+    const gain = motor.connections[0].connections[0];
+    const count = h.sources.length;
+    const hold = () => sound.setActivity({ contactActive: true, contactQuality: 1, contactCharged: true });
+    hold();
+    assert.ok(gain.gain.target > 0);
+    h.advance(0.4);
+    hold();
+    const settling = gain.gain.target;
+    assert.ok(settling > 0 && settling < 0.025);
+    h.advance(0.4);
+    hold();
+    assert.equal(gain.gain.target, 0, 'held updates never restart the charged tail');
+    assert.equal(h.sources.filter(source => source.stopped === undefined).length, count, 'holds allocate no persistent voices');
+    sound.setActivity({ contactActive: true, contactQuality: 0.5 });
+    assert.ok(gain.gain.target > settling);
+    hold();
+    assert.equal(gain.gain.target, 0.025, 'fresh charge has a finite settle');
+    sound.setActivity({});
+    assert.equal(gain.gain.target, 0, 'replacement activity clears contact');
+    hold();
+    h.advance(1);
+    assert.equal(gain.gain.target, 0, 'stale input goes silent');
+  });
+});
+
+test('charged and departure transients are finite and canceled by pause', async () => {
+  await withMusic(async (sound, h) => {
+    await sound.start();
+    const before = h.sources.length;
+    sound.cue('charged');
+    sound.cue('transmit');
+    const transients = h.sources.slice(before);
+    assert.equal(transients.length, 5);
+    assert.ok(transients.every(source => source.stopped - source.started < 0.4));
+    sound.pause();
+    h.assertCanceled();
+    const pausedCount = h.sources.length;
+    sound.cue('charged');
+    assert.equal(h.sources.length, pausedCount);
+  });
+});
+
+
+test('final hold compression builds late at fixed trigger pressure without adding voices', async () => {
+  await withMusic(async (sound, h) => {
+    await sound.start();
+    const motor = h.sources.find(source => source.kind === 'oscillator' && source.stopped === undefined);
+    const gain = motor.connections[0].connections[0];
+    const count = h.sources.length;
+    const compress = charge => sound.setActivity({ contactActive: true, contactQuality: 1, contactCharge: charge });
+    compress(0);
+    const initial = gain.gain.target;
+    const initialPitch = motor.frequency.target;
+    compress(0.5);
+    const middle = gain.gain.target;
+    compress(1);
+    const final = gain.gain.target;
+    assert.ok(middle > initial);
+    assert.ok(final - middle > middle - initial, 'the final compression gets most of the swell');
+    assert.ok(motor.frequency.target > initialPitch);
+    assert.ok(final < 0.1, 'compression remains bounded before master volume');
+    compress(99);
+    assert.equal(gain.gain.target, final, 'charge progress clamps');
+    sound.setActivity({ contactActive: true, contactQuality: 1 });
+    assert.equal(gain.gain.target, initial, 'omitted charge resets under replacement semantics');
+    sound.setActivity({ contactActive: true, contactQuality: 1, contactCharge: 1, contactCharged: true });
+    assert.equal(gain.gain.target, 0.025, 'charge arrival immediately releases the pressure swell');
+    assert.equal(h.sources.length, count);
   });
 });

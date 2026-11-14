@@ -202,3 +202,34 @@ Earth's recovery effort, and the personalized ending.
   handoffs/WINDOWS-08.md. CI must pass the actual Windows executable smoke before
   publishing the ZIP. USB hardware, force feel and unsigned-app behavior require
   the user's Windows playtest. No native HD haptic audio is claimed.
+
+## v0.9 compression, release, and trigger crescendo — November 14, 2026
+
+- Sending requires a fresh neutral, both triggers at .82 for .55 seconds to charge,
+  then BOTH physically released. Charged holding has no deadline. Early release,
+  malformed/synthetic input, pause and disconnect cancel without sending.
+- Main now starts departure feedback after input-mode cleanup, preventing the
+  mode transition from immediately cancelling it. Real reply feedback runs only
+  after the reply, never for partial, silent or archived outcomes.
+- New original-DualSense USB sending uses researched standard zoned feedback
+  (21) and vibration (26), with exact block tests. Late charge vibrates, charged
+  confirmation lasts 180 ms, then rests with resistance. Later low-signal scenes
+  increase effort; archive returns to zero effort. No success thresholds change.
+- Sound's final hold crescendo shares charge progress; held-charge sound settles
+  rather than restarting. The central memory band, independent pressure plates,
+  visible release and separate returned receipt replace the circular overlay.
+- All 99 tests across 15 test files passed in direct Node test execution;
+  the sandboxed child-runner gave a generic file error, so each file was run
+  independently. Source/asset checks (36 JS files, 12 scene contracts), static
+  build and whitespace checks passed.
+- Isolated browser fixture verified held entry, one-trigger/half-pressure states,
+  charged indefinite hold, one-trigger release remaining charged, both-trigger
+  release sending once, and paused-held resume requiring fresh release. Final
+  composition also checked at 1280×720, 820×1180 portrait, and 844×390 landscape.
+  Screen button alternative reached a distinct Earth receipt. Browser error/warn
+  logs were empty. No test operated the user's public playtest or physical pad.
+- Software tests verify encoded output and lifecycle, not physical sensation.
+  User previously confirmed USB haptics working in Chrome on CachyOS; the new
+  stronger resistance, trigger vibration and story progression need their feel
+  test. This remains browser rumble plus USB trigger effects, not native audio
+  driven HD haptics. Web and Windows release results are recorded externally.
