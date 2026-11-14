@@ -24,8 +24,8 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
   let touchPoint = { x: 0, y: 0, id: null };
   let device = null, closing = false, connecting = false, generation = 0, pending = null, writing = null, lastReport = '', outputFailed = false;
   let terrain = { moving: false, blocked: false, power: 1 }, lastPulse = -Infinity, terrainAt = -Infinity;
-  let uplink = { active: false, progress: 0, charged: false, charge: 0, effort: 0 }, uplinkAt = -Infinity, lastChargePulse = -Infinity, chargedAt = -Infinity;
-  const clearUplink = () => { uplink = { active: false, progress: 0, charged: false, charge: 0, effort: 0 }; uplinkAt = -Infinity; lastChargePulse = -Infinity; chargedAt = -Infinity; };
+  let uplink = { active: false, progress: 0, charged: false, charge: 0, effort: 0, leftTrigger: 0, rightTrigger: 0 }, uplinkAt = -Infinity, lastChargePulse = -Infinity, chargedAt = -Infinity;
+  const clearUplink = () => { uplink = { active: false, progress: 0, charged: false, charge: 0, effort: 0, leftTrigger: 0, rightTrigger: 0 }; uplinkAt = -Infinity; lastChargePulse = -Infinity; chargedAt = -Infinity; };
   let lastStatus = '', rumbling = false, rumbleUntil = -Infinity, rumblePriority = 0, rumbleKind = '', rumbleEpoch = 0;
   const active = () => enabled && !paused && !blurred && !doc?.hidden && !destroyed;
   const actuator = () => pad?.vibrationActuator;
@@ -88,25 +88,26 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
     data[0] = 0x0c;
     // Mode 5 fully disengages and withdraws the trigger actuator.
     data[10] = data[21] = 5;
-    const squeeze = inputMode === 'uplink' && uplink.active && (uplink.charged || uplink.progress < 1) && clock() - uplinkAt < 400;
+    const squeeze = inputMode === 'uplink' && uplink.active && clock() - uplinkAt < 400;
     const ground = inputMode !== 'uplink' && terrain.moving && clock() - terrainAt < 400;
     if (active() && haptics && originalDualSense(pad) && !closing && (squeeze || ground)) {
       // Terrain retains the existing simple resistance; uplink uses zoned effects.
       const terrainStrength = terrain.blocked ? 60 : Math.round(clamp(24 + clamp(terrain.roughness, 0, 1) * 18 + clamp(terrain.slip, 0, 1) * 12 + (terrain.power < 0.3 ? 5 : 0), 0, 60));
-      for (const offset of [10, 21]) {
+      for (const [offset, pressure] of [[10, uplink.rightTrigger], [21, uplink.leftTrigger]]) {
         if (!squeeze) { data.set([1, 80, terrainStrength], offset); continue; }
+        if (pressure <= .03) continue;
         // Protocol researched from Nielk1's original factory/capture documentation.
         // Each active zone has a 3-bit strength/amplitude minus one; vibration Hz
         // lives at block byte 9. Never treat these fields as raw 0..255 forces.
-        const vibrate = (!uplink.charged && uplink.charge >= .35) || (uplink.charged && clock() - chargedAt < 180);
-        const end = uplink.charged ? 1 : clamp((uplink.charge - .35) / .65, 0, 1);
-        const level = vibrate ? Math.round(2 + end * (3 + uplink.effort * 2)) : uplink.charged ? Math.round(4 + uplink.effort * 2) : Math.round(2 + uplink.effort + uplink.progress * 3);
+        const vibrate = !uplink.charged || clock() - chargedAt < 180;
+        const end = uplink.charged ? 1 : Math.max(pressure, uplink.charge);
+        const level = vibrate ? Math.round(5 + uplink.effort * 2 + end * (2 - uplink.effort)) : Math.round(4 + uplink.effort * 2);
         let zones = 0, packed = 0;
-        for (let zone = vibrate ? 6 : 3; zone < 10; zone++) { zones |= 1 << zone; packed |= (level - 1) << (zone * 3); }
+        for (let zone = vibrate ? 0 : 1; zone < 10; zone++) { zones |= 1 << zone; packed |= (level - 1) << (zone * 3); }
         data[offset] = vibrate ? 0x26 : 0x21;
         data[offset + 1] = zones & 255; data[offset + 2] = zones >>> 8;
         for (let byte = 0; byte < 4; byte++) data[offset + 3 + byte] = (packed >>> (byte * 8)) & 255;
-        if (vibrate) data[offset + 9] = Math.round(20 + end * (16 + uplink.effort * 6));
+        if (vibrate) data[offset + 9] = Math.round(28 + end * 14 + uplink.effort * 6);
       }
     }
     return data;
@@ -135,7 +136,8 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
     if (kind === 'arrival') kind = 'observe';
     const priority = ({ tension: 2, lock: 3, charged: 4, transmit: 5, received: 6 })[kind] || 1;
     if ((rumbling || clock() < rumbleUntil) && priority <= rumblePriority) return false;
-    const effects = { charge: [100, .24 + uplink.charge * (.46 + uplink.effort * .15), .22 + uplink.charge * (.48 + uplink.effort * .15)], tension: [70, .42, .3], lock: [95, .55, .38], charged: [180, .7 + uplink.effort * .15, .7 + uplink.effort * .15], received: [180, .38, .65], observe: [100, 0.18, 0.12], transmit: [320, .7, .7], choice: [65, 0.1, 0.15], blocked: [95, 0.25, 0.18], terrain: [65, 0.06, 0.1] };
+    const build = Math.max(uplink.leftTrigger, uplink.rightTrigger, uplink.charge);
+    const effects = { charge: [100, .5 + build * (.35 + uplink.effort * .05), .5 + build * (.35 + uplink.effort * .05)], tension: [70, .42, .3], lock: [95, .55, .38], charged: [180, .7 + uplink.effort * .15, .7 + uplink.effort * .15], received: [180, .38, .65], observe: [100, 0.18, 0.12], transmit: [320, .7, .7], choice: [65, 0.1, 0.15], blocked: [95, 0.25, 0.18], terrain: [65, 0.06, 0.1] };
     let [duration, strongMagnitude, weakMagnitude] = effects[kind] || effects.observe;
     if (kind === 'terrain') {
       const rough = clamp(terrain.roughness, 0, 1), slip = clamp(terrain.slip, 0, 1), speed = clamp(Math.abs(terrain.speed || 0) / 3, 0, 1);
@@ -143,6 +145,7 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
       strongMagnitude = clamp(0.025 + rough * 0.22 + slip * 0.13, 0, 0.4) * (0.35 + speed * 0.65);
       weakMagnitude = clamp(0.04 + rough * 0.28 + slip * 0.18, 0, 0.5) * (0.4 + speed * 0.6);
     }
+    strongMagnitude = clamp(strongMagnitude, 0, .9); weakMagnitude = clamp(weakMagnitude, 0, .9);
     // A new playEffect replaces the old effect; no deferred pulse queue.
     const token = ++rumbleEpoch;
     try { rumbling = true; rumbleUntil = clock() + duration; rumblePriority = priority; rumbleKind = kind;
@@ -181,7 +184,7 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
         const trigger = button(pad, 7) - button(pad, 6);
         onInput({ steer: inputMode !== 'drive' ? 0 : axis(pad.axes?.[0]), throttle: inputMode !== 'drive' ? 0 : Math.abs(trigger) > 0.05 ? trigger : -axis(pad.axes?.[1]),
           lookX: inputMode === 'uplink' ? 0 : axis(pad.axes?.[2]), lookY: inputMode === 'uplink' ? 0 : axis(pad.axes?.[3]), leftTrigger: button(pad, 6), rightTrigger: button(pad, 7), connected: true, actualSample: true });
-        if (inputMode === 'uplink' && uplink.active && !uplink.charged && uplink.progress > .1 && now - uplinkAt < 400 && now - lastChargePulse >= 160) {
+        if (inputMode === 'uplink' && uplink.active && !uplink.charged && Math.max(uplink.leftTrigger, uplink.rightTrigger) > .03 && now - uplinkAt < 400 && now - lastChargePulse >= 160) {
           if (feedback('charge')) lastChargePulse = now;
         }
         if (inputMode !== 'uplink' && terrain.moving && now - terrainAt < 400 && now - lastPulse >= 160 - clamp(terrain.roughness, 0, 1) * 50 - clamp(Math.abs(terrain.speed || 0) / 3, 0, 1) * 30) { feedback(terrain.blocked ? 'blocked' : 'terrain'); lastPulse = now; }
@@ -245,11 +248,11 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
     pause(value = true) { this.setPaused(value); },
     setHaptics(value) { haptics = !!value; if (!haptics) { clearUplink(); stopRumble(); } queueReport(true); },
     feedback,
-    setUplink({ active: requested = false, progress = 0, charged = false, charge = 0, effort = 0 } = {}) {
-      if (requested && inputMode === 'uplink' && active() && haptics && pad) {
+    setUplink({ active: requested = false, progress = 0, charged = false, charge = 0, effort = 0, leftTrigger = 1, rightTrigger = 1 } = {}) {
+      if (requested && Math.max(clamp(leftTrigger, 0, 1), clamp(rightTrigger, 0, 1)) > .03 && inputMode === 'uplink' && active() && haptics && pad) {
         if (charged && !uplink.charged) { chargedAt = clock(); if (rumbleKind === 'charge') stopRumble(); }
         if (!charged) chargedAt = -Infinity;
-        uplink = { active: true, progress: clamp(progress, 0, 1), charged: !!charged, charge: clamp(charge, 0, 1), effort: clamp(effort, 0, 1) }; uplinkAt = clock();
+        uplink = { active: true, progress: clamp(progress, 0, 1), charged: !!charged, charge: clamp(charge, 0, 1), effort: clamp(effort, 0, 1), leftTrigger: clamp(leftTrigger, 0, 1), rightTrigger: clamp(rightTrigger, 0, 1) }; uplinkAt = clock();
       } else { if (uplink.active) stopRumble(); clearUplink(); }
       queueReport();
     },

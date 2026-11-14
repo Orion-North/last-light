@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createBriefing } from '../../src/engine/briefing.js';
+import { createBriefing, briefingBeats } from '../../src/engine/briefing.js';
 
 test('briefing holds while paused and bounds a resumed frame after interruption', () => {
   const briefing = createBriefing();
@@ -27,4 +27,19 @@ test('short passages hold their beat while paused and finish only once time elap
   }
   assert.throws(()=>createBriefing({duration:0}),RangeError);
   assert.throws(()=>createBriefing({beats:1.5}),RangeError);
+});
+
+// Each four-second shot must carry a single, readable purpose before play starts.
+test('opening establishes role, first action, science question and memory purpose in three short beats', () => {
+  assert.equal(briefingBeats.length, 3);
+  for (const beat of briefingBeats) {
+    assert.ok(beat.label && beat.title && beat.cue);
+    assert.ok(beat.title.split(/\s+/).length <= 7);
+    assert.ok(beat.cue.split(/\s+/).length <= 12);
+  }
+  assert.match(briefingBeats[0].title, /Opportunity/);
+  assert.match(briefingBeats[1].cue, /Look through your cameras\. Then examine the pale rocks/);
+  assert.match(briefingBeats[1].title, /water/);
+  assert.match(briefingBeats[2].cue, /Choose a memory/);
+  assert.match(briefingBeats[2].cue, /your archive/);
 });

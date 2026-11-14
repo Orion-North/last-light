@@ -66,7 +66,7 @@ polling. Input is `{steer, throttle, lookX, lookY, leftTrigger, rightTrigger, co
 `adaptiveOpen` (open HID handle, including after output failure), and `message`.
 
 Methods: `setEnabled(bool)`, `setPaused(bool)` / `pause(bool = true)`,
-`setHaptics(bool)`, `setInputMode(mode)`, `setUplink({active, progress, charge = 0, charged = false, effort = 0})`, `feedback(kind)`, `setTerrain({moving, blocked, power, speed, roughness, slip})`,
+`setHaptics(bool)`, `setInputMode(mode)`, `setUplink({active, progress, charge = 0, charged = false, effort = 0, leftTrigger, rightTrigger})`, `feedback(kind)`, `setTerrain({moving, blocked, power, speed, roughness, slip})`,
 `connectAdaptiveTriggers()`, `disconnectAdaptiveTriggers()`, and `destroy()`.
 Power, roughness, and slip are 0–1; speed is meters per second. Send terrain telemetry while driving; stop updates may explicitly
 set `moving:false`. Connect must be called directly from the settings click to
@@ -184,39 +184,49 @@ zero steering/throttle/look axes, and includes raw standard button 6/7 pressure 
 `connected:true, actualSample:true`. Synthetic neutral events have zero triggers
 and `actualSample:false`; they must never arm or commit a send.
 
-Refresh `setUplink({active:true, progress, charge, charged, effort})` while squeezing,
-including while charged. `charge` is the 0–1 full-pressure hold fraction, separate
-from the overall pressure/progress value. The opted-in original-DualSense USB path
-keeps report 02, its 47-byte payload and only trigger-valid flags 0c. Early sending
-uses standard zoned Feedback 21, starting at zone 3 of 0–9, strength 2–5 of 1–8.
-At charge .35 it changes to Vibration 26 in zones 6–9, amplitude 2–5 of 1–8 and
-20–36 Hz as charge grows. First entering charged gives 180 ms at amplitude 5,
-36 Hz, then settles to Feedback 21 strength 4 while waiting for release. Refreshing
-charged telemetry does not restart that burst. The strongest vibration is at the
-end; charged holding cannot create an indefinite confirmation buzz.
+Refresh `setUplink({active, progress, charge, charged, effort, leftTrigger, rightTrigger})`
+on each real input sample while the send gesture is armed. The caller sets active
+when either raw trigger exceeds .03 in a valid armed stage (or while charged),
+and clears it for release, cancellation, commit, or an invalid stage. Raw pressures
+are independently clamped to 0–1: one finger can engage feedback without waiting
+for the other. A trigger at or below .03 receives Off 05 even if the other remains
+held. Omitted pressures default to 1 for older symmetric callers; the game always
+supplies both. `charge` is the full-pressure hold fraction, separate from pressure.
 
-`effort` is optional and clamped to 0–1. The game derives it from the dramatized
-signal loss for transmissions/calls; keeping an archive uses 0. At effort 1,
-early resistance spans strength 3–6, final trigger vibration rises to amplitude
-7 of 8 and 42 Hz, then rests at strength 6. Effort 0 uses the values above.
-Charge duration, input thresholds and release-to-send remain unchanged: story
-effort changes the sensation, not the difficulty. Clearing uplink also clears
-effort, so later archive interaction cannot inherit the preceding call's force.
+The opted-in original-DualSense USB path keeps report 02, its 47-byte payload and
+only trigger-valid flags 0c. Sending now uses standard Vibration 26 immediately
+from physical zone 0 through zone 9. There is no late-charge vibration gate.
+Amplitude starts at 5 of 8 and rises to 7 with that trigger's pressure or hold
+charge; frequency rises from 28 to 42 Hz. At maximum story effort amplitude starts
+at 7 and rises to 8, with frequency 34–48 Hz. Thus both the software onset and the
+physical activation zone move to the beginning of a press. Full pressure before
+charged confirmation continues to vibrate.
+
+First entering charged gives a finite 180 ms confirmation at amplitude 7 (8 at
+maximum effort), then settles to Feedback 21 starting at zone 1, strength 4 (6 at
+maximum effort), while waiting for release. Refreshing charged telemetry does
+not restart the burst. Charged holding cannot create an indefinite confirmation
+buzz. Each side disengages independently when its pressure is released.
+
+`effort` is optional and clamped to 0–1. The game derives it from dramatized signal
+loss for transmissions/calls; keeping an archive uses 0. Charge duration, input
+thresholds and release-to-send remain unchanged: story effort changes the
+sensation, not the difficulty. Clearing uplink also clears effort, so archive
+interaction cannot inherit the preceding call's force.
 
 Both zoned effects use a 10-bit zone mask and packed 3-bit (level minus one)
 values. These are not the earlier mode 01 raw force values. Vibration frequency
 occupies trigger-block byte 9; reserved bytes remain zero. `active:false`, release
 or cancellation withdraws both actuators with mode 05. Telemetry expires after
 400 ms without refresh. Terrain remains unchanged at simple mode 01, position 80,
-force 24–60. Terrain feedback stays suppressed throughout uplink mode. With
-`charged:false`, progress 1 retains the previous off behavior.
+force 24–60. Terrain feedback stays suppressed throughout uplink mode. Full pressure alone does not turn feedback off; raw release does.
 
-Fresh active progress above .1 adds finite 100 ms two-motor charge pulses, paced
+Fresh active pressure above .03 on either trigger adds finite 100 ms two-motor charge pulses, paced
 at 160 ms without catch-up or a deferred queue. Charged holding rests between
 cues; it does not continuously buzz. Stronger `tension`, `lock`, `charged`,
-`transmit` and `received` cues last 70–320 ms. Charge and charged magnitudes rise from a .7 peak
-to at most .85 with story effort; other cues stay capped at .7.
-The charge pulses crescendo with the full-pressure hold; the charged cue lasts
+`transmit` and `received` cues last 70–320 ms. Charge pulses start at .5 per motor and rise with pressure or hold charge to .85,
+or .9 with story effort. Charged magnitudes remain .7–.85; other cues stay capped
+at .7. The charge pulses crescendo from the beginning of the press; the charged cue lasts
 180 ms at .7–.85 on both motors and departure lasts 320 ms. Each later cue can replace earlier lower-priority feedback immediately, including
 charge pulses. Promise generations prevent late completions from unlocking newer
 feedback. The caller fires threshold cues once, `transmit` on the actual send,
@@ -233,7 +243,7 @@ or a browser crash. The sending effects use researched standard trigger modes; n
 maximum-strength preset, audio, LEDs or other device controls are sent.
 
 The user confirmed ordinary haptics work in Chrome on CachyOS over USB. The
-stronger v0.9 force and cue tuning still require their physical feel test; automated
+stronger immediate-onset tuning still requires their physical feel test; automated
 mocks verify lifecycle, timing and bytes, not subjective feel.
 
 The sending encoder follows the bit layout documented in

@@ -31,8 +31,8 @@ test('input instructions distinguish controller commitment from button fallback'
 
 test('receipts preserve partial, unanswered and archive meanings', () => {
   for (const [mode, status, footer] of [
-    ['reply', 'REPLY RECEIVED', 'TRANSMISSION ENDED'],
-    ['partial', 'PARTIAL IMAGE RECEIVED', 'TRANSMISSION ENDED'],
+    ['reply', 'REPLY RECEIVED', 'SAVED IN YOUR ARCHIVE'],
+    ['partial', 'PARTIAL IMAGE RECEIVED', 'SAVED IN YOUR ARCHIVE'],
     ['silence', 'NO REPLY', 'CHANNEL QUIET'],
     ['archive', 'MEMORY KEPT', 'ARCHIVED'],
   ]) {
@@ -42,7 +42,7 @@ test('receipts preserve partial, unanswered and archive meanings', () => {
     assert.match(html, /data-action="next"/);
     assert.doesNotMatch(html, /TRANSMISSION COMPLETE|SQUEEZE.*REPLY/);
   }
-  assert.match(render('silence', 'ready'), /<span>OPPORTUNITY<\/span>/);
+  assert.match(render('silence', 'ready'), /<span>OPPORTUNITY · MARS<\/span>/);
   assert.match(render('archive', 'received'), /<span>MISSION ARCHIVE<\/span>/);
 });
 
@@ -72,4 +72,14 @@ test('one memory title belongs inside the pressure apparatus and one live instru
   assert.equal((html.match(/<h2>/g) || []).length, 1);
   assert.equal((html.match(/id="squeeze-hint"/g) || []).length, 1);
   assert.doesNotMatch(html, /upload-terminal__phase|upload-terminal__header/);
+});
+
+
+test('selected meaning follows the choice and the route reverses on Earth',()=>{
+  const mars=render('reply','ready',{meaning:'The ground <beneath> my wheels.'});
+  assert.match(mars,/The ground &lt;beneath&gt; my wheels/);
+  assert.match(mars,/OPPORTUNITY · MARS<\/span><i[^>]*>→<\/i><span>EARTH/);
+  assert.match(render('silence','ready'),/EARTH<\/span><i[^>]*>→<\/i><span>OPPORTUNITY · MARS/);
+  assert.doesNotMatch(render('archive','ready'),/>→<\/i>/);
+  assert.doesNotMatch(render('reply','received',{meaning:'ready only'}),/ready only/);
 });

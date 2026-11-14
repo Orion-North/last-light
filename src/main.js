@@ -72,8 +72,8 @@ const goals = {
   2: { x: -5, z: -10, label: 'Berry Bowl' },
   3: { x: -11, z: 3, label: 'The next horizon' },
   4: { x: 6, z: 10, label: 'Perseverance Valley' },
-  5: { x: 13, z: -2, label: 'A clearer view of the sky' },
-  6: { x: 3, z: -4, label: 'The last sunlit ridge' },
+  5: { x: 13, z: -2, label: 'The storm observation point' },
+  6: { x: 3, z: -4, label: 'The overlook' },
 };
 
 function announce(text) { $('#announcement').textContent = text; }
@@ -93,6 +93,7 @@ function setExploring(value) {
   if (panel) panel.inert = value;
 }
 function setWorld(environment, mode) {
+  if(mode!=='game')view?.setRemoteView?.(false);
   document.body.dataset.environment = environment;
   if(mode!=='game')document.body.dataset.upload='false';
   document.body.dataset.screen = mode;
@@ -136,7 +137,7 @@ function finishBriefing() {
   const wasPassage=briefingPassage;
   pressed.clear();padInput={throttle:0,steer:0};
   stopBriefing();lastScene=null;renderGame({focus:true});
-  announce(wasPassage ? `${missionTime(scenes[state.sceneIndex].id)?.label}. ${scenes[state.sceneIndex].subtitle}` : 'First, raise your cameras. Send your first view of Mars.');
+  announce(wasPassage ? `${missionTime(scenes[state.sceneIndex].id)?.label}. ${scenes[state.sceneIndex].subtitle}` : 'First, look through your cameras. Choose a view to send to Earth.');
 }
 function startBriefing(passage = null) {
   stopBriefing();cancelScan();cancelTransmission();stopContact();
@@ -146,11 +147,12 @@ function startBriefing(passage = null) {
   document.body.dataset.screen=screen;document.body.dataset.upload='false';
   $('#world-controls').hidden=true;$('#waypoint-hud').hidden=true;
   view?.stopDrive?.();view?.setLook?.({x:0,y:0});
-  if(passage) {view?.focusRover?.(true);view?.setPaused(true);} else {view?.setMissionAge?.(0);view?.setIntro?.(true,{progress:0});}
+  if(passage) {view?.focusRover?.(true);view?.setRemoteView?.(passage.role==='earth');view?.setPaused(true);} else {view?.setMissionAge?.(0);view?.setIntro?.(true,{progress:0});}
   const beats=passage?.beats || briefingBeats,beat=beats[0];
+  const handover=passage?.role==='earth';
   const fromAge=missionTime(scenes[state.sceneIndex-1]?.id)?.ageYears || 0;
   const toAge=missionTime(scenes[state.sceneIndex].id)?.ageYears || 0;
-  app.innerHTML=`<section class="mission-briefing ${passage?'time-passage':''}" aria-label="${passage?'Passage of mission time':'Mission introduction'}">${passage?`<div class="passage-light" aria-hidden="true"></div><div class="passage-years"><span>${escape(passage.fromYear)}</span><i aria-hidden="true"></i><strong>${escape(passage.toYear)}</strong><p>${escape(passage.headline)}</p></div>`:''}<div class="briefing-caption"><p class="eyebrow" id="briefing-label">${escape(beat.label)}</p><h1 id="briefing-title">${escape(beat.title)}</h1><p id="briefing-cue">${escape(beat.cue)}</p><div class="briefing-steps" aria-hidden="true">${beats.map((_,i)=>`<i class="${i===0?'current':''}"></i>`).join('')}</div></div><button class="briefing-skip" data-action="skip-intro">${passage?'Continue':'Skip introduction'} <span aria-hidden="true">↗</span></button></section>`;
+  app.innerHTML=`<section class="mission-briefing ${passage?'time-passage':''} ${handover?'signal-handover':''}" aria-label="${passage?'Passage of mission time':'Mission introduction'}">${handover?'<div class="handover-link" aria-hidden="true"><span>OPPORTUNITY<small>MARS</small></span><i></i><strong>YOU<small>EARTH</small></strong></div>':''}${passage&&!handover?`<div class="passage-light" aria-hidden="true"></div><div class="passage-years"><span>${escape(passage.fromYear)}</span><i aria-hidden="true"></i><strong>${escape(passage.toYear)}</strong><p>${escape(passage.headline)}</p></div>`:''}<div class="briefing-caption"><p class="eyebrow" id="briefing-label">${escape(beat.label)}</p><h1 id="briefing-title">${escape(beat.title)}</h1><p id="briefing-cue">${escape(beat.cue)}</p><div class="briefing-steps" aria-hidden="true">${beats.map((_,i)=>`<i class="${i===0?'current':''}"></i>`).join('')}</div></div><button class="briefing-skip" data-action="skip-intro">${passage?'Continue':'Skip introduction'} <span aria-hidden="true">↗</span></button></section>`;
   refreshControllerPrompts();focusContent('[data-action="skip-intro"]');announce(`${beat.title} ${beat.cue}`);
   const timeline=createBriefing({duration:passage?.duration || 12,beats:beats.length});let previous=performance.now(),lastBeat=0;
   function frame(now) {
@@ -159,7 +161,7 @@ function startBriefing(passage = null) {
     if(!state.paused && !document.hidden) {
       if(passage) {
         // Two quiet light/dark cycles suggest repeated days; the matched camera stays still.
-        app.querySelector('.passage-light').style.opacity=settings.motion?'0':String(.55*Math.sin(progress*Math.PI*(beats.length===3?2:1))**2);
+        if(!handover)app.querySelector('.passage-light').style.opacity=settings.motion?'0':String(.55*Math.sin(progress*Math.PI*(beats.length===3?2:1))**2);
         view?.setMissionAge?.(fromAge+(toAge-fromAge)*progress);
       } else view?.setIntro?.(true,{progress});
     }
@@ -242,37 +244,41 @@ function renderGame({ focus = false } = {}) {
     view?.setWaypoint?.(goals[state.sceneIndex] && !reached ? goals[state.sceneIndex] : null);
     if (state.phase === 'choose') view?.inspect?.();
     else if(state.phase !== 'observe')view?.focusRover?.(true);
+    else if(state.sceneIndex>0)view?.focusRover?.();
     setExploring(false);
   } else document.body.dataset.screen = 'game';
   sound.setNarrative?.(state.sceneIndex,state.phase);
   const choice = scene.choices.find(c=>c.id===state.selected);
   const goal = goals[state.sceneIndex];
   const contact = transmissionProfile(scene);
+  view?.setRemoteView?.(scene.signal===0);
+  document.body.dataset.perspective=scene.signal===0?'earth':'rover';
   document.body.dataset.upload = ['transmit','received'].includes(state.phase) ? 'true' : 'false';
   if(state.phase==='transmit' && !transmitting && !state.paused) {
     if(!contacting) {
       contacting=true;resetUpload();
-      if(scene.signal>0){view?.setContact?.(true,{mode:contact.mode});view?.setContact?.(false);}
+      if(scene.signal>0 && state.sceneIndex!==0){view?.setContact?.(true,{mode:contact.mode});view?.setContact?.(false);}
+      if(state.sceneIndex===0)view?.previewMemory?.(state.selected,scene.id);
       announce(uploadPrompt());
     }
   } else stopContact();
   $('#waypoint-hud').hidden=!goal || reached || state.phase!=='observe';
-  $('#waypoint-hud').textContent=goal ? `◇ ${goal.label}` : '';
+  $('#waypoint-hud').textContent=goal ? goal.label : '';
   let content = '';
   if (investigating) {
     content = `<p id="investigation-hint" class="discovery-line">Move around the rock to reveal the feature</p><progress id="investigation-progress" max="1" value="0" aria-label="Observation recorded"></progress><p class="pace-note">Find a clear view, then release the stick.</p><button class="quiet-button" data-action="assist-observation">Assist observation</button>`;
   } else if (state.phase === 'observe') {
     content = `<p class="inner-voice">${escape(scene.subtitle || scene.thought)}</p>`;
     if (goal && !reached) content += `<div class="objective-line"><span id="objective-distance">${graphicsError ? '3D unavailable on this device' : 'Follow the amber beacon'}</span><button class="quiet-button" data-action="${graphicsError?'text-only':'assist'}" ${!worldReady&&!graphicsError?'disabled':''}>${graphicsError?'Continue story':'Autodrive'}</button></div>`;
-    else content += `<button class="primary-button" data-action="observe" ${scanning?'disabled':''}>${scanning?'Looking closely…':escape(scene.objective || scene.actionLabel)} <span aria-hidden="true">◇</span></button>`;
+    else content += `<button class="primary-button" data-action="observe" ${scanning?'disabled':''}>${scanning?'Looking closely…':escape(scene.actionLabel || scene.objective)} <span aria-hidden="true">◇</span></button>`;
     if (state.sceneIndex <= 1) content += '<p class="pace-note">Take your time. Exploring does not use up power.</p>';
   } else if (state.phase === 'choose') {
-    content = `<p class="discovery-line">${escape(scene.discovery)}</p><div class="choices compact-choices">${scene.choices.map(c=>`<button class="choice" data-action="choose" data-choice="${escape(c.id)}"><span class="choice-label">${escape(c.shortLabel || c.label)}</span><span class="choice-detail">Choose a memory ◇</span></button>`).join('')}</div>`;
+    content = `<p class="discovery-line">${escape(scene.discovery)}</p><p class="choice-purpose">${contact.mode==='archive'?'Choose what to carry forward':scene.signal===0?'Choose what this call will remember':'Choose your message for Earth'}</p><div class="choices compact-choices">${scene.choices.map(c=>`<button class="choice" data-action="choose" data-choice="${escape(c.id)}"><span class="choice-label">${escape(c.shortLabel || c.label)}</span><span class="choice-detail">${escape(c.detail)}</span></button>`).join('')}</div>`;
   } else if (state.phase === 'transmit' || state.phase === 'received') {
     content = renderUploadTerminal({title:choice?.memory?.title || scene.title,mode:contact.mode,
       stage:state.phase==='received'?'received':transmitting?'sending':'ready',
       prompt:state.phase==='received'?'':transmitting?contact.waiting:contacting?uploadPrompt():contact.mode==='archive'?'Keep this moment in the mission archive.':'Send a call. Listen for a reply.',
-      response:scene.response || scene.transmission,input:controllerConnected?'controller':'pointer'});
+      response:scene.response || scene.transmission,meaning:choice?.shortReply || '',input:controllerConnected?'controller':'pointer'});
   }
 
   app.innerHTML = `<section class="play-screen"><header class="play-heading">${journeyRail(scene)}<p class="eyebrow">${escape(missionTime(scene.id)?.label || scene.sol)}</p><h1 tabindex="-1">${escape(state.phase==='observe' ? scene.approachTitle || scene.title : scene.title)}</h1><aside class="mission-objective" aria-label="Current objective"><span>${state.phase==='observe'?'EXPLORE':state.phase==='choose'?'REMEMBER':state.phase==='transmit'?'CONNECT':'CONTINUE'}</span><strong>${escape(currentObjective({scene,phase:state.phase,goal,reached,investigating,transmitting}))}</strong></aside></header>${telemetry(scene)}<article class="interaction-dock" aria-label="Current interaction" aria-busy="${scanning || transmitting}">${content}<div class="dock-footer"><span>${scene.act===1?'WONDER':scene.act===2?'THE STORM':'REMEMBRANCE'}</span><button class="quiet-button" data-action="journal">Journal</button></div></article></section>`;
@@ -319,7 +325,7 @@ function scan() {
   }
   scanning = true;
   drive();
-  view?.inspect?.();
+  if(state.sceneIndex===0)view?.revealFirstView?.();else view?.inspect?.();
   controller?.feedback('observe');
   document.body.classList.add('scanning');
   renderGame();
@@ -349,14 +355,14 @@ function updateUploadProgress(result) {
   const {mode,effort}=transmissionProfile(scenes[state.sceneIndex]);
   const releaseAction=mode==='silence'?'call':mode==='archive'?'keep this memory':'send';
   const hints={release:'Release both triggers',ready:'Squeeze both triggers',pressing:'Keep squeezing…',charged:`Release both triggers to ${releaseAction}`,latched:'Released'};
-  if(hint && controllerConnected)hint.textContent=hints[result.stage] || hints.release;
+  if(hint && controllerConnected)hint.textContent=result.stage!=='release' && result.stage!=='charged' && Math.max(result.left||0,result.right||0)>.03 && Math.min(result.left||0,result.right||0)<=.03 ? 'Squeeze the other trigger too' : hints[result.stage] || hints.release;
   const glyphHint=$('#input-hint .controller-hint');
   if(controllerConnected && glyphHint) {
     const label=result.stage==='charged'||result.stage==='release'?'Release':'Squeeze';
     glyphHint.setAttribute('aria-label',`Both triggers: ${label.toLowerCase()}`);
     const text=glyphHint.querySelector('span:last-child');if(text)text.textContent=label;
   }
-  controller?.setUplink?.({active:result.stage!=='release' && !result.commit && (result.pressure>.15 || result.stage==='charged'),progress:result.progress,charge:result.charge || 0,charged:result.stage==='charged',effort});
+  controller?.setUplink?.({active:result.stage!=='release' && !result.commit && (Math.max(result.left||0,result.right||0)>.03 || result.stage==='charged'),leftTrigger:result.left||0,rightTrigger:result.right||0,progress:result.progress,charge:result.charge || 0,charged:result.stage==='charged',effort});
   if(result.cue)controller?.feedback(result.cue);
   const audible=['reply','partial'].includes(mode);
   sound.setActivity?.({contactActive:audible && (result.pressure>0 || result.stage==='charged'),contactQuality:result.pressure || 0,contactCharge:result.charge || 0,contactCharged:result.stage==='charged'});
@@ -418,7 +424,7 @@ function act(action) {
   if (old === state) return;
   const cue = { OBSERVE:'observe', CHOOSE:'choose' }[action.type];
   if (cue) { sound.cue(cue); controller?.feedback(cue); }
-  if (action.type === 'OBSERVE') { view?.inspect?.(); view?.setWaypoint?.(null); announce(scenes[state.sceneIndex].discovery); }
+  if (action.type === 'OBSERVE') { if(state.sceneIndex!==0)view?.inspect?.(); view?.setWaypoint?.(null); announce(scenes[state.sceneIndex].discovery); }
   if (state.complete) sound.cue('end');
   save();
   const passage=action.type==='NEXT' && !state.complete ? timePassage(scenes[old.sceneIndex].id,scenes[state.sceneIndex].id) : null;
@@ -486,7 +492,13 @@ function applyMotion() {
   try { localStorage.setItem('last-light-settings',JSON.stringify({motion:settings.motion,haptics:settings.haptics,touch:settings.touch,prompts:settings.prompts})); } catch { /* Optional. */ }
 }
 
-app.addEventListener('focusin',()=>{document.body.classList.toggle('controller-menu-focus',controllerConnected);});
+function previewChoice(event) {
+  const button=event.target.closest('[data-choice]');
+  if(screen==='game' && state.phase==='choose' && button && !state.paused)
+    view?.previewMemory?.(button.dataset.choice,scenes[state.sceneIndex].id);
+}
+app.addEventListener('focusin',event=>{document.body.classList.toggle('controller-menu-focus',controllerConnected);previewChoice(event);});
+app.addEventListener('pointerover',previewChoice);
 
 $('#credits-content').innerHTML = `<p>${escape(credits)}</p><h3>Built to remember</h3><p>Original story and procedural sound. The interactive terrain is an artistic reconstruction, not a surveyed map. Rover model: NASA/JPL-Caltech. Ground and rock surfaces use CC0 terrestrial scans by Rob Tuytel, Dario Barresi and Dimitrios Savva / Poly Haven, artistically adapted for Mars. Rendering: Three.js (MIT). Generated poster art is used only if 3D graphics are unavailable.</p><p>This independent project is not affiliated with or endorsed by NASA. Inspiration: the scale of Journey, the curiosity of Outer Wilds, and the grounded science fiction of The Invincible.</p><h3>Primary mission sources</h3><ul class="sources-list">${sources.map(s=>`<li><a href="${escape(s.url)}" target="_blank" rel="noreferrer">${escape(s.title)} ↗</a>${s.credit ? `<small>${escape(s.credit)}</small>`:''}</li>`).join('')}<li><a href="https://science.nasa.gov/resource/spirit-and-opportunity-rover-3d-model/" target="_blank" rel="noreferrer">NASA/JPL-Caltech rover model ↗</a></li><li><a href="./vendor/three/LICENSE" target="_blank">Three.js MIT license ↗</a></li></ul>`;
 $('#sound-toggle').addEventListener('click',()=>{soundPreferenceSet=true;toggleSound(!settings.sound);});
@@ -589,6 +601,15 @@ canvas.addEventListener('inspection-sample',event=>{
   const hint=$('#investigation-hint');if(hint)hint.textContent=event.detail.hint;
   if(result.complete) {cancelScan();act({type:'OBSERVE'});}
 });
+canvas.addEventListener('waypoint-guidance',event=>{
+  if(screen!=='game'||state.phase!=='observe'||reached||!goals[state.sceneIndex])return;
+  const {x,y,angle,onScreen}=event.detail;
+  if(![x,y,angle].every(Number.isFinite))return;
+  const marker=$('#waypoint-hud');
+  marker.style.left=`${x*100}%`;marker.style.top=`${y*100}%`;
+  marker.style.setProperty('--bearing',`${angle}deg`);
+  marker.dataset.onscreen=String(onScreen);marker.hidden=false;
+});
 canvas.addEventListener('waypoint-reached',()=>{
   if(screen!=='game'||!goals[state.sceneIndex]||reached) return;
   reached=true; setExploring(false); renderGame({focus:true});
@@ -600,7 +621,7 @@ canvas.addEventListener('rover-move',event=>{
   controller?.setTerrain({moving:moving||!!event.detail.blocked,blocked:!!event.detail.blocked,power:scenes[state.sceneIndex].power/100,speed:event.detail.speed,roughness:event.detail.roughness,slip:event.detail.slip});
   const el=$('#objective-distance');
   if(el && Number.isFinite(event.detail.remaining)) el.textContent=`${event.detail.remaining.toFixed(1)} m to the observation`;
-  if(goals[state.sceneIndex] && !reached && Number.isFinite(event.detail.remaining)) $('#waypoint-hud').textContent=`◇ ${goals[state.sceneIndex].label} · ${event.detail.remaining.toFixed(1)} m`;
+  if(goals[state.sceneIndex] && !reached && Number.isFinite(event.detail.remaining)) $('#waypoint-hud').textContent=`${goals[state.sceneIndex].label} · ${event.detail.remaining.toFixed(1)} m`;
 });
 function menuTargets() {
   const root=document.querySelector('dialog[open]') || app;
@@ -645,7 +666,7 @@ controller=createController({
     padInput={throttle:input.throttle,steer:input.steer};drive();
     if(contacting) {
       const now=performance.now(),dt=(now-uploadInputAt)/1000;uploadInputAt=now;
-      if(input.actualSample && Math.max(input.leftTrigger || 0,input.rightTrigger || 0)>.15)document.body.dataset.input='controller';
+      if(input.actualSample && Math.max(input.leftTrigger || 0,input.rightTrigger || 0)>.03)document.body.dataset.input='controller';
       updateUploadProgress(squeeze.sample({left:input.leftTrigger,right:input.rightTrigger,actualSample:input.actualSample},dt));
       view?.setLook?.({x:0,y:0});return;
     }

@@ -1,3 +1,5 @@
+> Historical checklist: the user withdrew the iPad target on November 14, 2026. Current development targets desktop with a controller.
+
 # iPad Air playtest
 
 Target: 11-inch iPad Air M4, Safari, landscape first; portrait also supported.

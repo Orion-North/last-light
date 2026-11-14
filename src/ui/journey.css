@@ -58,3 +58,30 @@ body[data-phase="choose"] .interaction-dock .discovery-line { font-size:clamp(20
 
 body[data-screen="game"] #waypoint-hud { display:none; }
 body[data-screen="game"] .flight-status { top:78px;right:18px; }
+
+/* A change of role is a scene, not a label hidden in the journal. */
+.handover-link { position:absolute;top:24%;left:12%;right:12%;display:flex;align-items:center;gap:32px;font:16px var(--mono);letter-spacing:.12em;text-shadow:0 2px 20px #000; }
+.handover-link span,.handover-link strong { display:grid;gap:12px;font-weight:400; }
+.handover-link span { color:#c4b4a4; }
+.handover-link strong { color:#e0f5ff; }
+.handover-link small { font:10px var(--mono);letter-spacing:.2em; }
+.handover-link i { flex:1;height:1px;background:linear-gradient(90deg,#e7bd8077,transparent 45%,transparent 55%,#daefff99); }
+.signal-handover .briefing-caption { bottom:20%; }
+body[data-perspective="earth"][data-screen="game"] .play-heading .eyebrow { color:#d5e9f1; }
+body[data-perspective="earth"][data-screen="game"] .flight-status { display:none; }
+.choice-purpose { margin:0 auto 12px;font:11px var(--mono);letter-spacing:.08em;color:#ead1ac;text-shadow:0 2px 8px #000; }
+.interaction-dock .compact-choices { max-width:680px;gap:16px; }
+.compact-choices .choice { min-height:108px;padding:18px 20px;background:linear-gradient(140deg,#101a23ed,#101a23bb); }
+.compact-choices .choice-label { font-size:19px; }
+.compact-choices .choice-detail { font:13px/1.45 var(--sans);color:#e5d5bd; }
+.compact-choices .choice:focus-visible { background:linear-gradient(140deg,#57432eea,#17212beb);border-color:#ffe0a5;outline:2px solid #ffe0a5;outline-offset:3px; }
+body[data-phase="choose"] .play-heading h1 { display:none; }
+body[data-phase="choose"] .interaction-dock { bottom:12%; }
+@media(max-height:650px) { body[data-phase="choose"] .interaction-dock { bottom:9%;max-height:62svh; }.compact-choices .choice { min-height:86px; }.handover-link { top:23%; }.signal-handover .briefing-caption h1 { font-size:32px; } }
+.compact-choices .choice.with-controller-glyph { padding-left:48px; }
+.compact-choices .choice.with-controller-glyph > .controller-glyph { top:22px; }
+
+/* Navigation follows the landmark, including when the close camera cannot see it. */
+body[data-screen="game"] #waypoint-hud:not([hidden]) { display:flex;flex-direction:column;align-items:center;gap:5px;position:fixed;transform:translate(-50%,-50%);max-width:210px;padding:7px 10px;border:0;background:radial-gradient(ellipse,#0d151acc,transparent 72%);color:#ffe0a2;text-align:center;font:10px/1.4 var(--mono);text-shadow:0 2px 5px #000; }
+body[data-screen="game"] #waypoint-hud::before { content:'↑';display:block;font:26px/1 var(--sans);transform:rotate(var(--bearing,0deg));color:#ffdb91; }
+body[data-screen="game"] #waypoint-hud[data-onscreen="true"]::before { content:'◇';transform:none;font-size:28px; }

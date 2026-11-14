@@ -1,7 +1,7 @@
 export const briefingBeats = [
-  { label: 'MER-B / MARS', title: 'You are Opportunity.', cue: 'The people who sent you cannot follow. Be their eyes.' },
-  { label: 'YOUR MISSION', title: 'Find signs of ancient water.', cue: 'Drive to the pale rocks. Look closely at their layers.' },
-  { label: 'SOMEONE IS WAITING', title: 'Send a little of Mars home.', cue: 'Choose a discovery. Send it to Earth. You are far away, but not alone.' },
+  { label: 'MARS · 2004', title: 'You are Opportunity.', cue: 'Ninety Martian days planned. People on Earth waiting to see through you.' },
+  { label: 'YOUR MISSION', title: 'Was there water here?', cue: 'Look through your cameras. Then examine the pale rocks.' },
+  { label: 'LOOK · CHOOSE · SEND', title: 'Bring a little of Mars home.', cue: 'Choose a memory. Send it to Earth. Keep it in your archive.' },
 ];
 
 /** Presentation time only: pausing cannot advance the story or skip a shot. */

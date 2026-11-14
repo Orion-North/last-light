@@ -136,3 +136,11 @@ body.reduced-motion .upload-terminal *,body.reduced-motion .upload-terminal *::b
 body.reduced-motion .upload-terminal[data-stage="sending"]:not([data-mode="archive"]) .upload-terminal__memory { opacity:.15; }
 body.reduced-motion .upload-terminal[data-stage="sending"]:not([data-mode="archive"]) .upload-terminal__signal { opacity:.7; }
 body.reduced-motion .upload-terminal[data-stage="received"][data-mode="reply"] .upload-terminal__receipt { opacity:1; }
+
+/* Keep who is calling whom visible on both sides of the historical silence. */
+.upload-terminal__destination { flex-direction:row;gap:18px;align-items:center;color:#e0eaf0; }
+.upload-terminal__destination i { width:auto;height:auto;background:none;box-shadow:none!important;font:18px/1 var(--sans);color:#ffe2b2; }
+.upload-terminal[data-mode="silence"] .upload-terminal__destination { color:#d9eefb; }
+.upload-terminal__meaning { max-width:560px;margin:-6px auto 22px;text-align:center;color:#efe2cd;font:15px/1.45 var(--serif);text-shadow:0 2px 8px #000; }
+.upload-terminal__guidance { margin-bottom:16px; }
+@media(max-height:650px) { .upload-terminal__meaning { margin:0 auto 10px;font-size:13px; } }

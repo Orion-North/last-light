@@ -1,8 +1,18 @@
 <!doctype html><meta charset="utf-8"><title>Last Light — controller fixture</title>
 <style>body{margin:0;background:#101820;color:#eee;font:14px system-ui}nav{height:68px;display:flex;align-items:center;gap:10px;padding:0 14px}button{padding:12px}iframe{width:100%;height:100vh;border:0}small{max-width:260px}</style>
-<nav aria-label="Simulated controller"><b>INPUT FIXTURE</b><button data-pressure="0,0">Release both</button><button data-pressure="1,0">Left only</button><button data-pressure="0.5,0.5">Half squeeze</button><button data-pressure="1,1">Full squeeze</button><button id="cross">Cross</button><button id="options">Options</button><small>Local test only. This simulates input, not physical feedback.</small></nav><iframe title="Game under test"></iframe>
+<nav aria-label="Simulated controller"><b>INPUT FIXTURE</b><button data-pressure="0,0">Release both</button><button data-pressure="1,0">Left only</button><button data-pressure="0.04,0">Light press</button><button data-pressure="0.5,0.5">Half squeeze</button><button data-pressure="1,1">Full squeeze</button><button id="cross">Cross</button><button id="options">Options</button><small>Local test only. This simulates input, not physical feedback.</small></nav><iframe title="Game under test"></iframe>
 <script type="module">
 // Test-only fixture, excluded from production by scripts/build.mjs.
+import {scenes} from '../../src/content/story.js';
+import {restoreSession,serializeSession} from '../../src/session.js';
+const query=new URLSearchParams(location.search);
+const sceneIndex=scenes.findIndex(scene=>scene.id===query.get('scene'));
+if(sceneIndex>=0) {
+ const phase=query.get('phase') || 'received';
+ const count=sceneIndex+(['transmit','received'].includes(phase)?1:0);
+ const legal=restoreSession(JSON.stringify({version:1,sceneIndex,phase,choices:scenes.slice(0,count).map(scene=>scene.choices[0]?.id)}),scenes);
+ if(legal)localStorage.setItem('last-light-journey-v1',serializeSession(legal));
+}
 const buttons=Array.from({length:17},()=>({value:0,pressed:false,touched:false}));
 const pad={id:'DualSense simulated fixture',index:0,mapping:'standard',connected:true,axes:[0,0,0,0],buttons};
 window.fixturePad=pad;

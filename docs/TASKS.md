@@ -389,3 +389,45 @@ from fading signal; archive effort resets. Independent review found a HID-close
 cancellation gap and it was fixed before publication. All 99 tests, source/build
 checks, isolated controller flow and desktop/tablet layouts pass. Physical tuning
 remains for user playtesting; no native HD-audio claim is made.
+
+## CLARITY-10 — immediate trigger feel and understandable player experience
+
+User requests much stronger trigger effects starting at the beginning of the
+press, plus deeper independent scrutiny of story and choices. Shared develop/v0.10,
+strictly disjoint write ownership:
+- FEEL-10 / Sol: src/input/controller.js, controller tests, docs/CONTROLLERS.md,
+  own handoff. Strong early-travel USB trigger effects, preserve later-story
+  weight, lifecycle cleanup and accessible analog success thresholds.
+- STORY-10 / Sol: src/content/story.js, src/engine/briefing.js, briefing tests,
+  own handoff/review. Critique and improve identity/purpose, causal story and
+  meaningful concrete choices through short experiential beats; preserve sources.
+- CRITIC-10 / Sol: docs/reviews/CLARITY-10.md only. Independently examine player
+  understanding, action/feedback, choice legibility and narrative delivery.
+- Codex: runtime/UI integration, onboarding/phase clarity, relevant tests,
+  cross-review, browser QA and web/Windows publication.
+
+Do not touch the user's live browser playtest or output to their physical pad.
+No additional paragraphs or optional journals should carry essential story alone.
+
+Critique follow-through: VIEW-10 / Sol owns landscape.js and its handoff to add
+first-view reveal, focused horizon/ground choice previews, and a distinct fixed
+remote framing for Earth scenes. Root owns the explicit Earth handover, choice
+meaning display and transmission route. VIEW-10 handed back before GRAPHICS-10.
+
+User also requests more realistic graphics. GRAPHICS-10 / Sol now owns ONLY
+src/ui/landscape.js and its own handoff/review. Audit lighting, shadows, materials,
+terrain and sky; implement focused realism gains using existing assets with
+bounded iPad cost. Preserve VIEW-10 APIs and lifecycle; no new dependencies.
+
+User removed the iPad target during this pass. Desktop/browser and Windows with
+a controller are now primary; keep existing fallbacks but do not budget this
+pass around iPad performance or layout. GRAPHICS-10 uses desktop quality caps.
+
+CLARITY-10 integrated after independent review. Haptic onset now uses per-trigger
+raw pressure; first action visibly reveals the view; focused first choices preview
+horizon/ground; choice meaning travels with the memory. The historical contact-loss
+passage changes role and camera, with source/destination visible afterward.
+Landmark direction projects from the world, including behind-camera targets.
+Graphics improves light/ground/shadow coherence without new assets or draw calls.
+103 tests and desktop browser flow pass; human feel/emotional clarity remain the
+next playtest questions. Windows and Pages publication are owned by Codex.

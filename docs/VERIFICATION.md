@@ -233,3 +233,40 @@ Earth's recovery effort, and the personalized ending.
   stronger resistance, trigger vibration and story progression need their feel
   test. This remains browser rumble plus USB trigger effects, not native audio
   driven HD haptics. Web and Windows release results are recorded externally.
+
+## v0.10 immediate feel, story clarity and desktop realism — November 14, 2026
+
+- Sending receives independent raw left/right pressures. After a fresh neutral,
+  either side activates above .03 with zone-0 USB vibration; the other side stays
+  disengaged until pressed. Ordinary rumble also starts early. Amplitude is 5–7
+  initially and 7–8 later; stronger feedback never changes success thresholds.
+  Release, pause, missing telemetry and disconnect still clear feedback.
+- Separate Sol agents examined haptics, narrative, player comprehension and
+  graphics. Review-driven fixes include a visible first camera reveal, distinct
+  horizon/ground previews, unique choice descriptions, chosen meaning retained
+  in sending, route labels, and an explicit Earth-side handover after last contact.
+  Earth scenes use a fixed distant remembered view; there is no claim of a live
+  camera from Earth. The archive acknowledgment follows each selection.
+- Independent review found a paused handover blocking its camera tween and an
+  old memory preview persisting into the next scene; integration fixes cut the
+  role view immediately and restore rover framing on a new travel scene.
+- Lighting follows sky and ground palettes, wheel contact follows slopes, rubble
+  uses rendered ground heights, shadows follow travel and sediment variation
+  reduces tiling. Desktop rendering uses pixel-ratio cap2, 2048 shadow map and
+  anisotropy up to8. No new assets/dependencies or draw calls were added.
+- The user withdrew iPad targeting. Existing fallbacks remain; this pass tests
+  desktop/browser/Windows with controller-first interaction.
+- 103 tests in15 files pass in direct bundled-Node execution, including all2,048
+  choice paths/save compatibility, exact trigger bytes/early side activation,
+  lifecycle cancellation, route reversal and historical outcomes. Source/asset
+  and static-build checks pass. Hardware feel and subjective story clarity still
+  need user playtesting; no physical output was sent during automated QA.
+- Isolated browser checks confirmed first-view reveal and different ground/horizon
+  framing, meaningful choice-to-send continuity, .04 one-trigger instruction,
+  charge/release/receipt, explicit contact-loss passage and immediate remote view,
+  Earth→Opportunity route and unanswered result, return to close travel framing,
+  and assisted arrival with no renderer/shader warnings or errors.
+- A final review added landmark projection: the directional marker follows the
+  actual world target even off-screen, updates while traveling, and hides at
+  arrival. Desktop screenshot retained as last-light-v10-desktop.jpg outside the
+  repository. No iPad pass was performed after its target was withdrawn.

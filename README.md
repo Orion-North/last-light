@@ -3,7 +3,7 @@
 A playable, real-time 3D story about NASA's Opportunity rover: discovery,
 attachment, a fading signal, and the things that remain.
 
-**Playable v0.9.** [Play on GitHub Pages](https://orion-north.github.io/last-light/). Built with parallel Codex agents. The game uses NASA's
+**Playable v0.10.** [Play on GitHub Pages](https://orion-north.github.io/last-light/). Built with parallel Codex agents. The game uses NASA's
 textured rover model, a navigable original Mars environment, an original adaptive
 score, and a complete three-act story. No account or AI API is needed by the game
 itself. A hosting provider may apply its own access gate.
@@ -39,8 +39,15 @@ the detailed NASA model alone is 11.91 MB. The optional poster adds about 2 MB.
 
 ## Play
 
+Desktop browser and Windows, played with a controller, are the primary target.
+Existing keyboard/touch fallbacks remain available.
+
+- Choices have distinct descriptions; first horizon/ground choices preview different views. The chosen meaning stays with the send, and every receipt acknowledges the archive.
+- Losing contact cuts to a distant rover view and an explicit Earth handover. Recovery calls visibly run from Earth toward Opportunity.
+- Lighting follows the atmosphere; terrain contact and traveling shadows better anchor the rover and rocks. Desktop quality uses 2× pixel ratio cap, 2048 shadows and up to 8× surface anisotropy.
+
 - Two brief, skippable passages carry the mission from 2004 to 2015 and 2018; mission-age captions and a subtle rover finish retain those years.
-- A skippable twelve-second in-engine opening introduces the rover, geological evidence and sending memories home. Reduced motion keeps the view still.
+- A skippable twelve-second in-engine opening introduces your identity, first camera action, water-search mission and chosen archive. Reduced motion keeps the view still.
 - Scene meaning and the next action sit in the main composition. Close rover framing and a compact left-side glyph guide keep attention on the world.
 - Release both triggers to arm, squeeze L2 + R2 together to charge, then release both to send. Pressure closes around the memory; the memory compresses into a bright signal when it is ready. No touchpad click or cursor aiming. A button alternative remains available.
 - Controller-first: left stick drives during travel and selects in menus; right stick looks and aims. Keyboard/touch remain supported.
@@ -56,8 +63,8 @@ the detailed NASA model alone is 11.91 MB. The optional poster adds about 2 MB.
 - DualSense: left stick or R2/L2 drive; right stick looks; × interacts; D-pad
   selects; ○ goes back; △ resets camera; Options pauses.
 - Terrain rumble follows surface roughness, slope load, speed, and blocked wheels.
-  Optional original DualSense USB adaptive triggers add rising resistance and a final trigger-vibration crescendo; connect them in Settings. iPad uses standard trigger squeezes or the button alternative. Hardware
-  feedback works on the user’s wired DualSense in Chrome; the stronger v0.9 tuning needs playtesting. See [controller support](docs/CONTROLLERS.md).
+  Optional original DualSense USB effects begin at the start of each trigger press, independently, with substantially stronger vibration and later-story weight; connect them in Settings. Hardware
+  feedback works on the user’s wired DualSense in Chrome; the stronger v0.10 tuning needs playtesting. See [controller support](docs/CONTROLLERS.md).
 - Sound begins on entering the story unless you opt out; mute anytime.
 - Escape opens settings and pauses. Reduced motion, restart, and local progress
   saving are included. The ending contains your downloadable memory archive.
@@ -75,7 +82,7 @@ Mission dates and science link to primary NASA sources.
 - [Shared agent instructions](AGENTS.md), [collaboration workflow](CONTRIBUTING.md),
   and [task board](docs/TASKS.md).
 - [Verification and limitations](docs/VERIFICATION.md).
-- [iPad Air playtest](docs/IPAD-PLAYTEST.md) and [GitHub Pages deployment](docs/DEPLOYMENT.md).
+- [GitHub Pages deployment](docs/DEPLOYMENT.md). Desktop with a controller is the primary target; the earlier iPad target has been withdrawn.
 
 Open this folder in Codex, Claude, or Antigravity. Their entry files point to the
 same shared instructions. Use bounded tasks and separate worktrees or disjoint

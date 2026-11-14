@@ -19,6 +19,14 @@ const times = {
 };
 
 const passages = {
+  'last-image:earth-listens': {
+    role: 'earth', duration: 7, fromYear: '2018', toYear: '2018',
+    headline: 'The other end of the signal.',
+    beats: [
+      { label: 'MARS · CONTACT LOST', title: 'Opportunity falls silent.', cue: 'Dust blocks the sunlight that powers the rover.' },
+      { label: 'EARTH · THE RECOVERY EFFORT', title: 'Now you are the ones listening.', cue: 'Call Opportunity from Earth. Stay with the people who kept trying.' },
+    ],
+  },
   'blueberries:marathon': {
     duration: 7, fromYear: '2004', toYear: '2015',
     headline: 'Mornings became years.',

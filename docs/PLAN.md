@@ -141,3 +141,12 @@ Scene meaning and the current objective move into a central typographic composit
 optional telemetry remains peripheral. Windows desktop is now explicitly requested:
 an isolated Electron shell bundles the game and provides a portable test build.
 Native HD haptic audio remains outside this release.
+
+
+## Current target — v0.10
+
+Desktop browser and Windows with a controller. The user withdrew iPad targeting;
+existing touch/keyboard fallback stays, but graphics and verification prioritize
+desktop. Immediate stronger independent trigger vibration, concrete choice
+meanings and first-view previews, an explicit Earth perspective handover, and
+more grounded lighting/shadows address the latest playtest feedback.
