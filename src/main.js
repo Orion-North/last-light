@@ -210,11 +210,11 @@ function updateInputHint() {
   const moving=screen==='game' && state.phase==='observe' && !reached;
   const family=controllerFamily(controllerId,settings.prompts);
   const pad=controllerConnected || settings.prompts!=='auto';
-  const row=(action,label,key)=>`<span class="controller-hint" aria-label="${pad?controllerButtonName(action,family):key}: ${label.toLowerCase()}">${pad?controllerGlyph(action,family):`<kbd>${key}</kbd>`}<span>${label}</span></span>`;
+  const row=(action,label,key,usePad=pad)=>`<span class="controller-hint" aria-label="${usePad?controllerButtonName(action,family):key}: ${label.toLowerCase()}">${usePad?controllerGlyph(action,family):`<kbd>${key}</kbd>`}<span>${label}</span></span>`;
   let hints;
   if(transmitting) hints='<span class="control-rest">Listening…</span>';
-  else if(contacting) hints=pad?`<span class="controller-hint" aria-label="Both triggers: squeeze">${controllerGlyph('reverse',family)}${controllerGlyph('forward',family)}<span>Squeeze</span></span>`:row('primary','Send','Enter');
-  else if(geologyActive) hints=row('look','Move tool','↑↓←→')+row('forward',toolState?.stage==='brush'?'Brush':'Measure','Space')+(toolState?.stage==='compare'?row('primary','Compare','Enter'):'');
+  else if(contacting) hints=controllerConnected?`<span class="controller-hint" aria-label="Both triggers: squeeze">${controllerGlyph('reverse',family)}${controllerGlyph('forward',family)}<span>Squeeze</span></span>`:row('primary',transmissionProfile(scenes[state.sceneIndex]).mode==='silence'?'Call':transmissionProfile(scenes[state.sceneIndex]).mode==='archive'?'Keep':'Send','Enter',false);
+  else if(geologyActive) hints=toolState?.stage==='compare'?row('primary','Compare','Enter'):row('look',toolState?.stage==='trace'?'Follow layer':'Move tool','↑↓←→')+row('forward',toolState?.stage==='trace'?'Trace':toolState?.stage==='brush'?'Brush':'Measure','Space');
   else if(investigating) hints=row('look','Look','↑↓←→')+'<span class="control-rest">Hold still to record</span>';
   else if(moving) hints=row('move','Drive','WASD')+row('look','Look','Drag');
   else hints=row('move','Select','Tab')+row('primary','Confirm','Enter');
@@ -231,7 +231,8 @@ function refreshControllerPrompts() {
     button.classList.toggle('with-controller-glyph',show);
     if (show) button.insertAdjacentHTML('afterbegin',controllerGlyph(action,family));
   };
-  app.querySelectorAll('[data-action]').forEach(button=>decorate(button,button.dataset.action==='journal'?'journal':'primary'));
+  app.querySelectorAll('[data-action]').forEach(button=>{if(button.dataset.action!=='transmit')decorate(button,button.dataset.action==='journal'?'journal':'primary');});
+  for(const [side,action] of [['left','reverse'],['right','forward']]){const icon=app.querySelector(`[data-trigger="${side}"]`);if(icon)icon.innerHTML=controllerGlyph(action,family);}
   decorate($('#settings-toggle'),'pause');
   $('#camera-reset').innerHTML='<span class="camera-reset-mark" aria-hidden="true">↺</span><span class="sr-only">Recenter camera</span>';
   decorate($('#camera-reset'),'camera');
@@ -284,7 +285,7 @@ function renderGame({ focus = false } = {}) {
   $('#waypoint-hud').textContent=goal ? goal.label : '';
   let content = '';
   if (geologyActive) {
-    content=renderGeologyPanel(toolState || {},controllerConnected);
+    content=renderGeologyPanel(toolState || (scene.id==='stone-ripples'?{mode:'trace',stage:'trace'}:{}),controllerConnected);
   } else if (investigating) {
     const profile=surveyProfiles[scene.id];
     content = survey ? `<div class="survey-instrument" aria-label="${escape(profile.title)}"><div class="survey-aim" aria-hidden="true"><span class="survey-center"></span><i id="survey-target"></i></div><div class="survey-ticks" aria-label="Observation views">${profile.steps.map((_,i)=>`<span data-survey-step="${i}">${String(i+1).padStart(2,'0')}</span>`).join('')}</div><p id="investigation-hint" class="discovery-line">${escape(profile.steps[0].hint)}</p><progress id="investigation-progress" max="1" value="0" aria-label="Observation recorded"></progress><p class="pace-note">Bring the amber bearing to the center. Hold still to record.</p></div>` : `<p id="investigation-hint" class="discovery-line">Look around the feature, then hold the view still.</p><progress id="investigation-progress" max="1" value="0" aria-label="Observation recorded"></progress><p class="pace-note">The rock stays in view as you examine its surface.</p>`;
@@ -300,10 +301,10 @@ function renderGame({ focus = false } = {}) {
     content = renderUploadTerminal({title:recalled?`Remember: ${recalled.title}`:choice?.memory?.title || scene.title,mode:contact.mode,
       stage:state.phase==='received'?'received':transmitting?'sending':'ready',
       prompt:state.phase==='received'?'':transmitting?contact.waiting:contacting?uploadPrompt():contact.mode==='archive'?'Keep this moment in the mission archive.':'Send a call. Listen for a reply.',
-      response:scene.response || scene.transmission,meaning:recalled?'The first view you sent is still on Earth. The storm cannot take it back.':contact.mode==='partial'?'A sky full of dust. Send what light remains.':recordedChoice(scene,state)?scene.discovery:choice?.shortReply || '',input:controllerConnected?'controller':'pointer'});
+      response:scene.response || scene.transmission,meaning:recalled?'The first view you sent is still on Earth. The storm cannot take it back.':contact.mode==='partial'?'A sky full of dust. Send what light remains.':recordedChoice(scene,state)?scene.discovery:choice?.shortReply || '',input:controllerConnected?'controller':'pointer',family:controllerFamily(controllerId,settings.prompts)});
   }
 
-  app.innerHTML = `<section class="play-screen"><header class="play-heading">${journeyRail(scene)}<p class="eyebrow">${escape(missionTime(scene.id)?.label || scene.sol)}</p><h1 tabindex="-1">${escape(state.phase==='observe' ? scene.approachTitle || scene.title : scene.title)}</h1><aside class="mission-objective" aria-label="Current objective"><span>${state.phase==='observe'?'EXPLORE':state.phase==='choose'?'REMEMBER':state.phase==='transmit'?'CONNECT':'CONTINUE'}</span><strong>${escape(geologyActive?(toolState?.stage==='brush'?'Expose the surface with your brush':toolState?.stage==='compare'?'Compare the two readings':'Place the probe on each sample ring'):currentObjective({scene,phase:state.phase,goal,reached,investigating,transmitting}))}</strong></aside></header>${telemetry(scene)}<article class="interaction-dock" aria-label="Current interaction" aria-busy="${scanning || transmitting}">${content}<div class="dock-footer"><span>${scene.act===1?'WONDER':scene.act===2?'THE STORM':'REMEMBRANCE'}</span><button class="quiet-button" data-action="journal">Journal</button></div></article></section>`;
+  app.innerHTML = `<section class="play-screen"><header class="play-heading">${journeyRail(scene)}<p class="eyebrow">${escape(missionTime(scene.id)?.label || scene.sol)}</p><h1 tabindex="-1">${escape(state.phase==='observe' ? scene.approachTitle || scene.title : scene.title)}</h1><aside class="mission-objective" aria-label="Current objective"><span>${state.phase==='observe'?'EXPLORE':state.phase==='choose'?'REMEMBER':state.phase==='transmit'?'CONNECT':'CONTINUE'}</span><strong>${escape(geologyActive?(toolState?.stage==='trace'?'Follow the crossing layers':toolState?.stage==='brush'?'Expose the surface with your brush':toolState?.stage==='compare'?'Compare the two readings':'Place the probe on each sample ring'):currentObjective({scene,phase:state.phase,goal,reached,investigating,transmitting}))}</strong></aside></header>${telemetry(scene)}<article class="interaction-dock" aria-label="Current interaction" aria-busy="${scanning || transmitting}">${content}<div class="dock-footer"><span>${scene.act===1?'WONDER':scene.act===2?'THE STORM':'REMEMBRANCE'}</span><button class="quiet-button" data-action="journal">Journal</button></div></article></section>`;
   setExploring(exploring);
   $('#world-controls').hidden = false;
   $('.drive-pad').hidden = state.phase!=='observe' || reached;
@@ -347,7 +348,7 @@ function scan() {
   if ([1,2].includes(state.sceneIndex)) {
     geologyActive=true;investigating=true;scanning=true;toolState=null;toolSampleCount=0;toolPad={x:0,y:0,pressure:0};toolButtonHeld=false;
     if(!view?.setToolMode?.(scenes[state.sceneIndex].id)){geologyActive=false;investigating=false;scanning=false;return;}
-    sound.cue('investigate');renderGame();announce('Move the tool with the right stick. Hold R2 and sweep away the dust.');return;
+    sound.cue('investigate');renderGame();announce(scenes[state.sceneIndex].id==='stone-ripples'?'Hold R2 and follow the two dotted rock layers.':'Move the tool with the right stick. Hold R2 and sweep away the dust.');return;
   }
   scanning = true;
   drive();
@@ -393,7 +394,7 @@ function updateUploadProgress(result) {
   const audible=['reply','partial'].includes(mode);
   sound.setActivity?.({contactActive:audible && (result.pressure>0 || result.stage==='charged'),contactQuality:result.pressure || 0,contactCharge:result.charge || 0,contactCharged:result.stage==='charged'});
   if(audible && result.cue==='charged')sound.cue('charged');
-  if(result.commit)sendMemory();
+  if(result.commit)sendMemory('triggers');
 }
 function resetUpload() {
   squeeze.reset();uploadInputAt=performance.now();
@@ -406,7 +407,8 @@ function stopContact() {
   contacting=false;resetUpload();view?.setContact?.(false);view?.setContactInput?.({x:0,y:0});
 }
 
-function sendMemory() {
+function sendMemory(source='button') {
+  if(controllerConnected && source!=='triggers') {announce(uploadPrompt());return;}
   if (transmitting || state.paused || state.phase !== 'transmit' || screen !== 'game') return;
   stopContact();
   const contact = transmissionProfile(scenes[state.sceneIndex]);
@@ -643,7 +645,7 @@ canvas.addEventListener('tool-sample',event=>{
   if(next.samples.length>toolSampleCount){toolSampleCount=next.samples.length;sound.cue('observe');controller?.feedback('observe');}
   if(previous && (next.stage!==previous.stage || next.samples.length!==previous.samples.length))renderGame();
   const hint=$('#tool-hint');if(hint)hint.textContent=next.hint.replaceAll('R2',controllerConnected?'R2':'Space').replace('×',controllerConnected?'×':'Enter');
-  const coverage=$('#tool-coverage');if(coverage)coverage.textContent=`Brush progress · ${Math.round(next.progress*100)}%`;
+  const coverage=$('#tool-coverage');if(coverage)coverage.textContent=`${next.stage==='trace'?'Layers traced':'Brush progress'} · ${Math.round(next.progress*100)}%`;
   const progress=$('#tool-progress');if(progress)progress.value=next.progress;
   sound.setActivity?.({investigating:true,toolActive:next.operating,toolPressure:next.operating?1:0,toolMotion:next.toolMotion});
 });
@@ -719,8 +721,7 @@ function controllerAction(action) {
   if(action==='primary') {
     if(geologyActive && !dialog && toolState?.stage==='compare'){view?.compareToolSamples?.();return;}
     if(contacting && !dialog) {
-      const chosen=targets.includes(document.activeElement)?document.activeElement:null;
-      if(chosen && chosen.dataset.action!=='transmit') chosen.click();else sendMemory();
+      announce(uploadPrompt());
       return;
     }
     if(!dialog && screen==='game' && state.phase==='observe' && !reached && !targets.includes(document.activeElement)) {announce(`Drive to ${goals[state.sceneIndex]?.label || 'the beacon'}. Use the left stick or WASD.`);return;}
@@ -730,7 +731,7 @@ function controllerAction(action) {
     }
     if(exploring) {setExploring(false);return;}
     const focused=targets.includes(document.activeElement)?document.activeElement:null;
-    const fallback=dialog ? targets[0] : app.querySelector('[data-action="observe"]:not([disabled]),[data-action="next"],[data-action="transmit"],.choice,[data-action="begin"],[data-action="journal"]');
+    const fallback=dialog ? targets[0] : app.querySelector('[data-action="observe"]:not([disabled]),[data-action="next"],.choice,[data-action="begin"],[data-action="journal"]');
     (focused || fallback)?.click();
   }
 }
@@ -752,6 +753,7 @@ controller=createController({
   onAction:controllerAction,
   onScroll(deltaY) {const target=document.querySelector('dialog[open]') || app.querySelector('.brief-ending,.interaction-dock');target?.scrollBy({top:deltaY,behavior:'instant'});},
   onStatus(status) {
+    const connectionChanged=controllerConnected!==status.connected;
     const disconnected = controllerConnected && !status.connected;
     controllerConnected=status.connected;
     controllerId=status.id;
@@ -765,8 +767,7 @@ controller=createController({
     $('#controller-status').textContent=status.connected ? `${detectedFamily==='playstation'?'PlayStation controller':detectedFamily==='xbox'?'Xbox controller':'Controller'} connected · ${status.haptics?'vibration available':'vibration unavailable in this browser'}` : 'Connect a controller, then press any button.';
     inputDevice = status.connected ? (detectedFamily==='playstation' ? 'dualsense' : 'gamepad') : settings.touch ? 'touch' : 'keyboard';
     refreshControllerPrompts();
-    const terminal=app.querySelector('.upload-terminal');
-    if(terminal)terminal.dataset.input=status.connected?'controller':'pointer';
+    if(connectionChanged && screen==='game' && ['transmit','received'].includes(state.phase))renderGame();
     if(contacting)resetUpload();
     $('#adaptive-connect').disabled=!status.adaptiveSupported || status.adaptiveOpen;
     $('#adaptive-disconnect').hidden=!status.adaptiveOpen;

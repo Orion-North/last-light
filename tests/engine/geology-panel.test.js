@@ -12,3 +12,9 @@ test('keyboard tool guidance is usable and external text escaped',()=>{
  const html=renderGeologyPanel({stage:'brush',hint:'Hold R2 <brush>',coverage:.2,progress:.4});
  assert.match(html,/Hold Space &lt;brush&gt;/);assert.match(html,/Hold to brush/);assert.match(html,/Brush progress · 40%/);
 });
+
+test('layer tracing has a distinct sequence and no brush/sample task',()=>{
+ const html=renderGeologyPanel({mode:'trace',stage:'trace',progress:.5},true);
+ assert.match(html,/Trace layers/);assert.match(html,/Compare directions/);
+ assert.match(html,/Layers traced · 50%/);assert.doesNotMatch(html,/Brush surface|Read two patches|Hold to brush/);
+});

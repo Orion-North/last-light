@@ -417,6 +417,10 @@ export function createLandscape(canvas) {
     const ring = new THREE.Mesh(own(new THREE.TorusGeometry(.16, .012, 6, 32)), own(new THREE.MeshBasicMaterial({ color: '#ffd18b', depthTest: false })));
     ring.renderOrder = 5; toolGroup.add(ring); return ring;
   });
+  const traceGuide = new THREE.InstancedMesh(own(new THREE.SphereGeometry(.014, 8, 6)),
+    own(new THREE.MeshBasicMaterial({ color: '#ffffff', depthTest: false })), 80);
+  traceGuide.renderOrder = 4; traceGuide.visible = false; toolGroup.add(traceGuide);
+  let traceGuidePositions = null;
   let toolBerry = false;
   const toolSurfaceRay = new THREE.Raycaster();
   lastChance.updateMatrixWorld(true);
@@ -436,8 +440,21 @@ export function createLandscape(canvas) {
   function updateToolVisual(state) {
     toolHead.position.copy(toolPoint(state.cursor.x, state.cursor.y, .07));
     toolHead.rotation.x = toolBerry ? -Math.PI / 2 : 0;
-    headRing.rotation.z += state.stage === 'brush' ? .12 : 0;
-    for (let j = 0; j < 24; j++) for (let i = 0; i < 24; i++) {
+    headRing.rotation.z += state.stage === 'brush' && state.operating ? .12 : 0;
+    toolDust.visible = state.mode !== 'trace';
+    traceGuide.visible = state.mode === 'trace';
+    if (state.mode === 'trace') {
+      if (!traceGuidePositions) traceGuidePositions = state.paths.flatMap(path => path.points.map(point => toolPoint(point.x, point.y, .035)));
+      state.paths.forEach((path, pathIndex) => path.points.forEach((point, index) => {
+        const instance = pathIndex * 40 + index;
+        dummy.position.copy(traceGuidePositions[instance]); dummy.quaternion.identity();
+        const near = Math.hypot(point.x - state.cursor.x, point.y - state.cursor.y) < .12;
+        dummy.scale.setScalar(near ? 1.35 : 1); dummy.updateMatrix(); traceGuide.setMatrixAt(instance, dummy.matrix);
+        traceGuide.setColorAt(instance, new THREE.Color(path.complete || point.visited ? '#8be0bb' : pathIndex ? '#b7d9f3' : '#ffd18b'));
+      }));
+      traceGuide.instanceMatrix.needsUpdate = true; traceGuide.instanceColor.needsUpdate = true;
+    }
+    if (state.mode !== 'trace') for (let j = 0; j < 24; j++) for (let i = 0; i < 24; i++) {
       const index = j * 24 + i;
       dummy.position.copy(toolBerry ? toolPoint(-1 + (i + .5) / 12, -1 + (j + .5) / 12) : layerDustPoints[index]);
       if (toolBerry) {
@@ -453,7 +470,7 @@ export function createLandscape(canvas) {
     toolRings.forEach((ring, i) => {
       const target = state.targets[i]; ring.position.copy(toolPoint(target.x, target.y, .055));
       ring.rotation.x = toolBerry ? -Math.PI / 2 : 0;
-      ring.visible = state.stage !== 'brush';
+      ring.visible = state.mode !== 'trace' && state.stage !== 'brush';
       ring.material.color.set(state.samples.some(s => s.id === target.id) ? '#8be0bb' : '#ffd18b');
     });
   }
@@ -466,7 +483,7 @@ export function createLandscape(canvas) {
     tool?.stop(); toolPointer = null;
     const next = createGeologyTool(sceneId);
     tool = next ? Object.assign(next, { sceneId }) : null;
-    toolGroup.visible = Boolean(tool);
+    toolGroup.visible = Boolean(tool); traceGuidePositions = null;
     controls.enabled = !tool && !survey && !remoteView && !paused && !intro && !contactActive;
     if (!tool) return false;
     setSurvey(false); investigation = false; stopDrive(); look = { x: 0, y: 0 };

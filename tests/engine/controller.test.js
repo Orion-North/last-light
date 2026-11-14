@@ -513,14 +513,14 @@ test('sending uses zoned feedback and bounded final trigger vibration with a fin
   f.hid.requestDevice = async () => [device]; await f.driver.connectAdaptiveTriggers();
   f.driver.setInputMode('uplink'); f.driver.setUplink({ active: true, progress: 0, charge: 0 }); await settle();
   const block = () => device.reports.at(-1).data.slice(10, 21);
-  assert.deepEqual(block(), [0x26, 0xff, 3, 0xb6, 0x6d, 0xdb, 0x36, 0, 0, 42, 0]);
+  assert.deepEqual(block(), [0x26, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 75, 0]);
   f.driver.setUplink({ active: true, progress: .8, charge: .35 }); await settle();
-  assert.deepEqual(block(), [0x26, 0xff, 3, 0xb6, 0x6d, 0xdb, 0x36, 0, 0, 42, 0]);
+  assert.deepEqual(block(), [0x26, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 75, 0]);
   f.driver.setUplink({ active: true, progress: 1, charge: 1, charged: true }); await settle();
-  assert.deepEqual(block(), [0x26, 0xff, 3, 0xb6, 0x6d, 0xdb, 0x36, 0, 0, 42, 0]);
+  assert.deepEqual(block(), [0x26, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 75, 0]);
   assert.deepEqual(device.reports.at(-1).data.slice(21, 32), block());
   f.tick(179); await settle(); assert.equal(block()[0], 0x26);
-  f.tick(180); await settle(); assert.deepEqual(block(), [0x21, 0xfe, 3, 0xd8, 0xb6, 0x6d, 0x1b, 0, 0, 0, 0]);
+  f.tick(180); await settle(); assert.deepEqual(block(), [0x21, 0xff, 3, 0xb6, 0x6d, 0xdb, 0x36, 0, 0, 0, 0]);
   f.driver.setUplink({ active: true, progress: 1, charge: 1, charged: true });
   f.tick(181); await settle(); assert.equal(block()[0], 0x21); // refresh does not restart burst
   f.driver.setUplink({ active: false }); await settle(); assert.equal(block()[0], 5);
@@ -549,15 +549,15 @@ test('late-story effort increases end vibration and rest without retaining it fo
   f.driver.setInputMode('uplink');
   const block = () => device.reports.at(-1).data.slice(10, 21);
   f.driver.setUplink({ active: true, progress: 0, effort: 1 }); await settle();
-  assert.deepEqual(block(), [0x26, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 48, 0]);
+  assert.deepEqual(block(), [0x26, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 85, 0]);
   f.driver.setUplink({ active: true, progress: 1, charge: 1, charged: true, effort: 1 }); await settle();
-  assert.deepEqual(block(), [0x26, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 48, 0]);
+  assert.deepEqual(block(), [0x26, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 85, 0]);
   assert.equal(f.driver.feedback('charged'), true); assert.equal(f.pulses.at(-1)[1].strongMagnitude, .85);
   f.tick(180); await settle();
-  assert.deepEqual(block(), [0x21, 0xfe, 3, 0x68, 0xdb, 0xb6, 0x2d, 0, 0, 0, 0]);
+  assert.deepEqual(block(), [0x21, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 0, 0]);
   f.driver.setUplink({ active: false }); await settle();
   f.driver.setUplink({ active: true, progress: 1, charge: 1, charged: true, effort: 0 }); await settle();
-  assert.deepEqual(block(), [0x26, 0xff, 3, 0xb6, 0x6d, 0xdb, 0x36, 0, 0, 42, 0]);
+  assert.deepEqual(block(), [0x26, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 75, 0]);
   f.driver.setUplink({ active: false }); f.driver.setUplink({ active: true, progress: 0, effort: 99 }); await settle();
   assert.equal(block()[5], 0xff); // external effort is clamped
   await f.driver.destroy();
@@ -571,7 +571,7 @@ test('zone-zero vibration engages each trigger independently at the first pressu
   const right = () => device.reports.at(-1).data.slice(10, 21);
   const left = () => device.reports.at(-1).data.slice(21, 32);
   const off = [5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-  const early = [0x26, 0xff, 3, 0x24, 0x49, 0x92, 0x24, 0, 0, 29, 0];
+  const early = [0x26, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 56, 0];
   f.driver.setUplink({ active: true, progress: 0, charge: 0, leftTrigger: .03, rightTrigger: 0 }); await settle();
   assert.deepEqual(left(), off); assert.deepEqual(right(), off);
   f.driver.setUplink({ active: true, progress: 0, charge: 0, leftTrigger: .04, rightTrigger: 0 }); await settle();
@@ -581,14 +581,14 @@ test('zone-zero vibration engages each trigger independently at the first pressu
   f.driver.setUplink({ active: true, progress: 0, leftTrigger: 0, rightTrigger: .04 }); await settle();
   assert.deepEqual(left(), off); assert.deepEqual(right(), early);
   f.driver.setUplink({ active: true, progress: 0, leftTrigger: .04, rightTrigger: .04, effort: 1 }); await settle();
-  const lateEarly = [0x26, 0xff, 3, 0xb6, 0x6d, 0xdb, 0x36, 0, 0, 35, 0];
+  const lateEarly = [0x26, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 66, 0];
   assert.deepEqual(left(), lateEarly); assert.deepEqual(right(), lateEarly);
   f.driver.setUplink({ active: true, progress: 1, charge: 1, charged: true, leftTrigger: 1, rightTrigger: 1, effort: 1 }); await settle();
-  assert.deepEqual(left(), [0x26, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 48, 0]);
+  assert.deepEqual(left(), [0x26, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 85, 0]);
   f.driver.setUplink({ active: true, progress: 1, charged: true, leftTrigger: 0, rightTrigger: 1, effort: 1 }); await settle();
   assert.deepEqual(left(), off); assert.equal(right()[0], 0x26);
   f.tick(181); await settle();
-  assert.deepEqual(left(), off); assert.deepEqual(right(), [0x21, 0xfe, 3, 0x68, 0xdb, 0xb6, 0x2d, 0, 0, 0, 0]);
+  assert.deepEqual(left(), off); assert.deepEqual(right(), [0x21, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 0, 0]);
   f.driver.setUplink({ active: true, charged: true, leftTrigger: 0, rightTrigger: 0 }); await settle();
   assert.deepEqual(left(), off); assert.deepEqual(right(), off);
   const count = f.pulses.length; f.tick(500); assert.equal(f.pulses.length, count);
@@ -605,5 +605,35 @@ test('ordinary build begins before hold charge and remains bounded at extreme in
   assert.ok(full.strongMagnitude <= .9 && full.strongMagnitude >= .899); assert.ok(full.weakMagnitude <= .9 && full.weakMagnitude >= .899);
   f.driver.setUplink({ active: false }); const count = f.pulses.length;
   f.tick(321); assert.equal(f.pulses.length, count);
+  await f.driver.destroy();
+});
+
+test('strong USB onset uses bounded maximum amplitude at all ten positions and strong held force', async () => {
+  const f = fixture(), device = usb(); f.pads([f.pad]); f.tick();
+  f.hid.requestDevice = async () => [device]; await f.driver.connectAdaptiveTriggers();
+  f.driver.setInputMode('uplink');
+  const levels = block => {
+    const packed = (block[3] | block[4] << 8 | block[5] << 16 | block[6] << 24) >>> 0;
+    return Array.from({ length: 10 }, (_, i) => ((packed >>> (i * 3)) & 7) + 1);
+  };
+  for (const pressure of [.04, .3, 1]) for (const effort of [0, 1, 99]) {
+    f.driver.setUplink({ active: true, leftTrigger: pressure, rightTrigger: pressure, effort }); await settle();
+    const data = device.reports.at(-1).data;
+    for (const offset of [10, 21]) {
+      const block = data.slice(offset, offset + 11);
+      assert.equal(block[0], 0x26); assert.equal(block[1] | block[2] << 8, 1023);
+      assert.deepEqual(levels(block), Array(10).fill(8));
+      assert.ok(block[9] >= 55 && block[9] <= 85);
+      assert.deepEqual([block[7], block[8], block[10]], [0, 0, 0]);
+    }
+  }
+  f.driver.setUplink({ active: true, charged: true, leftTrigger: .04, rightTrigger: .04 }); await settle();
+  f.tick(180); await settle();
+  for (const offset of [10, 21]) {
+    const block = device.reports.at(-1).data.slice(offset, offset + 11);
+    assert.equal(block[0], 0x21); assert.deepEqual(levels(block), Array(10).fill(7));
+  }
+  f.tick(400); await settle();
+  assert.equal(device.reports.at(-1).data[10], 5); assert.equal(device.reports.at(-1).data[21], 5);
   await f.driver.destroy();
 });

@@ -127,3 +127,19 @@ body[data-tool="true"] .play-heading h1{font-size:clamp(25px,3vw,38px);}
 .tool-actions button{min-height:38px;padding-block:8px;}
 .tool-operate{touch-action:none;user-select:none;}
 @media(max-height:650px){body[data-tool="true"] .interaction-dock{bottom:45px!important}.sample-comparison{margin:5px 0}.tool-instruction{font-size:14px}.tool-actions{margin-top:5px}}
+
+/* One instruction hierarchy; the world carries the evidence. */
+body[data-tool="true"] .mission-objective{display:none;}
+body[data-tool="true"] .interaction-dock{bottom:48px!important;max-width:700px!important;}
+body[data-tool="true"] .play-heading h1{font-size:clamp(23px,2.7vw,32px);}
+.tool-sequence{list-style:none;display:flex;justify-content:center;gap:24px;padding:0;margin:0 0 13px;font:10px/1.4 var(--mono);color:#9ca9af;}
+.tool-sequence b{font-weight:400;opacity:.6;margin-right:5px;}
+.tool-sequence [aria-current="step"]{color:#ffe2ae;}
+.tool-sequence [data-complete="true"]{color:#a9d8d0;}
+.tool-instruction{font-size:18px;text-wrap:balance;}
+.tool-actions .tool-skip{font-size:10px;opacity:.65;border:0;}
+.tool-actions .tool-skip:hover,.tool-actions .tool-skip:focus-visible{opacity:1;}
+.geology-tool-panel[data-tool-stage="compare"] .sample-reading{padding-top:13px;border-color:#9ed1c6;}
+.sample-reading[data-recorded="true"] i{color:#a9d8d0;}
+.tool-qualification{font-size:8px;opacity:.75;margin-top:9px;}
+@media(max-width:600px){.tool-sequence{gap:12px;font-size:8px}.tool-instruction{font-size:15px}.sample-comparison{gap:16px}.sample-reading strong{font-size:13px}}

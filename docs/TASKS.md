@@ -1,6 +1,6 @@
 # Task board
 
-Phase: **v0.12 integrated and verified; publication owned by Codex**.
+Phase: **v0.13 integrated and verified; publication owned by Codex**.
 Integrator: Codex. Claude and Antigravity are supported by shared instructions;
 Antigravity CLI critique has been verified.
 
@@ -499,3 +499,24 @@ critics distinguish source/recorded-run review from unavailable independent UI
 access. Review fixes include dust-camera occlusion, unrelated pointer-up resets,
 pointer steadiness, release provenance and consistent progress/instructions.
 120 tests pass; remaining sensory/presentation questions are in VERIFICATION.
+
+
+## FEEL-13 — trigger-only controller sending and distinct fieldwork
+
+Shared develop/v0.13, base5959b0e, disjoint owners:
+- TOOLS-13 / Sol owns geology-tool.js, landscape.js, geology tests, own handoff:
+  Last Chance spatial layer tracing; Berry Bowl retains brushing and sample comparison.
+- CRITIC-13 / Sol owns reviews/PLAY-13.md: input bypass, lifecycle, UI and action critique.
+- Codex owns main, UI/panel/CSS, terminal tests, integration, checks and publication.
+Controller primary must never send; triggers commit only after charge and release.
+No physical controller output during QA; user public playtest stays untouched.
+
+FEEL-13 additional user request: TOOLS-13 owner handed geology back, then owned
+controller.js, controller tests, CONTROLLERS and FEEL-13 handoff exclusively for
+stronger immediate USB trigger effects. Codex keeps integration/publication.
+
+FEEL-13 complete: controller sends require trigger commitment; distinct spatial
+layer tracing and brush/sample tasks; clearer central action sequence; maximum
+supported immediate USB trigger vibration with stronger charged resistance.
+124 tests pass. Root targeted UI regression and independent source review passed;
+physical tuning remains for user feedback.

@@ -101,13 +101,16 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
         // lives at block byte 9. Never treat these fields as raw 0..255 forces.
         const vibrate = !uplink.charged || clock() - chargedAt < 180;
         const end = uplink.charged ? 1 : Math.max(pressure, uplink.charge);
-        const level = vibrate ? Math.round(5 + uplink.effort * 2 + end * (2 - uplink.effort)) : Math.round(4 + uplink.effort * 2);
+        // Level8 is the researched protocol ceiling: engage it immediately,
+        // instead of spending most of trigger travel at levels5–7. Charged
+        // holding changes to sustained force after the finite confirmation.
+        const level = vibrate ? 8 : Math.round(7 + uplink.effort);
         let zones = 0, packed = 0;
-        for (let zone = vibrate ? 0 : 1; zone < 10; zone++) { zones |= 1 << zone; packed |= (level - 1) << (zone * 3); }
+        for (let zone = 0; zone < 10; zone++) { zones |= 1 << zone; packed |= (level - 1) << (zone * 3); }
         data[offset] = vibrate ? 0x26 : 0x21;
         data[offset + 1] = zones & 255; data[offset + 2] = zones >>> 8;
         for (let byte = 0; byte < 4; byte++) data[offset + 3 + byte] = (packed >>> (byte * 8)) & 255;
-        if (vibrate) data[offset + 9] = Math.round(28 + end * 14 + uplink.effort * 6);
+        if (vibrate) data[offset + 9] = Math.round(55 + end * 20 + uplink.effort * 10);
       }
     }
     return data;

@@ -5,17 +5,17 @@ const render = (mode, stage, extra = {}) => renderUploadTerminal({
   title: '<memory>', mode, stage, prompt: 'Use & hold', response: '<reply>', ...extra,
 });
 
-test('each ready action exposes pressure feedback and one accessible alternative', () => {
+test('controller ready states require triggers and retain a received Continue', () => {
   for (const mode of ['reply', 'partial', 'silence', 'archive']) {
     const ready = render(mode, 'ready', { input: 'controller' });
     assert.match(ready, new RegExp(`id="upload-progress".*aria-label="${mode === 'silence' ? 'Call' : mode === 'archive' ? 'Archive' : 'Send'} commitment"`));
     const verb = mode === 'silence' ? 'call' : mode === 'archive' ? 'keep' : 'send';
-    assert.match(ready, new RegExp(`id="squeeze-hint"[^>]*>Squeeze, then release to ${verb}`));
+    assert.match(ready, new RegExp(`id="squeeze-hint"[^>]*>Squeeze both triggers. Release to ${verb}`));
     assert.match(ready, /--squeeze-left:0;--squeeze-right:0/);
     assert.match(ready, /data-squeeze="release"/);
     assert.match(ready, /upload-terminal__half--left/);
     assert.match(ready, /upload-terminal__half--right/);
-    assert.equal((ready.match(/data-action="transmit"/g) || []).length, 1);
+    assert.equal((ready.match(/data-action="transmit"/g) || []).length, 0);
     assert.doesNotMatch(ready, /SWIPE|right stick|touchpad|↑/i);
     for (const stage of ['sending', 'received']) assert.doesNotMatch(render(mode, stage), /<progress/);
   }
@@ -23,6 +23,9 @@ test('each ready action exposes pressure feedback and one accessible alternative
 
 test('input instructions distinguish controller commitment from button fallback', () => {
   assert.match(render('reply', 'ready'), /data-input="pointer"/);
+  assert.match(render('reply', 'ready'), /data-action="transmit"/);
+  assert.match(render('reply','ready',{input:'controller'}),/Trigger sending sequence/);
+  assert.doesNotMatch(render('reply','ready',{input:'controller'}),/data-action="transmit"/);
   assert.match(render('reply', 'ready'), /Send this memory home with the button below/);
   assert.match(render('reply', 'ready'), />Upload memory /);
   assert.match(render('silence', 'ready'), />Call Opportunity /);

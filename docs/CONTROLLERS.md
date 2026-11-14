@@ -196,17 +196,9 @@ supplies both. `charge` is the full-pressure hold fraction, separate from pressu
 The opted-in original-DualSense USB path keeps report 02, its 47-byte payload and
 only trigger-valid flags 0c. Sending now uses standard Vibration 26 immediately
 from physical zone 0 through zone 9. There is no late-charge vibration gate.
-Amplitude starts at 5 of 8 and rises to 7 with that trigger's pressure or hold
-charge; frequency rises from 28 to 42 Hz. At maximum story effort amplitude starts
-at 7 and rises to 8, with frequency 34–48 Hz. Thus both the software onset and the
-physical activation zone move to the beginning of a press. Full pressure before
-charged confirmation continues to vibrate.
+Amplitude now starts at the supported maximum, 8 of 8, as soon as that trigger exceeds .03 pressure. Frequency rises from 55 to 75 Hz with pressure or hold charge; maximum story effort adds 10 Hz (65–85 Hz). Both sides engage independently from physical zone 0 through zone 9, including at a light initial press. Earlier tuning started at amplitude 5 normally or 7 during late calls, at 28–48 Hz. Full late-call amplitude was already 8; this revision cannot raise that protocol ceiling.
 
-First entering charged gives a finite 180 ms confirmation at amplitude 7 (8 at
-maximum effort), then settles to Feedback 21 starting at zone 1, strength 4 (6 at
-maximum effort), while waiting for release. Refreshing charged telemetry does
-not restart the burst. Charged holding cannot create an indefinite confirmation
-buzz. Each side disengages independently when its pressure is released.
+First entering charged gives a finite 180 ms confirmation at amplitude 8, then settles to Feedback 21 starting at zone 0, strength 7 (8 at maximum effort), while waiting for release. Earlier held strength was 4 or 6 and began at zone 1. The stronger held force therefore remains present through the trigger travel without an indefinite confirmation vibration. Refreshing charged telemetry does not restart the burst. Each side disengages independently when its pressure is released.
 
 `effort` is optional and clamped to 0–1. The game derives it from dramatized signal
 loss for transmissions/calls; keeping an archive uses 0. Charge duration, input
@@ -243,7 +235,7 @@ or a browser crash. The sending effects use researched standard trigger modes; n
 maximum-strength preset, audio, LEDs or other device controls are sent.
 
 The user confirmed ordinary haptics work in Chrome on CachyOS over USB. The
-stronger immediate-onset tuning still requires their physical feel test; automated
+maximum-amplitude immediate-onset tuning still requires their physical feel test; automated
 mocks verify lifecycle, timing and bytes, not subjective feel.
 
 The sending encoder follows the bit layout documented in
@@ -254,3 +246,30 @@ supersedes the older stealth-alex page’s incomplete description of mode 26.
 independently documents ten positions, amplitude 0–8 and frequency in Hz. Encoding
 and bounded timing are verified by mocks; physical vibration strength, firmware
 behavior and subjective comfort remain for the user's USB playtest.
+
+
+## FEEL-13 stronger trigger travel
+
+The USB changes above increase trigger-mechanism output, separately from ordinary
+browser motor rumble. Neither send pressure threshold nor charge duration changes.
+Fresh held telemetry sustains the effect; missing updates still disengage both
+sides after 400 ms. Release, pause, blur, hidden pages, mode changes, haptics off,
+disconnect and destroy retain their existing withdrawal behavior. Terrain output
+is unchanged. No calibration or undocumented effect modes are added.
+
+The supported amplitude/strength ceiling is 8, and frequency is documented in Hz;
+we use 55–85 Hz within the documented 0–255 range. Raising frequency is a changed
+waveform, not a promise of proportionally greater physical strength. Automated
+reports verify the stronger onset and held-force parameters, independent sides,
+reserved bytes and cleanup. This revision has not sent output to a physical
+controller or established subjective feel on the user's device.
+
+
+## v0.13 sending controls
+
+While a gamepad is connected, sending and recovery calls require both triggers:
+release to arm, squeeze and hold to charge, then release both. Cross/A only
+continues after a result; it cannot activate a hidden send button. The central
+sequence and left glyph prompt explain the action. Controller disconnect pauses
+the game; resuming without a pad exposes the keyboard/mouse button alternative.
+Reconnect restores trigger-only sending with a fresh release gate.

@@ -10,7 +10,7 @@ function brush(tool) {
 }
 function hold(tool, count = 16) { for (let i = 0; i < count; i++) tool.update(.05); }
 test('idle and a held brush cannot clear the patch; actual spatial coverage does', () => {
-  const t = createGeologyTool('stone-ripples'); hold(t, 100); assert.equal(t.snapshot().coverage, 0);
+  const t = createGeologyTool('blueberries'); hold(t, 100); assert.equal(t.snapshot().coverage, 0);
   t.setInput({ pressure: 1 }); hold(t, 500); assert.ok(t.snapshot().coverage < .06);
   brush(t); assert.equal(t.snapshot().stage, 'sample');
 });
@@ -34,7 +34,7 @@ test('pause clears held input; invalid input and unsupported scenes are bounded'
 });
 
 test('a trigger carried from driving cannot operate until an observed release', () => {
-  const t = createGeologyTool('stone-ripples');
+  const t = createGeologyTool('blueberries');
   t.setInput({ pressure: 1, x: 1 }); hold(t, 100);
   assert.equal(t.snapshot().coverage, 0);
   assert.match(t.snapshot().hint, /Release R2/);
@@ -77,4 +77,35 @@ test('synthetic neutral cannot arm a carried trigger after entry or pause', () =
   assert.equal(t.snapshot().samples.length, 0);
   t.setInput({ pressure: 0, actualSample: true }); t.setInput({ pressure: 1 }); hold(t);
   assert.equal(t.snapshot().samples.length, 1);
+});
+
+function tracePath(tool, index) {
+  tool.setInput({}); tool.setInput({ pressure: 1 });
+  for (const point of tool.snapshot().paths[index].points) { tool.setCursor(point.x, point.y); tool.update(.05); }
+}
+test('Last Chance traces two unique spatial paths; holding one point never completes', () => {
+  const t = createGeologyTool('stone-ripples');
+  assert.equal(t.snapshot().mode, 'trace'); assert.equal(t.snapshot().stage, 'trace');
+  assert.equal(t.snapshot().paths.length, 2);
+  const point = t.snapshot().paths[0].points[0]; t.setCursor(point.x, point.y);
+  t.setInput({}); t.setInput({ pressure: 1 }); hold(t, 1000);
+  assert.equal(t.snapshot().samples.length, 0); assert.ok(t.snapshot().progress < .1);
+  tracePath(t, 0); assert.equal(t.snapshot().samples.length, 1);
+  for (const p of t.snapshot().paths[1].points) { t.setCursor(p.x, p.y); t.update(.05); }
+  assert.equal(t.snapshot().samples.length, 1);
+  t.setInput({ pressure: 0, actualSample: false }); t.setInput({ pressure: 1 }); hold(t);
+  assert.equal(t.snapshot().samples.length, 1);
+  tracePath(t, 1); assert.equal(t.snapshot().stage, 'compare');
+  assert.equal(t.snapshot().complete, false); assert.match(t.snapshot().hint, /compare the layer directions/); assert.equal(t.compare(), true); assert.equal(t.snapshot().hint, 'Comparison recorded');
+});
+test('tracing ignores off-path sweeps and retains coverage safely through pause', () => {
+  const t = createGeologyTool('stone-ripples'); t.setInput({}); t.setInput({ pressure: 1 });
+  for (let x = -.9; x < .9; x += .03) { t.setCursor(x, -.94); t.update(.05); }
+  assert.equal(t.snapshot().coverage, 0);
+  const points = t.snapshot().paths[0].points;
+  for (const p of points.slice(0, 12)) { t.setCursor(p.x, p.y); t.update(.05); }
+  const coverage = t.snapshot().coverage; t.update(.05, true);
+  t.setInput({ pressure: 1 }); for (const p of points) { t.setCursor(p.x, p.y); t.update(.05); }
+  assert.equal(t.snapshot().coverage, coverage); assert.equal(t.snapshot().samples.length, 0);
+  tracePath(t, 0); assert.equal(t.snapshot().samples.length, 1);
 });

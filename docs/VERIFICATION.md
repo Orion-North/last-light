@@ -337,3 +337,30 @@ from different angles; it is not yet an interactive brushing/tool simulation.
   make the final incomplete image visible beyond the signal diagram. Immediate
   Continue can intentionally cut short an answering phrase; no forced wait added.
   Audio mix, emotional impact and physical trigger feel require human playtesting.
+
+
+## v0.13 — distinct tools, trigger-only controller sends and stronger USB effects
+
+- 124 tests across 17 files pass; 34 controller tests include decoded light-press
+  amplitude bounds, independent sides, strong charged force and stale cleanup.
+- Root browser regression (simulated pad, no physical actuator) verified that
+  Cross and Enter cannot send while connected; pause during a charged hold
+  cancels safely; only fresh charge/release sends. Cross still continues after
+  receipt. Ready screens contain no controller send button.
+- Root manually drove the sequential Last Chance and Berry Bowl routes. Traced
+  both spatial paths with actual aim/R2, released between paths and compared;
+  then brushed Berry Bowl, took two distinct steady readings and compared. No
+  investigation skips. Repeated Cross after comparison could not send.
+- Separate seeded Earth-call checkpoint: Cross blocked, disconnect paused, resume
+  restored pointer/keyboard send, reconnect removed fallback. Found/fixed stale
+  trigger hints when a PlayStation glyph override was set without a connected
+  pad; reloaded final source showed Enter:Call and keyboard call reached NO REPLY.
+  Both browser test sessions had no captured warnings/errors.
+- This is targeted v0.13 verification, not another full ending playthrough. The
+  preceding v0.12 full manual journey remains recorded above. Independent Sol
+  critics reviewed source and attributed root UI evidence; their browser access
+  remained unavailable. Screenshots saved beside the repository in outputs.
+- Stronger USB output is verified as bounded protocol commands, not a subjective
+  hardware measurement: maximum supported vibration amplitude from first press,
+  55–85Hz frequency, finite confirmation followed by strength7–8 held feedback.
+  Actual physical feel still requires the user's wired DualSense playtest.

@@ -1,3 +1,4 @@
+import { controllerGlyph } from './controller-prompts.js';
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, character => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
 })[character]);
@@ -8,11 +9,11 @@ const results = {
 };
 
 // The caller owns gesture recognition, live hint text, and stage transitions.
-export function renderUploadTerminal({ title, mode, stage, prompt, response, meaning = '', input = 'pointer' }) {
+export function renderUploadTerminal({ title, mode, stage, prompt, response, meaning = '', input = 'pointer', family = 'playstation' }) {
   const upload = mode === 'reply' || mode === 'partial';
   const controller = input === 'controller';
   const verb = mode === 'silence' ? 'call' : mode === 'archive' ? 'keep' : 'send';
-  const instruction = controller ? `Squeeze, then release to ${verb}.` : upload
+  const instruction = controller ? `Squeeze both triggers. Release to ${verb}.` : upload
     ? 'Send this memory home with the button below.' : mode === 'silence'
       ? 'Call Opportunity. Then listen.' : 'Keep this memory in the mission archive.';
   const status = stage === 'received' ? (results[mode] || results.reply)
@@ -24,7 +25,7 @@ export function renderUploadTerminal({ title, mode, stage, prompt, response, mea
       : '<span>OPPORTUNITY · MARS</span><i aria-hidden="true">→</i><span>EARTH</span>';
   const buttonLabel = upload ? 'Upload memory' : mode === 'silence' ? 'Call Opportunity' : 'Keep memory';
   const commitmentLabel = mode === 'silence' ? 'Call commitment' : mode === 'archive' ? 'Archive commitment' : 'Send commitment';
-  const action = stage === 'ready'
+  const action = stage === 'ready' && !controller
     ? `<button class="upload-terminal__button" type="button" data-action="transmit">${buttonLabel} <span aria-hidden="true">→</span></button>`
     : stage === 'received' ? '<button class="upload-terminal__button" type="button" data-action="next">Continue <span aria-hidden="true">→</span></button>' : '';
   return `<section class="upload-terminal" data-stage="${escapeHtml(stage)}" data-mode="${escapeHtml(mode)}" data-input="${controller ? 'controller' : 'pointer'}" data-squeeze="release" style="--upload-progress:0;--squeeze-left:0;--squeeze-right:0;--charge-progress:0" aria-label="${upload ? 'Memory uplink' : mode === 'silence' ? 'Earth recovery channel' : 'Mission archive'}">
@@ -38,12 +39,12 @@ export function renderUploadTerminal({ title, mode, stage, prompt, response, mea
         </div>
         ${mode!=='archive'?`<div class="signal-dialogue" aria-label="${stage==='received'?(mode==='reply'?'Call and reply complete':'Call sent. The reply is absent.'):'Outgoing call and expected reply'}"><div class="signal-phrase signal-phrase--question"><span>${mode==='partial'?'FRAGMENT':'CALL'}</span><i></i><i></i><i></i><i></i></div><div class="signal-phrase signal-phrase--answer"><span>${stage==='received' && mode!=='reply'?'NO ANSWER':'REPLY'}</span><i></i><i></i><i></i><i></i></div></div>`:''}
         <div class="upload-terminal__memory"><span class="upload-terminal__label">${mode === 'archive' ? 'A DISCOVERY THAT STAYS' : stage==='sending'?'SIGNAL IN TRANSIT':stage==='received'?(mode==='silence'?'THE CHANNEL STAYS QUIET':mode==='partial'?'AN UNFINISHED FRAME':'AN OBSERVATION SHARED'):mode==='silence'?'A CALL FROM HOME':'OBSERVATION READY'}</span><h2>${escapeHtml(title)}</h2></div>
-        <div class="signal-exciter" aria-hidden="true"><div class="upload-terminal__half upload-terminal__half--left"><i></i><span>L2</span></div><span class="upload-terminal__seam"></span><div class="upload-terminal__half upload-terminal__half--right"><i></i><span>R2</span></div></div>
+        <div class="signal-exciter" aria-hidden="true"><div class="upload-terminal__half upload-terminal__half--left"><i></i><span data-trigger="left">${controllerGlyph('reverse',family)}</span></div><span class="upload-terminal__seam"></span><div class="upload-terminal__half upload-terminal__half--right"><i></i><span data-trigger="right">${controllerGlyph('forward',family)}</span></div></div>
       </div>
       <p class="signal-scale">${mode==='archive'?'THE DISCOVERIES REMAIN':'DISTANCE & TRAVEL TIME COMPRESSED'}</p>
     </div>
     ${stage === 'ready' && meaning ? `<p class="upload-terminal__meaning">${escapeHtml(meaning)}</p>` : ''}
-    ${stage === 'ready' ? `<div class="upload-terminal__guidance"><p id="squeeze-hint" class="upload-terminal__instruction">${instruction}</p><progress id="upload-progress" max="1" value="0" aria-label="${commitmentLabel}" style="--upload-progress:0"></progress></div>` : ''}
+    ${stage === 'ready' ? `<div class="upload-terminal__guidance">${controller?`<ol class="squeeze-sequence" aria-label="Trigger sending sequence"><li data-squeeze-step="press"><b>01</b> Squeeze both</li><li data-squeeze-step="charge"><b>02</b> Hold to charge</li><li data-squeeze-step="release"><b>03</b> Release to ${verb}</li></ol>`:''}<p id="squeeze-hint" class="upload-terminal__instruction">${instruction}</p><progress id="upload-progress" max="1" value="0" aria-label="${commitmentLabel}" style="--upload-progress:0"></progress></div>` : ''}
     ${stage === 'sending' ? `<p class="upload-terminal__sending" role="status">${status}</p><p class="upload-terminal__prompt">${escapeHtml(prompt)}</p>` : ''}
     ${stage === 'received' ? `<div class="upload-terminal__response" role="status"><span>${status}</span><p>${escapeHtml(response)}</p></div>` : ''}
     <footer class="upload-terminal__footer"><span>${footer}</span>${action}</footer>

@@ -175,3 +175,13 @@ Keep the rock visible and the readings side by side; no extra choice menu.
 Sending animates packets between Mars and Earth and teaches a four-note call and
 answer. Later calls preserve the expected answer interval but leave it silent.
 Manual travel, fixed history, optional sound and reduced-motion alternatives stay.
+
+
+## Current target — v0.13
+
+Controller sends require a real two-trigger charge/release; Cross continues after
+receipt but never bypasses sending. A central three-step cue and larger trigger
+glyphs explain the action. Last Chance traces two opposing layer paths; Berry
+Bowl brushes and measures two surfaces. Tool UI keeps one instruction hierarchy.
+USB trigger vibration starts at maximum supported amplitude, with stronger
+sustained charged resistance; pressure thresholds stay accessible and unchanged.

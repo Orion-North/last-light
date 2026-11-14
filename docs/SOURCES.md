@@ -134,4 +134,4 @@ agent tool was run during setup.
 
 ### v0.12 tool interpretation
 
-NASA's [Berry Bowl account](https://science.nasa.gov/resource/discovery-served-up-in-a-bowl/) describes brushing a relatively berry-free patch, followed by spectrometer comparison of the clean rock and hematite-rich grains. The game compresses this into swept dust removal and two qualitative readings; it does not reproduce instrument spectra or telemetry. Last Chance brushing/paired layer tracing is an authored teaching interaction, not a reconstruction of an exact documented sequence. Rechecked November 14, 2026.
+NASA's [Berry Bowl account](https://science.nasa.gov/resource/discovery-served-up-in-a-bowl/) describes brushing a relatively berry-free patch, followed by spectrometer comparison of the clean rock and hematite-rich grains. The game compresses this into swept dust removal and two qualitative readings; it does not reproduce instrument spectra or telemetry. Last Chance paired layer tracing is an authored teaching interaction, not a reconstruction of an exact documented sequence. Rechecked November 14, 2026.
