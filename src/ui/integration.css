@@ -1,0 +1,57 @@
+.brand-symbol { color: var(--amber); font-size: 25px; vertical-align: middle; }
+.brand-divider { margin: 0 12px; opacity: .35; }
+.scene-count { float: right; opacity: .65; }
+.recall { color: var(--muted); font-size: 11px; }
+summary { cursor: pointer; padding: 8px 0; }
+summary:focus-visible { outline: 2px solid var(--amber); outline-offset: 4px; }
+.recall .scene-text { margin-top: 14px; }
+.choice-prompt { margin-top: 24px; font-size: 9px; }
+.memory-saved { font: 13px/1.7 var(--mono); color: var(--amber-light); padding: 18px 0; margin-bottom: 16px; border-top: 1px solid var(--line); }
+.memory-saved > span { margin-right: 8px; }
+.memory-saved small { display: block; color: var(--muted); font-size: 10px; margin-left: 22px; }
+.waveform { height: 35px; display: flex; align-items: center; gap: 4px; margin-top: 18px; }
+.waveform i { width: 2px; height: var(--h); background: var(--amber); opacity: .5; animation: radio 2s var(--delay) ease-in-out infinite alternate; }
+.waveform.silent i { height: 1px; opacity: .25; animation: none; }
+@keyframes radio { to { transform: scaleY(.3); opacity: .2; } }
+.world-status { position: fixed; right: 28px; bottom: 20px; z-index: 4; max-width: 300px; color: #e2b88b; padding: 10px 14px; background: #151412c9; border: 1px solid #c7925c40; font: 10px/1.6 var(--mono); pointer-events: none; }
+.world-status[data-state="ready"] { opacity: 0; transition: opacity 2s 2s; }
+.world-status[data-state="error"] { color: #ffbdaa; }
+.waypoint-hud { position:fixed;top:175px;left:60%;z-index:3;transform:translateX(-20%);padding:10px 16px;border:1px solid #d7b08455;background:#11171dcc;color:#f6d4a8;font:10px/1.6 var(--mono);pointer-events:none; }
+.world-controls { position: fixed; bottom: 22px; left: 50%; transform: translateX(-10%); z-index: 5; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 500px; }
+.world-controls .secondary-button { padding: 8px 12px; min-height: 40px; font: 10px var(--mono); background: #11161bd9; }
+.world-help { display: block; width: 100%; text-align: center; font: 9px var(--mono); color: #e6d1b6; text-shadow: 0 1px 5px black; pointer-events: none; }
+.drive-pad { display: flex; gap: 4px; }
+.drive-pad button { width: 39px; height: 40px; border: 1px solid #cfad834d; background: #121820d9; color: #f5e3ca; border-radius: 2px; touch-action: none; }
+.drive-pad button:active { background: #b7824f; color: #14120f; }
+.objective { margin: 20px 0; border-top: 1px solid var(--line); padding-top: 18px; font-size: 13px; }
+.objective .eyebrow { font-size: 9px; }
+.objective > p { margin: 8px 0; }
+.objective-distance { display: block; color: #c4b39d; font: 10px/1.6 var(--mono); margin: 0 0 14px; }
+.objective .secondary-button { font-size: 11px; min-height: 40px; }
+.primary-button:disabled { opacity: .35; cursor: not-allowed; }
+.exploring .story-panel { visibility: hidden; pointer-events: none; }
+.exploring .telemetry { opacity: .25; }
+.exploring .journey-nav { visibility: hidden; }
+.mission-numbers { display: flex; gap: 40px; margin: 40px 0; padding: 26px 0; border-block: 1px solid var(--line); }
+.mission-numbers strong { display: block; font: 38px var(--serif); color: var(--amber-light); }
+.mission-numbers span { font: 8px/1.6 var(--mono); letter-spacing: .08em; color: var(--muted); }
+.ending-screen { background: linear-gradient(90deg,#10161cf0,#10161ce0 75%,#10161cc9); }
+.noscript { position: fixed; inset: 30%; z-index: 20; padding: 30px; background: #111a21; color: white; }
+.save-note { color: var(--muted); font: 10px/1.6 var(--mono); }
+.reduced-motion *, .reduced-motion *::before, .reduced-motion *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+@media(max-width:850px) {
+  .brand-subtitle,.brand-divider { display:none; }
+  .world-controls { left: auto; right: 12px; bottom: 14px; transform: none; max-width: 370px; }
+  .world-help { display:none; }
+  .game-screen { padding-bottom: 90px; }
+  .mission-numbers { gap:22px; }
+}
+@media(max-width:540px) {
+  .waypoint-hud { top:155px;left:50%;transform:translateX(-50%);white-space:nowrap;max-width:94vw; }
+  .world-controls { left: 12px; right: 12px; max-width: none; background: #0c1115c9; padding: 8px; border: 1px solid #ac825445; }
+  .world-controls .secondary-button { min-height: 36px; padding: 8px; font-size: 9px; }
+  .drive-pad button { width: 34px; height: 36px; }
+  .world-status { bottom: 80px; right: 12px; font-size: 9px; }
+  .mission-numbers { gap: 16px; }
+  .mission-numbers strong { font-size: 30px; }
+}

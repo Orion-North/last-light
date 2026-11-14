@@ -1,0 +1,152 @@
+/* The landscape stays primary. Lore lives in the optional journal. */
+body[data-screen="game"],body[data-screen="ending"] { overflow:hidden; }
+body[data-screen="game"] .topbar,body[data-screen="ending"] .topbar { position:fixed;inset:0 0 auto;z-index:6;min-height:78px;padding:20px 32px; }
+.play-screen { position:fixed;inset:0;pointer-events:none; }
+.play-heading { position:absolute;top:98px;left:32px;text-shadow:0 2px 12px #000; }
+.play-heading .eyebrow { font-size:9px;margin:0 0 8px; }
+.play-heading h1 { font:clamp(22px,3vw,34px)/1.1 var(--serif);margin:0;color:#fff2de; }
+.flight-status { position:absolute;right:32px;top:105px;display:flex;gap:18px;padding:10px 14px;background:#10161cc7;border:1px solid #f4cfa12b;font:9px var(--mono);color:#f1d0a8; }
+.interaction-dock { position:absolute;bottom:28px;left:32px;width:min(440px,calc(100vw - 64px));padding:20px 24px 10px;pointer-events:auto;background:linear-gradient(120deg,#0b1418f5,#10171de8);border:1px solid #efd1a838;box-shadow:0 14px 70px #0005;border-radius:4px; }
+.inner-voice { font:italic clamp(19px,2vw,24px)/1.4 var(--serif);color:#f5e4ce;margin:0 0 18px; }
+.discovery-line { font:18px/1.45 var(--serif);margin:0 0 16px;color:#f8e4ca; }
+.objective-line { display:flex;align-items:center;gap:15px;justify-content:space-between;color:#d9b78e;font:10px/1.5 var(--mono); }
+.quiet-button { background:transparent;border:1px solid transparent;color:#efcfaa;min-height:38px;padding:8px 10px;font:11px/1.4 var(--mono);cursor:pointer; }
+.quiet-button:hover { border-color:#eccb9e55;background:#e9bc8010; }
+.quiet-button:focus-visible,button:focus-visible { outline:2px solid #ffe2b7;outline-offset:4px; }
+.dock-footer { margin-top:12px;padding-top:6px;border-top:1px solid #efd1a81c;display:flex;justify-content:space-between;align-items:center;color:#b6a797;font:8px var(--mono);letter-spacing:.06em; }
+.dock-footer .quiet-button { font-size:10px; }
+.interaction-dock .primary-button { min-height:44px;padding:11px 18px;font-size:12px;margin:0; }
+.compact-choices { display:grid;grid-template-columns:1fr 1fr;gap:8px; }
+.compact-choices .choice { display:block;padding:12px;min-height:70px;background:#f6c78b0a; }
+.compact-choices .choice-label { font:15px/1.25 var(--serif);display:block; }
+.compact-choices .choice-detail { display:block;margin-top:8px;color:#d7b48c;font:9px var(--mono); }
+.interaction-dock .transmission-label { font-size:11px;margin:0 0 8px; }
+.interaction-dock .transmission-text { font:20px/1.4 var(--serif);margin:0;color:#edddc9; }
+.interaction-dock .waveform { position:absolute;right:24px;bottom:70px;margin:0;height:20px; }
+.continue-button { margin:8px 0 0 -10px; }
+.pace-note { color:#d4c8b5;font:11px/1.5 var(--mono);margin:12px 0 0; }
+.contact-mark { display:flex;align-items:center;gap:10px;width:140px;margin:0 0 12px;color:#f4d2a1; }
+.contact-mark > span { font-size:16px;line-height:1; }
+.contact-mark i { height:1px;flex:1;background:currentColor;opacity:.7;position:relative; }
+.contact-mark.waiting i::after { content:'';position:absolute;top:-2px;left:0;width:5px;height:5px;border-radius:50%;background:#ffe3b7;animation:signal-travel 1.2s ease-in-out infinite; }
+.contact-mark.silence:not(.waiting) { color:#b7b9b9; }
+.contact-mark.silence:not(.waiting) i,.contact-mark.partial:not(.waiting) i { background:linear-gradient(to right,currentColor 45%,transparent 45%,transparent 58%,currentColor 58%,currentColor 63%,transparent 63%); }
+.contact-mark.archive { display:none; }
+.contact-status { font:11px/1.6 var(--mono);color:#f1d0a8;min-height:24px;margin:0; }
+@keyframes signal-travel { from { left:0; } to { left:100%; } }
+.discovery-entry { padding:8px 0;border-bottom:1px solid #efd1a82a; }
+.discovery-entry summary { font:18px/1.4 var(--serif);color:#f2d7b5; }
+.journal-locked { padding:14px;border:1px solid #efd1a82a; }
+.memory-echoes { list-style:none;display:flex;flex-wrap:wrap;gap:7px 14px;margin:0 0 16px;padding:0;color:#efcfaa;font:italic 16px/1.4 var(--serif); }
+.memory-echoes li::before { content:'◇ ';font-style:normal;font-size:11px; }
+.ending-fact { color:#d7c9b6;font:13px/1.6 var(--sans);margin:0 0 18px;max-width:50ch; }
+.world-controls { left:auto;right:28px;bottom:28px;transform:none;max-width:440px; }
+.waypoint-hud { top:155px;left:50%;transform:translateX(-50%);font-size:10px; }
+.exploring .interaction-dock { visibility:hidden;pointer-events:none; }
+.controller-connected .drive-pad { display:none; }
+.controller-connected .world-controls .world-help { color:#fff0d8; }
+.brief-ending { position:fixed;bottom:32px;left:32px;margin:0;padding:28px;width:min(640px,calc(100vw - 64px));max-height:80svh;overflow:auto;border:1px solid #efd1a838;border-radius:4px;background:#0e151cec; }
+.brief-ending .ending-title { font-size:clamp(40px,5vw,64px);margin-bottom:14px; }
+.brief-ending > .eyebrow { margin-bottom:12px; }
+.brief-ending .mission-numbers { margin:18px 0;padding:15px 0;gap:30px; }
+.brief-ending .mission-numbers strong { font-size:30px; }
+.brief-ending .ending-actions { gap:8px;flex-wrap:wrap; }
+.brief-ending .primary-button,.brief-ending .secondary-button { padding:12px 16px;font-size:11px; }
+.brief-ending .hint { margin-top:16px;font-size:11px; }
+#journal-content h3 { color:#e5bc88;margin-top:24px; }
+#journal-content p { color:#d0c8bb;line-height:1.7; }
+#journal-content .archive-grid { grid-template-columns:1fr; }
+.controller-settings { border-block:1px solid var(--line);padding:14px 0;margin:16px 0; }
+.controller-settings h3 { font:16px var(--serif);color:#f5d4ac; }
+#controller-status { font-size:12px;color:#e6c9a6; }
+#adaptive-connect { font-size:11px;padding:10px 14px; }
+button:disabled { cursor:not-allowed;opacity:.45; }
+.scan-reticle { display:none;position:absolute;z-index:2;left:50%;top:45%;width:180px;height:130px;transform:translate(-50%,-50%);border:1px solid #f5d4a8;box-shadow:0 0 40px #e7b67322;pointer-events:none; }
+.scan-reticle::after { content:'';position:absolute;left:0;right:0;top:0;height:2px;background:#ffdfa7;box-shadow:0 0 14px #ffdfa7;animation:scan-sweep 1s ease-in-out; }
+.scan-reticle span { position:absolute;top:-24px;font:9px var(--mono);letter-spacing:.16em;color:#ffe3b9; }
+.scanning .scan-reticle { display:block; }
+@keyframes scan-sweep { from { top:0; } to { top:100%; } }
+@media(max-width:850px) {
+  .world-controls { max-width:320px;right:18px;bottom:22px; }
+  .interaction-dock { width:360px;left:20px;bottom:24px; }
+  .world-help { display:block;font-size:10px;line-height:1.5; }
+  .play-heading { left:20px; }
+  .flight-status { right:20px;gap:10px; }
+}
+@media(max-width:600px) {
+  body[data-screen="game"] .topbar,body[data-screen="ending"] .topbar { padding:14px 16px;min-height:64px; }
+  .play-heading { top:80px;left:18px; }
+  .play-heading h1 { font-size:23px; }
+  .play-heading .eyebrow { font-size:9px; }
+  .flight-status { top:142px;left:18px;right:auto;gap:14px;font-size:10px;padding:7px 10px; }
+  .waypoint-hud { top:181px;font-size:10px;padding:7px 10px; }
+  .interaction-dock { width:auto;left:12px;right:12px;bottom:110px;padding:16px 18px 6px;max-height:38svh;overflow:auto; }
+  .inner-voice { font-size:19px;margin-bottom:12px; }
+  .discovery-line { font-size:17px;margin-bottom:12px; }
+  .compact-choices .choice { min-height:62px;padding:10px; }
+  .world-controls { left:12px;right:12px;bottom:12px;max-width:none;gap:6px;padding:7px; }
+  .world-controls .secondary-button { min-height:38px; }
+  .drive-pad button { width:40px;height:40px; }
+  .brief-ending { left:12px;bottom:22px;width:calc(100vw - 24px);padding:22px;max-height:78svh; }
+  .brief-ending .mission-numbers { gap:18px; }
+  .brief-ending .mission-numbers span { font-size:7px; }
+}
+@media(max-height:550px) and (min-width:601px) {
+  .play-heading { top:78px; }
+  .flight-status { top:78px; }
+  .interaction-dock { bottom:14px;max-height:60svh;overflow:auto;padding:14px 18px 5px; }
+  .inner-voice { font-size:18px;margin-bottom:10px; }
+  .world-controls { bottom:16px; }
+}
+
+/* An explicit touch preference reserves a separate bottom control lane.
+   The app initializes it from pointer capability and lets players override it. */
+  body.touch-controls { --touch-left:max(20px,env(safe-area-inset-left,0px));--touch-right:max(20px,env(safe-area-inset-right,0px));--touch-bottom:max(16px,env(safe-area-inset-bottom,0px));--touch-top:env(safe-area-inset-top,0px); }
+  body.touch-controls[data-screen="game"] .topbar,body.touch-controls[data-screen="ending"] .topbar { padding:calc(12px + var(--touch-top)) var(--touch-right) 12px var(--touch-left);min-height:72px; }
+  body.touch-controls .topbar-actions button,body.touch-controls .icon-button,body.touch-controls .quiet-button,body.touch-controls .primary-button,body.touch-controls .secondary-button,body.touch-controls .compact-choices .choice { min-height:48px; }
+  body.touch-controls .topbar-actions button,body.touch-controls .icon-button { min-width:48px; }
+  body.touch-controls .topbar-actions { gap:8px; }
+  body.touch-controls .brand { min-height:48px; }
+  body.touch-controls .play-heading { top:calc(92px + var(--touch-top));left:var(--touch-left);max-width:calc(100% - 360px - var(--touch-left)); }
+  body.touch-controls .flight-status { top:calc(96px + var(--touch-top));right:var(--touch-right);font-size:10px; }
+  body.touch-controls .waypoint-hud { top:calc(162px + var(--touch-top));max-width:calc(100% - 40px);text-align:center; }
+  body.touch-controls .interaction-dock { left:var(--touch-left);bottom:var(--touch-bottom);width:min(440px,calc(100% - 460px - var(--touch-left) - var(--touch-right)));max-height:calc(100svh - 230px - var(--touch-top) - var(--touch-bottom));overflow:auto;overscroll-behavior:contain; }
+  body.touch-controls .interaction-dock .primary-button,body.touch-controls .interaction-dock .quiet-button { min-height:48px; }
+  body.touch-controls .world-controls { left:auto;right:var(--touch-right);bottom:var(--touch-bottom);width:360px;max-width:calc(100% - var(--touch-left) - var(--touch-right));display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px;background:#0c1115db;border:1px solid #ac825445;border-radius:4px; }
+  body.touch-controls .world-controls .secondary-button { min-height:48px;padding:9px 12px;font-size:11px; }
+  body.touch-controls .drive-pad { display:flex;grid-column:1 / -1;justify-content:center;gap:8px; }
+  body.touch-controls .drive-pad button { width:48px;height:48px;min-width:48px;min-height:48px;font-size:20px;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none; }
+  body.touch-controls .world-help { display:block;grid-column:1 / -1;font-size:11px;line-height:1.5;overflow-wrap:anywhere; }
+  body.touch-controls .brief-ending { left:var(--touch-left);bottom:var(--touch-bottom);width:min(640px,calc(100% - var(--touch-left) - var(--touch-right)));max-height:calc(100svh - 110px - var(--touch-top) - var(--touch-bottom));overscroll-behavior:contain; }
+  body.touch-controls .modal { max-height:calc(100svh - 32px - var(--touch-top) - var(--touch-bottom));overscroll-behavior:contain; }
+  body.touch-controls .setting-row { min-height:64px; }
+  body.touch-controls .discovery-entry summary { min-height:48px;padding:10px 0; }
+@media (max-width:900px) {
+  body.touch-controls .play-heading { max-width:calc(100% - var(--touch-left) - var(--touch-right)); }
+  body.touch-controls .flight-status { top:calc(160px + var(--touch-top));left:var(--touch-left);right:auto;max-width:calc(100% - var(--touch-left) - var(--touch-right));flex-wrap:wrap;gap:8px 14px; }
+  body.touch-controls .waypoint-hud { top:calc(205px + var(--touch-top)); }
+  body.touch-controls .world-controls { left:var(--touch-left);right:var(--touch-right);width:auto;max-width:none;display:flex;flex-wrap:wrap;align-items:center;justify-content:center; }
+  body.touch-controls .world-controls > .secondary-button { flex:0 1 auto; }
+  body.touch-controls .drive-pad { flex:0 0 auto; }
+  body.touch-controls .world-help { flex-basis:100%;width:100%; }
+  body.touch-controls .interaction-dock { width:min(440px,calc(100% - var(--touch-left) - var(--touch-right)));bottom:calc(112px + var(--touch-bottom));max-height:min(44svh,calc(100svh - 370px - var(--touch-top) - var(--touch-bottom))); }
+}
+@media (max-width:700px) {
+  body.touch-controls { --touch-left:max(12px,env(safe-area-inset-left,0px));--touch-right:max(12px,env(safe-area-inset-right,0px)); }
+  body.touch-controls .brand-subtitle,body.touch-controls .brand-divider { display:none; }
+  body.touch-controls .world-controls { display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px; }
+  body.touch-controls .drive-pad { grid-column:1 / -1; }
+  body.touch-controls .world-help { grid-column:1 / -1;font-size:10px; }
+  body.touch-controls .interaction-dock { left:var(--touch-left);right:var(--touch-right);width:auto;bottom:calc(166px + var(--touch-bottom));max-height:min(40svh,calc(100svh - 410px - var(--touch-top) - var(--touch-bottom)));padding:14px 16px 6px; }
+  body.touch-controls .play-heading { top:calc(82px + var(--touch-top)); }
+  body.touch-controls .play-heading h1 { font-size:23px; }
+  body.touch-controls .flight-status { top:calc(144px + var(--touch-top)); }
+  body.touch-controls .waypoint-hud { top:calc(188px + var(--touch-top)); }
+}
+@media (max-height:650px) and (min-width:701px) {
+  body.touch-controls .play-heading { top:calc(82px + var(--touch-top)); }
+  body.touch-controls .flight-status { top:calc(126px + var(--touch-top)); }
+  body.touch-controls .waypoint-hud { top:calc(165px + var(--touch-top)); }
+  body.touch-controls .interaction-dock { max-height:calc(100svh - 300px - var(--touch-top) - var(--touch-bottom));padding:12px 16px 5px; }
+  body.touch-controls .inner-voice,body.touch-controls .discovery-line { font-size:17px;margin-bottom:10px; }
+}

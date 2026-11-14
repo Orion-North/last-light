@@ -1,0 +1,85 @@
+# Last Light — short project plan
+
+**Pitch:** You are Opportunity. Every day you wake, look, investigate, and send
+something home. As a dust storm erases the sunlight, familiar routines become
+harder to complete. The final silence hurts because the player remembers what
+those routines meant.
+
+**Audience and fit:** Aim for ages 12+ and casual players. The challenge asks for
+engaging education about retired space hardware and its science. Use intimate,
+psychological sadness, loneliness, and attachment; keep the story age-appropriate.
+Opportunity is explicitly listed in the official resources.
+
+## A 10–15 minute experience
+
+1. **Routine / wonder (3–4 minutes):** Learn one simple observe → choose → transmit
+   interaction. Use the camera and a rock investigation to reveal evidence of
+   ancient water. Let the player build an attachment to sending discoveries home.
+2. **The storm (4–6 minutes):** Reuse the interaction as available power dwindles.
+   Choose which discoveries to revisit and preserve in the story's final archive.
+   Changes in sound, scenery, and repetition create unease; controls remain clear.
+3. **Silence / remembrance (2–3 minutes):** Contact ends. An Earth-side epilogue
+   reveals the continued recovery attempts and celebrates the rover's discoveries.
+   The archive reflects player choices; the historical outcome stays the same.
+
+The player cannot cause or prevent the mission's end. Power and internal thoughts
+are clearly dramatized, not a faithful telemetry simulation. Emotional weight
+comes from care and accumulated memories, with a closing note of gratitude.
+
+## Hackathon scope
+
+Three acts in a compact real-time 3D Mars environment, with short drives to
+observations, one recurring discovery loop, and one personalized ending.
+Web link, phone and desktop, touch and keyboard, readable text, mute, captions,
+reduced motion, pause/restart. Use AI extensively for code, story iteration, art,
+sound production where tools permit, and review. Use NASA’s textured rover model; target under 20 MB for this first 3D version.
+Keep the playable story short; use the speed gain for richer atmosphere and polish.
+Physical terrain, cinematic lighting, dust, and an original adaptive score belong
+in the intended experience. Brief voice work or more elaborate visuals can follow a complete draft.
+Accounts, backend, live AI calls, open-world traversal, and a branching campaign
+remain outside the baseline.
+
+## Accelerated build once development is requested
+
+- **First 30 minutes:** Codex establishes minimal contracts and tooling while a
+  subagent develops the sourced beats. Neither waits for the other's final output.
+- **30 minutes–2 hours:** Parallel runtime, narrative, and visual work using shared
+  sample data; Codex integrates small increments. Start with Codex plus subagents;
+  Claude and Antigravity can take over lanes when added.
+- **Hours 2–4:** Target a complete playable three-act draft. Add sound as a lane
+  frees up; check phone interaction and the ending immediately.
+- **Hours 4–8:** Iterate on emotional impact, generated assets, sound, and pacing;
+  run factual, accessibility, and browser reviews alongside fixes.
+- **Hours 8–12:** Target a polished submission build, credits, deployment, and demo.
+
+These are working targets, not guarantees. Re-estimate after the first integrated
+draft; tool access, asset generation, and playtesting may take longer. Merge and
+review continuously. If time slips, reduce extra effects before sacrificing the
+ending, science, or accessibility.
+
+**Current direction:** implementation authorized. Build and verify the first
+playable with parallel agents, real 3D assets, and a dedicated soundtrack designer.
+
+## Current development pass — v0.3
+
+No photography system. Improve the existing short journey through three changes:
+
+1. **Look closely:** inspect authored 3D layers at Last Chance and grains at
+   Berry Bowl. A short question comes before the scientific interpretation.
+2. **Send, then listen:** choose a memory, deliberately send it, and learn a
+   consistent visible/audio receipt. Later the same routine meets silence.
+3. **Remember:** unlock discoveries after inspection, recall chosen memories in
+   the ending, and use qualitative conditions with a “take your time” cue.
+
+Keep text brief and details optional. Test the complete journey muted, with
+reduced motion, and at phone size. Human playtesting must establish whether the
+emotional beat works; automated checks cannot establish that.
+
+## Previous v0.2 experience revision
+
+The 3D world is the main view. Driving leads to a brief scan and a compact choice
+that sends a memory immediately. One-line internal dialogue replaces mandatory
+paragraphs; history and the complete archive are optional journal entries.
+DualSense input, terrain-sensitive browser rumble, and opt-in experimental USB
+adaptive resistance are included. Full native HD haptics and a desktop edition
+are deferred until the game is finished, per the user's instruction.
