@@ -88,7 +88,7 @@ export const scenes = [
   },
   {
     id: 'marathon', act: 1, chapter: 'I · A world to bring home',
-    subtitle: 'No finish line. Still another horizon.',
+    subtitle: 'Eleven years of mornings. Still another horizon.',
     objective: 'Look back along the tracks',
     discovery: 'On March 24, 2015, Opportunity passed 42.195 kilometres: a marathon, driven over eleven years.',
     response: 'Earth, imagined: A marathon. Let’s see what lies ahead.',
@@ -110,7 +110,7 @@ export const scenes = [
   },
   {
     id: 'ordinary-day', act: 2, chapter: 'II · The light grows thin',
-    subtitle: 'A camera turn. A little light. Something to send home.',
+    subtitle: 'Wake. Look. Send. The work has become familiar.',
     objective: 'Take in the valley',
     discovery: 'Perseverance Valley was Opportunity’s final location before the 2018 dust storm ended contact.',
     response: 'Earth, imagined: Received. We will be here for the next one.',
@@ -198,7 +198,7 @@ export const scenes = [
   },
   {
     id: 'earth-listens', receiptMode: 'silence', act: 3, chapter: 'III · On the other side',
-    subtitle: 'On Earth, the silence gives people another reason to try.',
+    subtitle: 'On Earth: look, call, listen. No answer.',
     objective: 'Listen from Earth',
     discovery: 'Recovery attempts continued after June 2018; NASA declared the mission complete in February 2019.',
     response: 'Earth, imagined: Opportunity, this is home. No signal is received.',
@@ -220,11 +220,11 @@ export const scenes = [
   },
   {
     id: 'months', receiptMode: 'archive', act: 3, chapter: 'III · On the other side',
-    subtitle: 'The signal has stopped. The discoveries still have things to tell us.',
+    subtitle: 'Eight months of trying. The discoveries still have things to tell us.',
     objective: 'Return to the discoveries',
     discovery: 'More than 1,000 recovery commands were sent in the effort to restore contact.',
     response: 'Saved in the archive. The images and measurements remain.',
-    sol: 'EARTH · THE RECOVERY CAMPAIGN', title: 'The shape of waiting.',
+    sol: 'EARTH · JUNE 2018–FEBRUARY 2019 · THE RECOVERY CAMPAIGN', title: 'The shape of waiting.',
     text: 'Weeks become months. The world turns. The work continues.\n\nFor more than fourteen years, there was another observation to plan, another part of Mars to understand. Now the task is to wait carefully, to try again, to leave room for an answer.\n\nThe archive does not grow quiet. People can still open it.',
     thought: 'Something can stop sending and still have things to tell us.',
     environment: 'earth', power: 0, signal: 0,

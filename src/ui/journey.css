@@ -1,5 +1,5 @@
-body[data-screen="intro"] { overflow:hidden; }
-body[data-screen="intro"] .topbar { position:fixed; inset:0 0 auto; z-index:6; }
+body:is([data-screen="intro"],[data-screen="passage"]) { overflow:hidden; }
+body:is([data-screen="intro"],[data-screen="passage"]) .topbar { position:fixed; inset:0 0 auto; z-index:6; }
 .mission-briefing { position:fixed; inset:0; background:linear-gradient(#040a1022 8%,transparent 40%,#040a1099 90%); color:#fff1d7; }
 .mission-briefing::before,.mission-briefing::after { content:""; position:absolute; left:0; right:0; height:7vh; background:#070c10; }
 .mission-briefing::before { top:0; }.mission-briefing::after { bottom:0; }
@@ -28,3 +28,13 @@ body[data-screen="game"] #world-controls > .secondary-button { width:44px;min-he
 #camera-reset.with-controller-glyph .camera-reset-mark { display:none; }
 body[data-screen="game"] #world-controls .drive-pad { grid-column:1 / -1; }
 @media(max-width:600px) { body[data-screen="game"] #world-controls { left:14px;bottom:14px;max-width:180px; } body[data-upload="true"] #world-controls > .secondary-button { display:none; } body[data-upload="true"] #input-hint { display:flex;gap:14px;min-width:0;white-space:nowrap; } }
+
+/* A matched rover frame makes the dates a passage, not another gameplay panel. */
+.passage-light { position:absolute;inset:0;background:#070c16;pointer-events:none;opacity:0; }
+.passage-years { position:absolute;top:16%;left:10%;right:10%;display:flex;align-items:center;gap:24px;flex-wrap:wrap;font:300 clamp(36px,6vw,76px)/1 var(--serif);text-shadow:0 2px 20px #000; }
+.passage-years strong { font-weight:400;color:#ffe1ae; }
+.passage-years i { height:1px;width:clamp(40px,10vw,140px);background:#ffe1ae88; }
+.passage-years p { flex-basis:100%;margin:0;font:12px var(--sans);letter-spacing:.08em;color:#e8e1d2; }
+.time-passage .briefing-caption h1 { font-size:clamp(30px,4vw,52px); }
+@media(max-height:550px) { .passage-years { top:15%;font-size:32px;gap:12px; }.passage-years p { display:none; }.time-passage .briefing-caption { bottom:20%; }.time-passage .briefing-caption h1 { font-size:28px;margin:8px 0; } }
+@media(prefers-reduced-motion:reduce) { .passage-light { display:none; } }

@@ -278,3 +278,41 @@ DESIGN-06 implementation integrated: open antenna interface, twelve-second skipp
 opening, explicit arrival/inspection cues, faster movement, and refined geometry.
 Independent Sol lifecycle/source review passed; source and engine checks pass.
 Browser verification and release evidence are recorded in VERIFICATION.md.
+
+## TIME-07 — make the years felt through refinement
+
+Active user goal: communicate the long mission emotionally; subagents propose
+and scrutinize ideas; refine existing play rather than accumulate new features.
+Shared develop/v0.7, base aff8429, disjoint ownership.
+- TIME-STORY-07 / Sol: docs/reviews/TIME-STORY-07.md only initially. Diagnose
+  pacing/time compression and propose a bounded revision with sourced dates.
+- TIME-SENSORY-07 / Sol: docs/reviews/TIME-SENSORY-07.md only initially. Propose
+  temporal changes in existing camera, terrain/rover treatment and sound/routine.
+- TIME-CRITIC-07 / Sol: docs/reviews/TIME-CRITIC-07.md only initially. Challenge
+  proposals and scope; scrutinize historical truth, brevity, controls and repetition.
+- Codex: choose and integrate the cohesive treatment; assign implementation
+  paths after proposals. Verify actual runtime transitions, preserve saves and
+  close controller-first gameplay, publish to existing Pages after review.
+
+TIME-07 selection after critique: emphasize the lived mission, not add errands.
+Use a 7-second authored 2004→2015 passage and a 3-second 2015→2018 return; both
+skippable, same close rover framing, destination saved before presentation.
+Replace the existing date eyebrow with year/elapsed-mission wording; refine the
+existing months scene to communicate eight months without an extra montage.
+Keep the existing score without another sound layer or system.
+- TIME-STORY-07 now owns src/content/time.js (new), src/content/story.js,
+  tests/engine/time.test.js (new), its review/handoff only.
+- TIME-SENSORY-07 now owns src/ui/landscape.js and its review/handoff only:
+  optional subtle authored era finish, zero new assets/draw calls; reversible
+  and independent of power. API setMissionAge(years), early-load safe.
+- TIME-CRITIC-07 remains independent review doc only.
+- Codex owns main transition lifecycle, presentation CSS, timeline helper,
+  integration checks and publication. Existing intro/lifecycle should be reused
+  where practical, not duplicate a second presentation controller.
+
+TIME-07 integrated and reviewed. Both date passages share the opening lifecycle;
+input rearms, pause freezes presentation, and saves retain the destination.
+Browser testing caught and fixed a resumed receipt leaving the camera on a rock.
+Passages now explicitly settle beside the rover. Left-leading glyphs, close
+gameplay framing and the purpose/emotion opening were audited against the latest
+user direction. Verification and device limitations are recorded in VERIFICATION.

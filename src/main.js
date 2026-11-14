@@ -1,6 +1,7 @@
 import { scenes, sources, credits } from './content/story.js';
 import { createState, transition } from './engine/game.js';
 import { createBriefing, briefingBeats } from './engine/briefing.js';
+import { missionTime, timePassage } from './content/time.js';
 import { createSound } from './audio/sound.js';
 import { createLandscape } from './ui/landscape.js';
 import { restoreSession, serializeSession } from './session.js';
@@ -36,6 +37,7 @@ try {
 let screen = 'title';
 let briefingFrame = 0;
 let briefingActive = false;
+let briefingPassage = false;
 let view;
 let controller;
 let padInput = { throttle: 0, steer: 0 };
@@ -129,28 +131,43 @@ function renderTitle() {
 function stopBriefing() {
   cancelAnimationFrame(briefingFrame);briefingFrame=0;briefingActive=false;
   view?.setIntro?.(false);
+  if(briefingPassage)view?.setPaused(state.paused);
+  briefingPassage=false;
 }
 function finishBriefing() {
   if(!briefingActive || state.paused)return;
+  const wasPassage=briefingPassage;
+  pressed.clear();padInput={throttle:0,steer:0};
   stopBriefing();lastScene=null;renderGame({focus:true});
-  announce('First, raise your cameras. Send your first view of Mars.');
+  announce(wasPassage ? `${missionTime(scenes[state.sceneIndex].id)?.label}. ${scenes[state.sceneIndex].subtitle}` : 'First, raise your cameras. Send your first view of Mars.');
 }
-function startBriefing() {
+function startBriefing(passage = null) {
   stopBriefing();cancelScan();cancelTransmission();stopContact();
-  screen='intro';briefingActive=true;setExploring(false);
-  setWorld('dawn','game');document.body.dataset.screen='intro';
+  pressed.clear();padInput={throttle:0,steer:0};
+  screen=passage?'passage':'intro';briefingActive=true;briefingPassage=!!passage;setExploring(false);
+  if(!passage)setWorld('dawn','game');
+  document.body.dataset.screen=screen;document.body.dataset.upload='false';
   $('#world-controls').hidden=true;$('#waypoint-hud').hidden=true;
-  view?.stopDrive?.();view?.setIntro?.(true,{progress:0});
-  const beat=briefingBeats[0];
-  app.innerHTML=`<section class="mission-briefing" aria-label="Mission introduction"><div class="briefing-caption"><p class="eyebrow" id="briefing-label">${beat.label}</p><h1 id="briefing-title">${beat.title}</h1><p id="briefing-cue">${beat.cue}</p><div class="briefing-steps" aria-hidden="true"><i class="current"></i><i></i><i></i></div></div><button class="briefing-skip" data-action="skip-intro">Skip introduction <span aria-hidden="true">↗</span></button></section>`;
+  view?.stopDrive?.();view?.setLook?.({x:0,y:0});
+  if(passage) {view?.focusRover?.(true);view?.setPaused(true);} else {view?.setMissionAge?.(0);view?.setIntro?.(true,{progress:0});}
+  const beats=passage?.beats || briefingBeats,beat=beats[0];
+  const fromAge=missionTime(scenes[state.sceneIndex-1]?.id)?.ageYears || 0;
+  const toAge=missionTime(scenes[state.sceneIndex].id)?.ageYears || 0;
+  app.innerHTML=`<section class="mission-briefing ${passage?'time-passage':''}" aria-label="${passage?'Passage of mission time':'Mission introduction'}">${passage?`<div class="passage-light" aria-hidden="true"></div><div class="passage-years"><span>${escape(passage.fromYear)}</span><i aria-hidden="true"></i><strong>${escape(passage.toYear)}</strong><p>${escape(passage.headline)}</p></div>`:''}<div class="briefing-caption"><p class="eyebrow" id="briefing-label">${escape(beat.label)}</p><h1 id="briefing-title">${escape(beat.title)}</h1><p id="briefing-cue">${escape(beat.cue)}</p><div class="briefing-steps" aria-hidden="true">${beats.map((_,i)=>`<i class="${i===0?'current':''}"></i>`).join('')}</div></div><button class="briefing-skip" data-action="skip-intro">${passage?'Continue':'Skip introduction'} <span aria-hidden="true">↗</span></button></section>`;
   refreshControllerPrompts();focusContent('[data-action="skip-intro"]');announce(`${beat.title} ${beat.cue}`);
-  const timeline=createBriefing();let previous=performance.now(),lastBeat=0;
+  const timeline=createBriefing({duration:passage?.duration || 12,beats:beats.length});let previous=performance.now(),lastBeat=0;
   function frame(now) {
     if(!briefingActive)return;
     const {progress,beat,complete}=timeline.step((now-previous)/1000,state.paused || document.hidden || (!worldReady && !graphicsError));previous=now;
-    if(!state.paused && !document.hidden) view?.setIntro?.(true,{progress});
+    if(!state.paused && !document.hidden) {
+      if(passage) {
+        // Two quiet light/dark cycles suggest repeated days; the matched camera stays still.
+        app.querySelector('.passage-light').style.opacity=settings.motion?'0':String(.55*Math.sin(progress*Math.PI*(beats.length===3?2:1))**2);
+        view?.setMissionAge?.(fromAge+(toAge-fromAge)*progress);
+      } else view?.setIntro?.(true,{progress});
+    }
     if(beat!==lastBeat) {
-      lastBeat=beat;const content=briefingBeats[beat];
+      lastBeat=beat;const content=beats[beat];
       $('#briefing-label').textContent=content.label;$('#briefing-title').textContent=content.title;$('#briefing-cue').textContent=content.cue;
       app.querySelectorAll('.briefing-steps i').forEach((el,i)=>el.classList.toggle('current',i===beat));
       announce(`${content.title} ${content.cue}`);
@@ -217,13 +234,15 @@ function renderGame({ focus = false } = {}) {
   if (state.complete) return renderEnding();
   screen = 'game';
   const scene = scenes[state.sceneIndex];
+  view?.setMissionAge?.(missionTime(scene.id)?.ageYears || 0);
   if (lastScene !== scene.id) {
     reached = !goals[state.sceneIndex] || state.phase !== 'observe';
     lastScene = scene.id;
     setWorld(scene.environment, 'game');
     view?.setObservationTarget?.(goals[state.sceneIndex] || null);
     view?.setWaypoint?.(goals[state.sceneIndex] && !reached ? goals[state.sceneIndex] : null);
-    if (state.phase !== 'observe') view?.inspect?.();
+    if (state.phase === 'choose') view?.inspect?.();
+    else if(state.phase !== 'observe')view?.focusRover?.(true);
     setExploring(false);
   } else document.body.dataset.screen = 'game';
   sound.setNarrative?.(state.sceneIndex,state.phase);
@@ -257,7 +276,7 @@ function renderGame({ focus = false } = {}) {
       response:scene.response || scene.transmission});
   }
 
-  app.innerHTML = `<section class="play-screen"><header class="play-heading">${journeyRail(scene)}<p class="eyebrow">${escape(scene.sol)}</p><h1 tabindex="-1">${escape(state.phase==='observe' ? scene.approachTitle || scene.title : scene.title)}</h1></header>${telemetry(scene)}<aside class="mission-objective" aria-label="Current objective"><span>${state.phase==='observe'?'EXPLORE':state.phase==='choose'?'REMEMBER':state.phase==='transmit'?'CONNECT':'CONTINUE'}</span><strong>${escape(currentObjective({scene,phase:state.phase,goal,reached,investigating,transmitting}))}</strong></aside><article class="interaction-dock" aria-label="Current interaction" aria-busy="${scanning || transmitting}">${content}<div class="dock-footer"><span>${scene.act===1?'WONDER':scene.act===2?'THE STORM':'REMEMBRANCE'}</span><button class="quiet-button" data-action="journal">Journal</button></div></article></section>`;
+  app.innerHTML = `<section class="play-screen"><header class="play-heading">${journeyRail(scene)}<p class="eyebrow">${escape(missionTime(scene.id)?.label || scene.sol)}</p><h1 tabindex="-1">${escape(state.phase==='observe' ? scene.approachTitle || scene.title : scene.title)}</h1></header>${telemetry(scene)}<aside class="mission-objective" aria-label="Current objective"><span>${state.phase==='observe'?'EXPLORE':state.phase==='choose'?'REMEMBER':state.phase==='transmit'?'CONNECT':'CONTINUE'}</span><strong>${escape(currentObjective({scene,phase:state.phase,goal,reached,investigating,transmitting}))}</strong></aside><article class="interaction-dock" aria-label="Current interaction" aria-busy="${scanning || transmitting}">${content}<div class="dock-footer"><span>${scene.act===1?'WONDER':scene.act===2?'THE STORM':'REMEMBRANCE'}</span><button class="quiet-button" data-action="journal">Journal</button></div></article></section>`;
   setExploring(exploring);
   $('#world-controls').hidden = false;
   $('.drive-pad').hidden = state.phase!=='observe' || reached;
@@ -378,6 +397,8 @@ function act(action) {
   if (action.type === 'OBSERVE') { view?.inspect?.(); view?.setWaypoint?.(null); announce(scenes[state.sceneIndex].discovery); }
   if (state.complete) sound.cue('end');
   save();
+  const passage=action.type==='NEXT' && !state.complete ? timePassage(scenes[old.sceneIndex].id,scenes[state.sceneIndex].id) : null;
+  if(passage) {startBriefing(passage);window.scrollTo({top:0,behavior:'instant'});return;}
   renderGame({focus:true});
   if (action.type === 'TRANSMIT') {
     const contact = transmissionProfile(scenes[state.sceneIndex]);
@@ -399,7 +420,7 @@ function pause() {
 function resume() {
   if (document.hidden || document.querySelector('dialog[open]')) return;
   state = transition(state,{type:'RESUME'},scenes);
-  view?.setPaused(false); controller?.setPaused(false); if (settings.sound) sound.resume();
+  view?.setPaused(briefingPassage); controller?.setPaused(false); if (settings.sound) sound.resume();
   if (restoreSendFocus && screen === 'game' && state.phase === 'transmit') focusContent('[data-action="transmit"]');
   restoreSendFocus = false;
   if(screen==='game' && state.phase==='transmit')renderGame();

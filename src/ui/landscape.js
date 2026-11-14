@@ -9,7 +9,7 @@ import { mergeVertices, mergeGeometries } from 'three/addons/utils/BufferGeometr
 /** A real, navigable Martian diorama. NASA's rover is loaded from a local GLB. */
 export function createLandscape(canvas) {
   const noop = () => {};
-  const empty = { setScene: noop, setReducedMotion: noop, setPaused: noop,
+  const empty = { setMissionAge: noop, setScene: noop, setReducedMotion: noop, setPaused: noop,
     setMode: noop, setIntro: noop, setDrive: noop, stopDrive: noop, setInvestigation: noop, setContact: noop, setContactInput: noop, nudgeContact: noop, sendContact: noop, cancelContactPulse: noop, focusRover: noop, inspect: noop,
     setWaypoint: noop, setObservationTarget: noop, travelToWaypoint: noop, reset: noop, destroy: noop };
   const status = (state, message) => canvas?.dispatchEvent(new CustomEvent('world-status', {
@@ -45,6 +45,9 @@ export function createLandscape(canvas) {
   let previous = 0;
   let elapsed = 0;
   let modelReady = false;
+  // Artistic mission-era finish, independent of power, weather and driving.
+  const missionAge = { value: 0 };
+  const agedMaterials = new Set();
   let modelFailed = false;
   let canDrive = true;
   let eventTime = 0;
@@ -535,6 +538,10 @@ export function createLandscape(canvas) {
         object.receiveShadow = true;
         const materials = Array.isArray(object.material) ? object.material : [object.material];
         for (const material of materials) {
+          if (!agedMaterials.has(material)) {
+            agedMaterials.add(material);
+            setMissionFinish(material, missionAge);
+          }
           if (material.roughness !== undefined) material.roughness = Math.max(0.38, material.roughness);
           if (material.metalness !== undefined) material.metalness = Math.min(0.85, material.metalness);
         }
@@ -854,6 +861,13 @@ export function createLandscape(canvas) {
     if (inspecting) returnFromInspection();
     else cameraTween = null;
     return true;
+  }
+
+  function setMissionAge(years) {
+    const number = Number(years);
+    missionAge.value = Number.isFinite(number) ? THREE.MathUtils.clamp(number, 0, 14) / 14 : 0;
+    // Also redraw during a paused passage; the shared uniform survives late loading.
+    render();
   }
 
   function setScene(next, state = {}) {
@@ -1285,6 +1299,7 @@ export function createLandscape(canvas) {
   frame = requestAnimationFrame(animate);
 
   return {
+    setMissionAge,
     setScene,
     setIntro,
     setMode(value) {
@@ -1339,6 +1354,7 @@ export function createLandscape(canvas) {
     setObservationTarget,
     travelToWaypoint,
     reset() {
+      missionAge.value = 0;
       setIntro(false);
       route = null;
       waypoint = null;
@@ -1576,4 +1592,38 @@ function disposeModel(model) {
   };
   if (model.isMesh) dispose(model);
   else model.traverse(dispose);
+}
+
+// A restrained, reversible editorial cue, not historical panel-dust telemetry.
+// Shared shader uniform changes only shading: no overlays, textures or draw calls.
+function setMissionFinish(material, age) {
+  if (!material.isMeshStandardMaterial) return;
+  const previousCompile = material.onBeforeCompile;
+  const previousKey = material.customProgramCacheKey.bind(material);
+  const baseKey = previousKey();
+  material.onBeforeCompile = function(shader, renderer) {
+    previousCompile.call(this, shader, renderer);
+    shader.uniforms.missionAge = age;
+    shader.vertexShader = 'varying vec3 vMissionNormal;\n' + shader.vertexShader;
+    shader.vertexShader = shader.vertexShader.replace('#include <defaultnormal_vertex>',
+      '#include <defaultnormal_vertex>\nvMissionNormal = inverseTransformDirection(transformedNormal, viewMatrix);');
+    shader.fragmentShader = 'uniform float missionAge;\nvarying vec3 vMissionNormal;\n' + shader.fragmentShader;
+    shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', `
+      #include <color_fragment>
+      float missionDust = missionAge * .22 * smoothstep(.15, .85, normalize(vMissionNormal).y);
+      float missionDetail = dot(diffuseColor.rgb, vec3(.2126, .7152, .0722));
+      vec3 missionDustColor = vec3(.46, .32, .21) * (.35 + .65 * missionDetail);
+      diffuseColor.rgb = mix(diffuseColor.rgb, missionDustColor, missionDust);
+    `);
+    shader.fragmentShader = shader.fragmentShader.replace('#include <roughnessmap_fragment>', `
+      #include <roughnessmap_fragment>
+      roughnessFactor = mix(roughnessFactor, max(roughnessFactor, .88), missionDust);
+    `);
+    shader.fragmentShader = shader.fragmentShader.replace('#include <metalnessmap_fragment>', `
+      #include <metalnessmap_fragment>
+      metalnessFactor *= 1.0 - missionDust;
+    `);
+  };
+  material.customProgramCacheKey = () => `${baseKey}|mission-finish-v1`;
+  material.needsUpdate = true;
 }

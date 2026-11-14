@@ -119,3 +119,13 @@ geometry keeps these hero objects to eight draw calls. The reconstructions remai
 artistic teaching assets, not surveyed geometry. Manual speed rises from .85 to
 1.15 world units/s, assisted from 1.2 to 1.45; braking and steering stay controlled.
 Design research and independent critique: reviews/DESIGN-06.md.
+
+## Mission time — v0.7
+
+Keep the short playable route. Two skippable matched-camera passages mark the
+eleven-year and three-year jumps; soft changes in light repeat over the same
+rover, with no camera sweep. The existing date caption names mission age, the
+rover acquires a subtle matte finish, and the familiar wake/look/send routine
+returns in later lines. Earth’s eight-month recovery remains in its existing
+scene. No extra errands, timers or historical branches. Reduced motion removes
+the light cycles. A saved destination resumes directly without replaying a passage.

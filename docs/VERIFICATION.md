@@ -158,3 +158,26 @@ Earth's recovery effort, and the personalized ending.
   Temporary viewport restored. No browser warnings/errors observed.
 - Real iPad GPU performance, physical DualSense gestures/haptics, and emotional
   impact still require the user's device playtest. Automated checks cannot prove them.
+
+## v0.7 mission time and close framing — November 14, 2026
+
+- Three Sol agents proposed narrative/sensory treatments and independently
+  challenged chronology, scope and lifecycle. Selected two short rover passages;
+  rejected extra errands and an additional Earth montage.
+- 36 syntax/asset/scene checks and all 14 engine test files passed. Timeline tests
+  cover 7-second/3-second durations, pause, invalid arguments and completion.
+  Time content tests cover exact seam IDs, milestones, and age frozen after contact.
+- Browser exercised the revised opening and first four discovery/send loops using
+  driving/observation assistance for transition testing. First year passage
+  appeared muted with reduced motion, paused in settings, resumed after disabling
+  reduced motion, and reloaded into the saved 2015 destination.
+- Browser found the restored received phase could leave a passage on a rock.
+  Restored receipts and passage entry now explicitly use the close rover view.
+  The later 2015→2018 passage visibly used that corrected frame; holding Space
+  through its exit left the destination waiting for its first travel action.
+- Mission age labels, subtler rover material and left glyphs checked at 1280×720
+  and 820×1180. Viewport reset; no captured browser warnings/errors. No new
+  textures, meshes or draw calls were added by the age treatment.
+- Physical iPad performance, DualSense input/haptics and emotional effectiveness
+  require device playtesting. This pass did not repeat the full ending playthrough
+  or independently exercise every skip/pause permutation.
