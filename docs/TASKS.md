@@ -316,3 +316,37 @@ Browser testing caught and fixed a resumed receipt leaving the camera on a rock.
 Passages now explicitly settle beside the rover. Left-leading glyphs, close
 gameplay framing and the purpose/emotion opening were audited against the latest
 user direction. Verification and device limitations are recorded in VERIFICATION.
+
+## SQUEEZE-08 — tactile sending
+
+Replace the controller touchpad/right-stick upload with a deliberate two-trigger
+squeeze: release both to arm, squeeze L2+R2 together, brief full-pressure hold,
+then send once. No pointer or touchpad click in controller play. Preserve the
+accessible button fallback and distinct unanswered/archive semantics.
+Shared develop/v0.8, disjoint files:
+- INPUT-08 / Sol: src/input/controller.js, tests/engine/controller.test.js,
+  docs/CONTROLLERS.md and own handoff. Analog trigger samples, uplink input mode,
+  bounded adaptive resistance and rumble detents, lifecycle neutralization.
+- PRESENTATION-08 / Sol: src/ui/upload-terminal.js/css,
+  tests/engine/upload-terminal.test.js and own handoff. Two pressure-driven halves
+  meet around a memory, then signal release; concise left glyph prompt, no cursor.
+- CRITIC-08 / Sol: docs/reviews/SQUEEZE-08.md only. Scrutinize clarity, pleasure,
+  accessibility, browser capability claims, history and lifecycle as code lands.
+- Codex: squeeze state machine/tests, main integration, input glyphs/cursor mode,
+  audio integration, browser verification and publication.
+
+User expanded SQUEEZE-08: make critical story/objective information central and
+engaging; build a Windows test application for trigger feedback. Desktop is now
+explicitly authorized. Codex owns central story/objective composition. New lane:
+- WINDOWS-08 / Sol: desktop/**, .github/workflows/windows.yml, docs/WINDOWS.md,
+  own handoff only. Isolated Electron shell and Windows portable artifact build;
+  exact device permission handling for the existing optional USB controller flow.
+  No root package/main changes without integration agreement. Review primary
+  Electron docs; do not claim hardware testing or a native HD-haptics implementation.
+
+SQUEEZE-08 integration reviewed: old swipe/stick engine removed, two-trigger
+commitment and pressure feedback wired, source semantics preserved. Browser
+fixture verified one-shot squeeze and rearm; direct page checked centered story
+and tablet layout. Independent review caught audio activity ownership and HUD
+overlap; corrected. Windows packaging has a separate sandbox/asset smoke gate
+before its preview artifact can publish. Physical controller feel remains untested.

@@ -38,3 +38,23 @@ body[data-screen="game"] #world-controls .drive-pad { grid-column:1 / -1; }
 .time-passage .briefing-caption h1 { font-size:clamp(30px,4vw,52px); }
 @media(max-height:550px) { .passage-years { top:15%;font-size:32px;gap:12px; }.passage-years p { display:none; }.time-passage .briefing-caption { bottom:20%; }.time-passage .briefing-caption h1 { font-size:28px;margin:8px 0; } }
 @media(prefers-reduced-motion:reduce) { .passage-light { display:none; } }
+
+/* Controller interaction uses focus and pressure; the mouse pointer returns on mouse movement. */
+body[data-input="controller"],body[data-input="controller"] * { cursor:none !important; }
+
+/* The mission is addressed to the player, in the same composition as the rover. */
+body[data-screen="game"] .play-heading { top:96px;left:50%;right:auto;transform:translateX(-50%);width:min(650px,calc(100% - 64px));max-width:none;text-align:center; }
+body[data-screen="game"] .play-heading .journey-rail { justify-content:center;margin-bottom:12px; }
+body[data-screen="game"] .play-heading .eyebrow { line-height:1.6; }
+body[data-screen="game"] .play-heading .eyebrow::before { display:none; }
+body[data-screen="game"] .mission-objective { position:static;max-width:none;margin:14px auto 0;padding:0;border:0;background:none;box-shadow:none; }
+body[data-screen="game"] .mission-objective > span { display:none; }
+body[data-screen="game"] .mission-objective strong { font:400 16px/1.4 var(--sans);color:#ffe1ae;text-shadow:0 2px 10px #000; }
+body[data-phase="choose"] .mission-objective { display:none; }
+body[data-phase="choose"] .interaction-dock .discovery-line { font-size:clamp(20px,2.4vw,27px);line-height:1.35;max-width:620px;margin:0 auto 24px; }
+@media(max-width:900px) { body[data-screen="game"] .play-heading { top:112px;width:calc(100% - 60px); }.flight-status { opacity:.85; } }
+@media(max-width:600px) { body[data-screen="game"] .play-heading { top:110px;width:calc(100% - 36px); }body[data-screen="game"] .play-heading h1 { font-size:27px; }body[data-screen="game"] .play-heading .eyebrow { font-size:8px; }.mission-objective strong { font-size:15px; } }
+@media(max-height:550px) and (min-width:601px) { body[data-screen="game"] .play-heading { top:76px; }.play-heading h1 { font-size:24px; }body[data-screen="game"] .play-heading .journey-rail { display:none; }body[data-screen="game"] .mission-objective { margin-top:8px; } }
+
+body[data-screen="game"] #waypoint-hud { display:none; }
+body[data-screen="game"] .flight-status { top:78px;right:18px; }

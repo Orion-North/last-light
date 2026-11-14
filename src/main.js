@@ -8,7 +8,7 @@ import { restoreSession, serializeSession } from './session.js';
 import { createController } from './input/controller.js';
 import { currentObjective, inputMode } from './ui/objectives.js';
 import { renderUploadTerminal } from './ui/upload-terminal.js';
-import { createUploadGesture, createStickUpload } from './engine/upload-gesture.js';
+import { createSqueeze } from './engine/squeeze.js';
 import { createInvestigation } from './engine/investigation.js';
 import { createInteractionWait } from './engine/interaction-wait.js';
 import { discoveredScenes, transmissionProfile, missionConditions, endingMemories } from './ui/experience.js';
@@ -55,17 +55,14 @@ let reached = false;
 let exploring = false;
 let transmitting = false;
 let contacting = false;
-const uploadGesture = createUploadGesture();
-const pointerUpload = createUploadGesture({ maxDurationMs: Infinity });
-const stickUpload = createStickUpload();
+const squeeze = createSqueeze();
 let uploadInputAt = 0;
-let touchContact = null;
-let contactPointer = null;
+
 let restoreSendFocus = false;
 let inputDevice = settings.touch ? 'touch' : 'keyboard';
 let controllerConnected = false;
 let controllerId = '';
-let touchSurfaceAvailable = false;
+
 let inputContext = '';
 const transmissionWait = createInteractionWait();
 const sound = createSound();
@@ -189,7 +186,7 @@ function telemetry(scene) {
 }
 
 function syncInputMode() {
-  const mode = inputMode({screen, phase:state.phase, modal:!!document.querySelector('dialog[open]'), investigating:investigating || contacting, travelling:!reached});
+  const mode = inputMode({screen, phase:state.phase, modal:!!document.querySelector('dialog[open]'), investigating, contacting, travelling:!reached});
   controller?.setInputMode?.(mode);
   const context = `${screen}:${state.sceneIndex}:${state.phase}:${document.querySelector('dialog[open]')?.id || ''}:${investigating}`;
   if(context!==inputContext) {inputContext=context;controller?.rearmMenu?.();}
@@ -202,12 +199,12 @@ function updateInputHint() {
   const pad=controllerConnected || settings.prompts!=='auto';
   const row=(action,label,key)=>`<span class="controller-hint" aria-label="${pad?controllerButtonName(action,family):key}: ${label.toLowerCase()}">${pad?controllerGlyph(action,family):`<kbd>${key}</kbd>`}<span>${label}</span></span>`;
   let hints;
-  if(contacting) hints=(controllerConnected&&touchSurfaceAvailable?row('swipe','Swipe up','↑'):row('look',pad?'Hold up':'Drag up','↑'))+row('primary','Upload','Enter');
+  if(contacting) hints=pad?`<span class="controller-hint" aria-label="Both triggers: squeeze">${controllerGlyph('reverse',family)}${controllerGlyph('forward',family)}<span>Squeeze</span></span>`:row('primary','Send','Enter');
   else if(investigating) hints=row('look','Look','↑↓←→')+'<span class="control-rest">Hold still to record</span>';
   else if(moving) hints=row('move','Drive','WASD')+row('look','Look','Drag');
   else hints=row('move','Select','Tab')+row('primary','Confirm','Enter');
   if(!contacting && !investigating)hints+=row('journal','Memories','J');
-  if(settings.touch&&!pad) hints=contacting?'<span class="controller-hint"><kbd>↑</kbd>Swipe to upload</span>':investigating?'<span class="controller-hint"><kbd>↔</kbd>Drag to look</span><span class="control-rest">Hold still to record</span>':moving?'<span class="controller-hint"><kbd>↔</kbd>Drag to look</span>':'<span class="controller-hint"><kbd>·</kbd>Tap to choose</span>';
+  if(settings.touch&&!pad) hints=contacting?'<span class="controller-hint"><kbd>·</kbd>Tap Send</span>':investigating?'<span class="controller-hint"><kbd>↔</kbd>Drag to look</span><span class="control-rest">Hold still to record</span>':moving?'<span class="controller-hint"><kbd>↔</kbd>Drag to look</span>':'<span class="controller-hint"><kbd>·</kbd>Tap to choose</span>';
   $('#input-hint').innerHTML=hints;
 }
 
@@ -234,6 +231,8 @@ function renderGame({ focus = false } = {}) {
   if (state.complete) return renderEnding();
   screen = 'game';
   const scene = scenes[state.sceneIndex];
+  document.body.dataset.phase=state.phase;
+  document.body.dataset.travelling=String(state.phase==='observe' && !!goals[state.sceneIndex] && !reached);
   view?.setMissionAge?.(missionTime(scene.id)?.ageYears || 0);
   if (lastScene !== scene.id) {
     reached = !goals[state.sceneIndex] || state.phase !== 'observe';
@@ -250,10 +249,10 @@ function renderGame({ focus = false } = {}) {
   const goal = goals[state.sceneIndex];
   const contact = transmissionProfile(scene);
   document.body.dataset.upload = ['transmit','received'].includes(state.phase) ? 'true' : 'false';
-  if(state.phase==='transmit' && !transmitting && scene.signal>0 && !state.paused) {
+  if(state.phase==='transmit' && !transmitting && !state.paused) {
     if(!contacting) {
       contacting=true;resetUpload();
-      view?.setContact?.(true,{mode:contact.mode});view?.setContact?.(false);
+      if(scene.signal>0){view?.setContact?.(true,{mode:contact.mode});view?.setContact?.(false);}
       announce(uploadPrompt());
     }
   } else stopContact();
@@ -273,10 +272,10 @@ function renderGame({ focus = false } = {}) {
     content = renderUploadTerminal({title:choice?.memory?.title || scene.title,mode:contact.mode,
       stage:state.phase==='received'?'received':transmitting?'sending':'ready',
       prompt:state.phase==='received'?'':transmitting?contact.waiting:contacting?uploadPrompt():contact.mode==='archive'?'Keep this moment in the mission archive.':'Send a call. Listen for a reply.',
-      response:scene.response || scene.transmission});
+      response:scene.response || scene.transmission,input:controllerConnected?'controller':'pointer'});
   }
 
-  app.innerHTML = `<section class="play-screen"><header class="play-heading">${journeyRail(scene)}<p class="eyebrow">${escape(missionTime(scene.id)?.label || scene.sol)}</p><h1 tabindex="-1">${escape(state.phase==='observe' ? scene.approachTitle || scene.title : scene.title)}</h1></header>${telemetry(scene)}<aside class="mission-objective" aria-label="Current objective"><span>${state.phase==='observe'?'EXPLORE':state.phase==='choose'?'REMEMBER':state.phase==='transmit'?'CONNECT':'CONTINUE'}</span><strong>${escape(currentObjective({scene,phase:state.phase,goal,reached,investigating,transmitting}))}</strong></aside><article class="interaction-dock" aria-label="Current interaction" aria-busy="${scanning || transmitting}">${content}<div class="dock-footer"><span>${scene.act===1?'WONDER':scene.act===2?'THE STORM':'REMEMBRANCE'}</span><button class="quiet-button" data-action="journal">Journal</button></div></article></section>`;
+  app.innerHTML = `<section class="play-screen"><header class="play-heading">${journeyRail(scene)}<p class="eyebrow">${escape(missionTime(scene.id)?.label || scene.sol)}</p><h1 tabindex="-1">${escape(state.phase==='observe' ? scene.approachTitle || scene.title : scene.title)}</h1><aside class="mission-objective" aria-label="Current objective"><span>${state.phase==='observe'?'EXPLORE':state.phase==='choose'?'REMEMBER':state.phase==='transmit'?'CONNECT':'CONTINUE'}</span><strong>${escape(currentObjective({scene,phase:state.phase,goal,reached,investigating,transmitting}))}</strong></aside></header>${telemetry(scene)}<article class="interaction-dock" aria-label="Current interaction" aria-busy="${scanning || transmitting}">${content}<div class="dock-footer"><span>${scene.act===1?'WONDER':scene.act===2?'THE STORM':'REMEMBRANCE'}</span><button class="quiet-button" data-action="journal">Journal</button></div></article></section>`;
   setExploring(exploring);
   $('#world-controls').hidden = false;
   $('.drive-pad').hidden = state.phase!=='observe' || reached;
@@ -331,24 +330,36 @@ function scan() {
 }
 
 function uploadPrompt() {
-  if(controllerConnected && touchSurfaceAvailable)return 'Swipe upward on the touchpad.';
-  if(controllerConnected)return 'Lift the memory toward Earth.';
-  return settings.touch?'Swipe upward to send.':'Drag upward to send.';
+  return controllerConnected ? 'Release both triggers, then squeeze together.' : 'Send this memory when you are ready.';
 }
 function updateUploadProgress(result) {
   if(!contacting || state.paused)return;
-  const progress=$('#upload-progress');if(progress) {progress.value=result.progress;progress.style.setProperty('--upload-progress',result.progress);}
-  app.querySelector('.upload-terminal')?.style.setProperty('--upload-progress',result.progress);
-  sound.setActivity?.({contactActive:result.progress>0,contactQuality:result.progress});
+  const terminal=app.querySelector('.upload-terminal');
+  const progress=$('#upload-progress');if(progress)progress.value=result.progress;
+  if(terminal) {
+    terminal.style.setProperty('--upload-progress',result.progress);
+    terminal.style.setProperty('--squeeze-left',result.left || 0);
+    terminal.style.setProperty('--squeeze-right',result.right || 0);
+    terminal.dataset.squeeze=result.stage;
+  }
+  const hint=$('#squeeze-hint');
+  const hints={release:'Release both triggers',ready:'Squeeze both triggers',pressing:'Keep squeezing…',latched:'Sent'};
+  if(hint && controllerConnected)hint.textContent=hints[result.stage] || hints.release;
+  controller?.setUplink?.({active:result.stage!=='release' && !result.commit,progress:result.progress});
+  if(result.cue)controller?.feedback(result.cue);
+  const mode=transmissionProfile(scenes[state.sceneIndex]).mode;
+  sound.setActivity?.({contactActive:['reply','partial'].includes(mode) && result.pressure>0,contactQuality:result.pressure || 0});
   if(result.commit)sendMemory();
 }
 function resetUpload() {
-  uploadGesture.reset();pointerUpload.sample({active:false,cancelled:true},performance.now());pointerUpload.reset();stickUpload.reset();contactPointer=null;uploadInputAt=performance.now();
-  updateUploadProgress({progress:0,commit:false});
+  squeeze.reset();uploadInputAt=performance.now();
+  controller?.setUplink?.({active:false,progress:0});
+  sound.setActivity?.({contactActive:false});
+  updateUploadProgress({left:0,right:0,pressure:0,progress:0,stage:'release',commit:false});
 }
 function stopContact() {
   if(!contacting)return;
-  contacting=false;resetUpload();view?.setContact?.(false);view?.setContactInput?.({x:0,y:0});sound.setActivity?.({contactActive:false});
+  contacting=false;resetUpload();view?.setContact?.(false);view?.setContactInput?.({x:0,y:0});
 }
 
 function sendMemory() {
@@ -518,6 +529,8 @@ app.addEventListener('click',event=>{
 });
 
 const pressed = new Set();
+window.addEventListener('pointermove',event=>{if(event.pointerType==='mouse' && (event.movementX || event.movementY))document.body.dataset.input='pointer';},{passive:true});
+window.addEventListener('pointerdown',()=>{document.body.dataset.input='pointer';},{passive:true});
 function drive() {
   if (screen !== 'game' || state.paused || state.phase!=='observe' || reached || scanning || transmitting || scenes[state.sceneIndex].signal === 0) return view?.setDrive?.({forward:0,turn:0});
   const forward=(pressed.has('w')||pressed.has('arrowup')?1:0)-(pressed.has('s')||pressed.has('arrowdown')?1:0);
@@ -555,23 +568,6 @@ canvas.addEventListener('world-status',event=>{
   if(status==='error') { $('.world').dataset.fallback='true'; announce(message); }
   if(screen==='game' && state.phase==='observe') renderGame();
 });
-app.addEventListener('pointerdown',event=>{
-  const body=event.target.closest('.upload-terminal__body');
-  if(!contacting || state.paused || !body || contactPointer || touchContact)return;
-  event.preventDefault();const rect=body.getBoundingClientRect();
-  contactPointer={id:event.pointerId,rect,body};stickUpload.reset();body.setPointerCapture(event.pointerId);
-  updateUploadProgress(pointerUpload.sample({x:(event.clientX-rect.left)/rect.width*2-1,y:Math.max(-1,Math.min(1,(event.clientY-rect.top)/rect.height*2-1)),active:true,id:event.pointerId},performance.now()));
-});
-app.addEventListener('pointermove',event=>{
-  if(!contacting || !contactPointer || event.pointerId!==contactPointer.id)return;
-  event.preventDefault();const {rect}=contactPointer;
-  updateUploadProgress(pointerUpload.sample({x:(event.clientX-rect.left)/rect.width*2-1,y:Math.max(-1,Math.min(1,(event.clientY-rect.top)/rect.height*2-1)),active:true,id:event.pointerId},performance.now()));
-});
-for(const type of ['pointerup','pointercancel','lostpointercapture'])app.addEventListener(type,event=>{
-  if(!contactPointer || event.pointerId!==contactPointer.id)return;
-  const {rect}=contactPointer;contactPointer=null;stickUpload.reset();uploadGesture.reset();
-  updateUploadProgress(pointerUpload.sample({x:(event.clientX-rect.left)/rect.width*2-1,y:Math.max(-1,Math.min(1,(event.clientY-rect.top)/rect.height*2-1)),active:false,cancelled:type!=='pointerup',id:event.pointerId},performance.now()));
-});
 canvas.addEventListener('inspection-sample',event=>{
   if(!investigating || state.paused) return;
   const now=performance.now();
@@ -587,7 +583,7 @@ canvas.addEventListener('waypoint-reached',()=>{
 });
 canvas.addEventListener('rover-move',event=>{
   const moving=event.detail.distance>lastDistance+.001; lastDistance=event.detail.distance;
-  sound.setActivity?.({moving:moving||!!event.detail.blocked,speed:event.detail.speed,roughness:event.detail.roughness});
+  if(!contacting)sound.setActivity?.({moving:moving||!!event.detail.blocked,speed:event.detail.speed,roughness:event.detail.roughness});
   controller?.setTerrain({moving:moving||!!event.detail.blocked,blocked:!!event.detail.blocked,power:scenes[state.sceneIndex].power/100,speed:event.detail.speed,roughness:event.detail.roughness,slip:event.detail.slip});
   const el=$('#objective-distance');
   if(el && Number.isFinite(event.detail.remaining)) el.textContent=`${event.detail.remaining.toFixed(1)} m to the observation`;
@@ -598,6 +594,7 @@ function menuTargets() {
   return [...root.querySelectorAll('button:not([disabled]),input:not([disabled]),summary,a[href]')].filter(el=>!el.hidden && !el.closest('[hidden],[inert]') && el.getClientRects().length);
 }
 function controllerAction(action) {
+  document.body.dataset.input='controller';
   const dialog=document.querySelector('dialog[open]');
   if(action==='pause') { if(dialog) dialog.close(); else openModal('#settings-modal'); return; }
   if(action==='back') { if(dialog) dialog.close(); else if(exploring) setExploring(false); else openModal('#settings-modal'); return; }
@@ -631,40 +628,38 @@ function controllerAction(action) {
 }
 controller=createController({
   onInput(input) {
+    if(input.actualSample && [input.steer,input.throttle,input.lookX,input.lookY,input.leftTrigger,input.rightTrigger].some(v=>Math.abs(v)>.15))document.body.dataset.input='controller';
     padInput={throttle:input.throttle,steer:input.steer};drive();
     if(contacting) {
       const now=performance.now(),dt=(now-uploadInputAt)/1000;uploadInputAt=now;
-      if(input.actualSample && !touchContact && !contactPointer)updateUploadProgress(stickUpload.sample(input.lookY,dt));
+      if(input.actualSample && Math.max(input.leftTrigger || 0,input.rightTrigger || 0)>.15)document.body.dataset.input='controller';
+      updateUploadProgress(squeeze.sample({left:input.leftTrigger,right:input.rightTrigger,actualSample:input.actualSample},dt));
       view?.setLook?.({x:0,y:0});return;
     }
     if(!investigating || !['arrowup','arrowdown','arrowleft','arrowright'].some(key=>pressed.has(key))) view?.setLook?.({x:screen==='game'&&!state.paused&&state.phase==='observe'?input.lookX:0,y:screen==='game'&&!state.paused&&state.phase==='observe'?input.lookY:0});
   },
   onAction:controllerAction,
   onScroll(deltaY) {const target=document.querySelector('dialog[open]') || app.querySelector('.brief-ending,.interaction-dock');target?.scrollBy({top:deltaY,behavior:'instant'});},
-  onTouch(point) {
-    const began=point.active&&!touchContact;touchContact=point.active?point:null;
-    const result=uploadGesture.sample(point,performance.now());
-    if(!contacting || state.paused || contactPointer)return;
-    if(began || !point.active)stickUpload.reset();
-    updateUploadProgress(result);
-  },
   onStatus(status) {
     const disconnected = controllerConnected && !status.connected;
     controllerConnected=status.connected;
     controllerId=status.id;
-    touchSurfaceAvailable=status.adaptiveConnected;
     if (disconnected && !padPreviewMuted) {
       pressed.clear();padInput={throttle:0,steer:0};view?.stopDrive?.();
       if((screen==='game' || briefingActive) && !document.querySelector('dialog[open]')) {openModal('#settings-modal');announce('Controller disconnected. Journey paused. Reconnect or close settings to continue with other controls.');}
     }
     document.body.classList.toggle('controller-connected',status.connected);
+    if(!status.connected)document.body.dataset.input='pointer';
     const detectedFamily = controllerFamily(status.id);
     $('#controller-status').textContent=status.connected ? `${detectedFamily==='playstation'?'PlayStation controller':detectedFamily==='xbox'?'Xbox controller':'Controller'} connected · ${status.haptics?'vibration available':'vibration unavailable in this browser'}` : 'Connect a controller, then press any button.';
     inputDevice = status.connected ? (detectedFamily==='playstation' ? 'dualsense' : 'gamepad') : settings.touch ? 'touch' : 'keyboard';
     refreshControllerPrompts();
+    const terminal=app.querySelector('.upload-terminal');
+    if(terminal)terminal.dataset.input=status.connected?'controller':'pointer';
+    if(contacting)resetUpload();
     $('#adaptive-connect').disabled=!status.adaptiveSupported || status.adaptiveOpen;
     $('#adaptive-disconnect').hidden=!status.adaptiveOpen;
-    $('#adaptive-status').textContent=status.message || (status.adaptiveConnected?'USB touchpad and trigger features connected.':status.adaptiveSupported?'Optional: original DualSense via USB. Click or tap to connect.':'USB features unavailable here. Use the right stick to upload.');
+    $('#adaptive-status').textContent=status.message || (status.adaptiveConnected?'USB trigger feedback connected.':status.adaptiveSupported?'Optional: original DualSense via USB. Click or tap to connect.':'USB resistance unavailable here. Standard trigger controls still work.');
   },
 });
 // An isolated preview can suppress physical pad input while another tab is playtested.

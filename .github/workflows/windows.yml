@@ -1,0 +1,83 @@
+name: Build Windows portable app
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: Publish the ZIP to the windows-preview prerelease
+        type: boolean
+        default: false
+  push:
+    branches: [main, develop/v0.8]
+    paths:
+      - desktop/**
+      - src/**
+      - public/**
+      - vendor/**
+      - index.html
+      - docs/WINDOWS.md
+      - .github/workflows/windows.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - name: Install pinned desktop tools
+        working-directory: desktop
+        run: npm ci
+      - name: Verify desktop permission policy
+        working-directory: desktop
+        run: npm test
+      - name: Verify game behavior
+        run: node --test tests/engine/*.test.js
+      - name: Package portable Windows x64 app
+        working-directory: desktop
+        run: npm run package:win
+      - name: Smoke test packaged sandbox and bundled game
+        working-directory: desktop
+        run: npm run smoke:win
+      - name: Zip portable app and hash
+        shell: pwsh
+        run: |
+          Compress-Archive -Path desktop/release/LastLight-win32-x64 -DestinationPath desktop/release/LastLight-Windows-x64.zip
+          $hash = (Get-FileHash desktop/release/LastLight-Windows-x64.zip -Algorithm SHA256).Hash.ToLower()
+          "$hash  LastLight-Windows-x64.zip" | Set-Content desktop/release/LastLight-Windows-x64.sha256 -Encoding ascii
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Last-Light-Windows-x64
+          path: |
+            desktop/release/LastLight-Windows-x64.zip
+            desktop/release/LastLight-Windows-x64.sha256
+          if-no-files-found: error
+          retention-days: 30
+      - name: Publish requested preview release
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.publish_release)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release view windows-preview *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create windows-preview --target '${{ github.sha }}' --prerelease --title 'Last Light — Windows preview' --notes 'Portable unsigned Windows x64 preview. Extract the entire ZIP and run LastLight.exe. Original DualSense USB feedback is experimental; hardware feel remains unverified. See docs/WINDOWS.md.'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          gh release edit windows-preview --prerelease --title 'Last Light — Windows preview' --notes 'Portable unsigned Windows x64 preview. Built from commit ${{ github.sha }} in Actions run ${{ github.run_id }}. Extract the entire ZIP and run LastLight.exe. Original DualSense USB feedback is experimental; hardware feel remains unverified. See docs/WINDOWS.md.'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          gh release upload windows-preview desktop/release/LastLight-Windows-x64.zip desktop/release/LastLight-Windows-x64.sha256 --clobber
+          exit $LASTEXITCODE

@@ -129,3 +129,15 @@ rover acquires a subtle matte finish, and the familiar wake/look/send routine
 returns in later lines. Earth’s eight-month recovery remains in its existing
 scene. No extra errands, timers or historical branches. Reduced motion removes
 the light cycles. A saved destination resumes directly without replaying a passage.
+
+## Tactile send and Windows preview — v0.8
+
+Sending now uses a fresh two-trigger squeeze, pressure-driven arcs, two restrained
+feedback detents, and the existing pressure audio layer. A brief full-pressure
+settle commits once; early release is harmless. Standard button fallback remains.
+Adaptive resistance is optional original-DualSense USB output; iPad uses ordinary
+controller APIs. The controller cursor is hidden, with mouse interaction retained.
+Scene meaning and the current objective move into a central typographic composition;
+optional telemetry remains peripheral. Windows desktop is now explicitly requested:
+an isolated Electron shell bundles the game and provides a portable test build.
+Native HD haptic audio remains outside this release.

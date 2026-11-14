@@ -7,7 +7,7 @@ standard controllers work too. Unmapped devices are ignored rather than guessed.
 | Control | Action |
 | --- | --- |
 | Left stick | Steer and drive |
-| R2 / L2 | Forward / reverse (takes precedence over stick speed) |
+| R2 / L2 | Forward / reverse during travel; squeeze both together to send |
 | Right stick | Camera orbit |
 | × / bottom face button | Primary action / confirm |
 | ○ / right face button | Back |
@@ -59,14 +59,14 @@ browser can prevent any software cleanup; reset delivery is best effort.
 ## Integration
 
 `createController({onInput, onAction, onStatus})` starts requestAnimationFrame
-polling. Input is `{steer, throttle, lookX, lookY, connected, actualSample}`. Action names are
+polling. Input is `{steer, throttle, lookX, lookY, leftTrigger, rightTrigger, connected, actualSample}`. Action names are
 `primary`, `back`, `journal`, `camera`, `pause`, `navUp`, `navDown`, `navLeft`,
 `navRight`. Status supplies `connected`, `id`, `haptics` (device capability),
 `adaptiveSupported` (browser capability), `adaptiveConnected` (working output),
 `adaptiveOpen` (open HID handle, including after output failure), and `message`.
 
 Methods: `setEnabled(bool)`, `setPaused(bool)` / `pause(bool = true)`,
-`setHaptics(bool)`, `feedback(kind)`, `setTerrain({moving, blocked, power, speed, roughness, slip})`,
+`setHaptics(bool)`, `setInputMode(mode)`, `setUplink({active, progress})`, `feedback(kind)`, `setTerrain({moving, blocked, power, speed, roughness, slip})`,
 `connectAdaptiveTriggers()`, `disconnectAdaptiveTriggers()`, and `destroy()`.
 Power, roughness, and slip are 0–1; speed is meters per second. Send terrain telemetry while driving; stop updates may explicitly
 set `moving:false`. Connect must be called directly from the settings click to
@@ -74,7 +74,7 @@ preserve browser user activation. It resolves to a success boolean. HID disconne
 and destroy are asynchronous so callers can await final reset/close.
 
 Feedback kinds: `observe` (`arrival` alias), `choice` (`choose` alias), `transmit`,
-`blocked`, and `terrain`. An optional injected navigator/window/document/clock
+`blocked`, `terrain`, `tension`, and `lock`. An optional injected navigator/window/document/clock
 exists solely for deterministic tests.
 
 ## Sources and verification limits
@@ -105,13 +105,12 @@ Curvature supplies roughness; incline supplies a simplified wheel-load proxy in
 blocked cue. Telemetry updates during movement about every 80 ms; missing updates
 stop feedback. The audio score is not routed into the controller as haptic audio.
 
-## Deferred desktop edition
+## Windows preview and deferred native haptics
 
-Per the user's instruction, remain web-based until the game is finished. A later
-optional desktop edition can reuse the game and add a native USB audio/HID layer
-for independently authored left/right haptic waveforms and tighter trigger timing.
-A desktop wrapper alone does not provide this. No desktop packaging, native
-bridge, device audio routing, or desktop dependency has been implemented.
+The user has now requested a Windows test build. The portable Electron edition
+bundles this game and exposes the existing optional USB resistance path; see
+[Windows setup](WINDOWS.md). Native USB audio waveforms and HD haptic routing
+remain deferred. A desktop wrapper alone does not provide those capabilities.
 
 ## v0.4 controller-first draft
 
@@ -132,7 +131,7 @@ The existing explicit original-DualSense USB connection also listens for touch
 reports. It does not request device access automatically. `onTouch({x,y,active,id,cancelled})`
 reports normalized coordinates from -1 to 1, with positive Y downward. Multiple active contacts cancel the gesture until all fingers lift. Pause, blur, hidden pages, disconnect, destroy, and reports
 stale for over 250 ms release the active contact. Unsupported devices and report
-formats are ignored. Right-stick and screen controls remain the required fallback;
+formats are ignored. The current game no longer uses this touch-coordinate callback to send;
 the optional USB route requires `navigator.hid`, and is unavailable on iPad Safari.
 
 The format is verified against Sony's Linux driver: USB report 1 carries a 63-byte
@@ -146,9 +145,9 @@ Menu mode additionally emits `onScroll(deltaY)` from right-stick Y, including
 paused menus. Delta is in pixels, capped at 21 per frame and 420 per second of
 bounded frame time. The main UI chooses the scrollable dialog/panel; camera and
 driving remain neutral. USB touch does not emit a send action: the main UI owns
-gesture recognition, confirmation, and fixed historical receipt outcomes.
+commitment and fixed historical receipt outcomes.
 
-## v0.5 terminal uploads
+## v0.5 terminal uploads (superseded by v0.8)
 
 On the memory terminal, swipe upward and release the optional USB touchpad.
 A single contact must move at least .55 normalized units upward with at most .35
@@ -169,3 +168,37 @@ USB touchpad swipe and the explicit button. Keyboard and touch retain readable
 alternatives. Gameplay and uplink stay close to the rover; geological inspection
 frames the current evidence. The twelve-second mission introduction is skippable,
 pauses with the game and uses a static view under reduced motion.
+
+
+## v0.8 two-trigger sending
+
+The controller upload uses a deliberate L2 + R2 squeeze. Release both to arm,
+squeeze together, then hold full pressure briefly. The game owns the arm/hold/send
+state machine and sends once; touchpad clicks and a cursor are unnecessary.
+The visible button, keyboard and touch alternatives remain available.
+
+`setInputMode('uplink')` preserves standard face-button and pause actions, emits
+zero steering/throttle/look axes, and includes raw standard button 6/7 pressure as
+`leftTrigger` / `rightTrigger`, clamped to 0–1. These physical polling samples have
+`connected:true, actualSample:true`. Synthetic neutral events (including mode
+entry and pause) have zero triggers and `actualSample:false`; they must never arm
+a send. Menu and inspection modes keep their existing behavior.
+
+While the squeeze is active, refresh `setUplink({active:true, progress})` with
+normalized 0–1 progress. The existing opted-in original-DualSense USB path uses
+only the already documented mode 01 at position 80: force rises from 24 to 48.
+`progress:1` or `active:false` releases both actuators with mode 05. Telemetry
+expires after 400 ms without refresh. Terrain resistance and terrain/contact
+rumble are suppressed throughout uplink mode, including after completion.
+`feedback('tension')` is a 40 ms restrained rumble detent; `feedback('lock')` is
+60 ms. The caller fires each threshold once; polling does not repeat detents.
+These are ordinary two-motor rumble cues, not trigger vibration or native HD
+haptics. Standard controllers need no HID permission for squeeze input or rumble.
+
+Pause, blur, hidden pages, disabling input, changing modes, losing the selected
+Gamepad, turning haptics off, HID disconnect/reconnect and destroy clear pressure
+telemetry. Returning to uplink cannot restore the old resistance. Updates while
+inactive are discarded. Adaptive output remains serialized/coalesced and failure
+stops retries. Software cleanup still cannot guarantee delivery after physical
+unplugging or a browser crash. No new HID modes or device capabilities are used;
+force feel and physical hardware remain untested.

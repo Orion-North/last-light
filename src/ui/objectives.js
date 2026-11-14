@@ -8,8 +8,9 @@ export function currentObjective({ scene, phase, goal, reached, investigating, t
   return scene.receiptMode === 'partial' ? 'Part of the image arrived. Continue the journey.' : scene.signal ? 'Your memory is home. Continue the journey.' : 'Carry this memory forward';
 }
 
-export function inputMode({ screen, phase, modal, investigating, travelling }) {
+export function inputMode({ screen, phase, modal, investigating, contacting, travelling }) {
   if (modal || screen !== 'game') return 'menu';
+  if (contacting) return 'uplink';
   if (investigating) return 'inspect';
   return phase === 'observe' && travelling ? 'drive' : 'menu';
 }

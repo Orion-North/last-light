@@ -37,3 +37,12 @@ on iPad. The deferred desktop edition is unchanged.
 Device dimensions reference: [Apple's M4 iPad Air specifications](https://support.apple.com/en-us/126471).
 The 820×1180 and 1180×820 CSS test sizes approximate its 1640×2360 display at 2×;
 Safari chrome and split view can reduce available space.
+
+## v0.8 trigger playtest
+
+Choose a memory, release both triggers, then squeeze L2 + R2 together. Each side
+of the instrument should respond to its trigger; one trigger alone must not send.
+A full squeeze held briefly sends once. Pause midway and resume while held: it
+should ask you to release both again. No touchpad click is used. iPad does not
+provide this project's USB adaptive-resistance path; use the Windows preview
+with an original DualSense by USB to evaluate that separately.

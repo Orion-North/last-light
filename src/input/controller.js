@@ -24,6 +24,8 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
   let touchPoint = { x: 0, y: 0, id: null };
   let device = null, closing = false, connecting = false, generation = 0, pending = null, writing = null, lastReport = '', outputFailed = false;
   let terrain = { moving: false, blocked: false, power: 1 }, lastPulse = -Infinity, terrainAt = -Infinity;
+  let uplink = { active: false, progress: 0 }, uplinkAt = -Infinity;
+  const clearUplink = () => { uplink = { active: false, progress: 0 }; uplinkAt = -Infinity; };
   let lastStatus = '', rumbling = false;
   const active = () => enabled && !paused && !blurred && !doc?.hidden && !destroyed;
   const actuator = () => pad?.vibrationActuator;
@@ -34,7 +36,7 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
     const key = JSON.stringify(value);
     if (key !== lastStatus) { lastStatus = key; onStatus(value); }
   }
-  function neutral() { onInput({ steer: 0, throttle: 0, lookX: 0, lookY: 0, connected: !!pad, actualSample: false }); }
+  function neutral() { onInput({ steer: 0, throttle: 0, lookX: 0, lookY: 0, leftTrigger: 0, rightTrigger: 0, connected: !!pad, actualSample: false }); }
   function releaseTouch(cancelled = true) {
     if (cancelled && touchActive) touchBlocked = true;
     if (touchActive) { touchActive = false; onTouch({ ...touchPoint, active: false, cancelled }); }
@@ -86,9 +88,11 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
     data[0] = 0x0c;
     // Mode 5 fully disengages and withdraws the trigger actuator.
     data[10] = data[21] = 5;
-    if (active() && haptics && originalDualSense(pad) && !closing && terrain.moving && clock() - terrainAt < 400) {
+    const squeeze = inputMode === 'uplink' && uplink.active && uplink.progress < 1 && clock() - uplinkAt < 400;
+    const ground = inputMode !== 'uplink' && terrain.moving && clock() - terrainAt < 400;
+    if (active() && haptics && originalDualSense(pad) && !closing && (squeeze || ground)) {
       // Mode 1: continuous resistance after a start position. Deliberately mild.
-      const strength = terrain.blocked ? 60 : Math.round(clamp(24 + clamp(terrain.roughness, 0, 1) * 18 + clamp(terrain.slip, 0, 1) * 12 + (terrain.power < 0.3 ? 5 : 0), 0, 60));
+      const strength = squeeze ? Math.round(24 + uplink.progress * 24) : terrain.blocked ? 60 : Math.round(clamp(24 + clamp(terrain.roughness, 0, 1) * 18 + clamp(terrain.slip, 0, 1) * 12 + (terrain.power < 0.3 ? 5 : 0), 0, 60));
       for (const offset of [10, 21]) data.set([1, 80, strength], offset);
     }
     return data;
@@ -110,12 +114,12 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
     }
     return writing;
   }
-  function cleanup() { neutral(); releaseTouch(); stopRumble(); queueReport(true); }
+  function cleanup() { clearUplink(); neutral(); releaseTouch(); stopRumble(); queueReport(true); }
   function feedback(kind = 'observe') {
-    if (!active() || !haptics || !canRumble() || rumbling) return false;
+    if (!active() || !haptics || !canRumble() || rumbling || (inputMode === 'uplink' && ['terrain', 'blocked'].includes(kind))) return false;
     if (kind === 'choose') kind = 'choice';
     if (kind === 'arrival') kind = 'observe';
-    const effects = { observe: [100, 0.18, 0.12], transmit: [220, 0.28, 0.12], choice: [65, 0.1, 0.15], blocked: [95, 0.25, 0.18], terrain: [65, 0.06, 0.1] };
+    const effects = { tension: [40, 0.09, 0.13], lock: [60, 0.16, 0.1], observe: [100, 0.18, 0.12], transmit: [220, 0.28, 0.12], choice: [65, 0.1, 0.15], blocked: [95, 0.25, 0.18], terrain: [65, 0.06, 0.1] };
     let [duration, strongMagnitude, weakMagnitude] = effects[kind] || effects.observe;
     if (kind === 'terrain') {
       const rough = clamp(terrain.roughness, 0, 1), slip = clamp(terrain.slip, 0, 1), speed = clamp(Math.abs(terrain.speed || 0) / 3, 0, 1);
@@ -137,7 +141,7 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
       || pads.find(p => p && p.connected !== false && p.mapping === 'standard' && p.index === pad?.index)
       || pads.find(p => p && p.connected !== false && p.mapping === 'standard') || null;
     if (next?.index !== pad?.index || next?.id !== pad?.id) {
-      stopRumble(); releaseTouch(); pad = next; latchButtons(); gateMenu(); neutral(); queueReport(true); status();
+      clearUplink(); stopRumble(); releaseTouch(); pad = next; latchButtons(); gateMenu(); neutral(); queueReport(true); status();
     } else pad = next;
     if (pad) {
       const current = {};
@@ -154,9 +158,9 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
         if (scroll) onScroll(scroll);
       } else if (active()) {
         const trigger = button(pad, 7) - button(pad, 6);
-        onInput({ steer: inputMode === 'inspect' ? 0 : axis(pad.axes?.[0]), throttle: inputMode === 'inspect' ? 0 : Math.abs(trigger) > 0.05 ? trigger : -axis(pad.axes?.[1]),
-          lookX: axis(pad.axes?.[2]), lookY: axis(pad.axes?.[3]), connected: true, actualSample: true });
-        if (terrain.moving && now - terrainAt < 400 && now - lastPulse >= 160 - clamp(terrain.roughness, 0, 1) * 50 - clamp(Math.abs(terrain.speed || 0) / 3, 0, 1) * 30) { feedback(terrain.blocked ? 'blocked' : 'terrain'); lastPulse = now; }
+        onInput({ steer: inputMode !== 'drive' ? 0 : axis(pad.axes?.[0]), throttle: inputMode !== 'drive' ? 0 : Math.abs(trigger) > 0.05 ? trigger : -axis(pad.axes?.[1]),
+          lookX: inputMode === 'uplink' ? 0 : axis(pad.axes?.[2]), lookY: inputMode === 'uplink' ? 0 : axis(pad.axes?.[3]), leftTrigger: button(pad, 6), rightTrigger: button(pad, 7), connected: true, actualSample: true });
+        if (inputMode !== 'uplink' && terrain.moving && now - terrainAt < 400 && now - lastPulse >= 160 - clamp(terrain.roughness, 0, 1) * 50 - clamp(Math.abs(terrain.speed || 0) / 3, 0, 1) * 30) { feedback(terrain.blocked ? 'blocked' : 'terrain'); lastPulse = now; }
       }
     }
     queueReport();
@@ -164,6 +168,7 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
   }
   async function disconnectAdaptiveTriggers() {
     generation++;
+    clearUplink();
     releaseTouch();
     if (!device || closing) return writing;
     closing = true;
@@ -186,10 +191,10 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
       }
       if (!selected.opened) await selected.open();
       if (token !== generation || destroyed) { await selected.close(); return false; }
-      device = selected; device.addEventListener?.('inputreport', inputReport);
+      clearUplink(); device = selected; device.addEventListener?.('inputreport', inputReport);
       lastReport = ''; outputFailed = false; await queueReport(true);
       if (outputFailed) { await disconnectAdaptiveTriggers(); status('Adaptive trigger output unavailable.'); return false; }
-      status('USB touchpad and trigger features connected.'); return true;
+      status('USB trigger feedback connected.'); return true;
     } catch { status('Adaptive triggers unavailable; standard controls still work.'); return false; }
     finally { connecting = false; }
   }
@@ -208,14 +213,20 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
   return {
     rearmMenu() { gateMenu(); },
     setInputMode(mode) {
-      if (!['drive', 'menu', 'inspect'].includes(mode) || mode === inputMode) return;
-      inputMode = mode; gateMenu(); neutral();
+      if (!['drive', 'menu', 'inspect', 'uplink'].includes(mode) || mode === inputMode) return;
+      clearUplink(); terrain.moving = false; stopRumble(); inputMode = mode; gateMenu(); neutral(); queueReport(true);
     },
     setEnabled(value) { enabled = !!value; gateMenu(); latchButtons(); if (!enabled) cleanup(); else queueReport(); },
     setPaused(value) { paused = !!value; if (paused) { terrain.moving = false; cleanup(); } else queueReport(); },
     pause(value = true) { this.setPaused(value); },
-    setHaptics(value) { haptics = !!value; if (!haptics) stopRumble(); queueReport(true); },
+    setHaptics(value) { haptics = !!value; if (!haptics) { clearUplink(); stopRumble(); } queueReport(true); },
     feedback,
+    setUplink({ active: requested = false, progress = 0 } = {}) {
+      if (requested && inputMode === 'uplink' && active() && haptics && pad) {
+        uplink = { active: true, progress: clamp(progress, 0, 1) }; uplinkAt = clock();
+      } else clearUplink();
+      queueReport();
+    },
     setTerrain(value) { terrain = { ...terrain, ...value }; terrainAt = clock(); queueReport(); },
     connectAdaptiveTriggers, disconnectAdaptiveTriggers,
     async destroy() {

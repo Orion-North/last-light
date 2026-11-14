@@ -373,3 +373,67 @@ test('HID errors report unavailable and disconnect closes without repeated outpu
   await settle(); assert.equal(attempts, 1);
   await f.driver.destroy();
 });
+
+test('uplink samples analog triggers with neutral axes and honest synthetic samples', async () => {
+  const f = fixture(); f.pads([f.pad]); f.tick(); f.pad.axes = [1, -1, 1, -1];
+  f.pad.buttons[6].value = .37; f.pad.buttons[7].value = .83;
+  f.driver.setInputMode('uplink');
+  assert.equal(f.inputs.at(-1).actualSample, false);
+  assert.equal(f.inputs.at(-1).leftTrigger, 0); assert.equal(f.inputs.at(-1).rightTrigger, 0);
+  f.tick(1); const sample = f.inputs.at(-1); assertNeutral(sample);
+  assert.equal(sample.actualSample, true); assert.equal(sample.connected, true);
+  assert.equal(sample.leftTrigger, .37); assert.equal(sample.rightTrigger, .83);
+  f.driver.setPaused(true); assert.equal(f.inputs.at(-1).actualSample, false);
+  assert.equal(f.inputs.at(-1).rightTrigger, 0);
+  f.pad.buttons[9].pressed = true; f.tick(2); assert.equal(f.actions.at(-1), 'pause');
+  await f.driver.destroy();
+});
+
+test('uplink resistance grows, releases at completion and expires without terrain leakage', async () => {
+  const f = fixture(), device = usb(); f.pads([f.pad]); f.tick();
+  f.hid.requestDevice = async () => [device]; await f.driver.connectAdaptiveTriggers();
+  f.driver.setInputMode('uplink'); f.driver.setTerrain({ moving: true, roughness: 1 });
+  await settle(); assert.equal(device.reports.at(-1).data[10], 5);
+  f.driver.setUplink({ active: true, progress: 0 }); await settle();
+  assert.deepEqual(device.reports.at(-1).data.slice(10, 13), [1, 80, 24]);
+  f.driver.setUplink({ active: true, progress: .75 }); await settle();
+  assert.deepEqual(device.reports.at(-1).data.slice(21, 24), [1, 80, 42]);
+  f.driver.setUplink({ active: true, progress: 1 }); await settle();
+  assert.equal(device.reports.at(-1).data[10], 5);
+  f.driver.setUplink({ active: true, progress: .5 }); f.tick(400); await settle();
+  assert.equal(device.reports.at(-1).data[21], 5); assert.equal(f.pulses.length, 0);
+  assert.equal(f.driver.feedback('terrain'), false); assert.equal(f.driver.feedback('blocked'), false);
+  for (const kind of ['tension', 'lock']) {
+    assert.equal(f.driver.feedback(kind), true); await settle();
+    const effect = f.pulses.at(-1)[1]; assert.ok(effect.duration <= 60 && effect.strongMagnitude <= .16);
+  }
+  await f.driver.destroy();
+});
+
+test('uplink interruption resets both actuators and never revives old pressure on return', async () => {
+  for (const interruption of ['pause', 'blur', 'hidden', 'disable', 'mode', 'haptics', 'gamepad', 'hid']) {
+    const f = fixture(), device = usb(); f.pads([f.pad]); f.tick();
+    f.hid.requestDevice = async () => [device]; await f.driver.connectAdaptiveTriggers();
+    f.driver.setInputMode('uplink'); f.driver.setUplink({ active: true, progress: .6 }); await settle();
+    assert.equal(device.reports.at(-1).data[10], 1, interruption);
+    if (interruption === 'pause') f.driver.setPaused(true);
+    if (interruption === 'blur') f.win.dispatchEvent(new Event('blur'));
+    if (interruption === 'hidden') { f.doc.hidden = true; f.doc.dispatchEvent(new Event('visibilitychange')); }
+    if (interruption === 'disable') f.driver.setEnabled(false);
+    if (interruption === 'mode') f.driver.setInputMode('menu');
+    if (interruption === 'haptics') f.driver.setHaptics(false);
+    if (interruption === 'gamepad') { f.pads([]); f.tick(1); }
+    if (interruption === 'hid') await f.driver.disconnectAdaptiveTriggers();
+    await settle();
+    assert.equal(device.reports.at(-1).data[10], 5, interruption);
+    assert.equal(device.reports.at(-1).data[21], 5, interruption);
+    // Calls received while inactive cannot preload resistance for later reentry.
+    f.driver.setUplink({ active: true, progress: .8 });
+    f.doc.hidden = false; f.doc.dispatchEvent(new Event('visibilitychange'));
+    f.win.dispatchEvent(new Event('focus')); f.driver.setEnabled(true); f.driver.setPaused(false);
+    f.driver.setHaptics(true); f.driver.setInputMode('uplink'); f.pads([f.pad]); f.tick(2);
+    if (interruption === 'hid') await f.driver.connectAdaptiveTriggers();
+    await settle(); assert.equal(device.reports.at(-1).data[10], 5, interruption);
+    await f.driver.destroy();
+  }
+});

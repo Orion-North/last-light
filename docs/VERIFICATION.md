@@ -181,3 +181,24 @@ Earth's recovery effort, and the personalized ending.
 - Physical iPad performance, DualSense input/haptics and emotional effectiveness
   require device playtesting. This pass did not repeat the full ending playthrough
   or independently exercise every skip/pause permutation.
+
+## v0.8 trigger sending and central story — November 14, 2026
+
+- Old swipe/stick upload runtime and tests removed. New deterministic squeeze
+  checks cover held entry, actual vs synthetic neutral, both-trigger requirement,
+  early release, bounded frame time, one-shot commit and feedback detents.
+- Controller tests include raw pressure, neutral camera/travel in uplink,
+  adaptive report ramp/release, stale pressure and lifecycle resets. Terminal
+  tests retain partial/no-reply/archive semantics and input alternatives.
+- Local browser fixture injected a test-only standard gamepad through a separate
+  test page (excluded from production builds). Half pressure showed .488 progress;
+  one trigger left progress zero; pause/resume while held required both released;
+  full pressure sent once and reached Earth receipt. CSS cursor resolved to none.
+  This validates input/UI integration, not actual controller force or vibration.
+- Production page checked central objective/story hierarchy, larger discovered
+  science, desktop instrument fit, 820×1180 tablet layout and button/Enter sending
+  while muted with reduced motion. Viewport reset; no captured warnings/errors.
+- Windows shell policy tests and launch/package checks are recorded in
+  handoffs/WINDOWS-08.md. CI must pass the actual Windows executable smoke before
+  publishing the ZIP. USB hardware, force feel and unsigned-app behavior require
+  the user's Windows playtest. No native HD haptic audio is claimed.
