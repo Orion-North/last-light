@@ -1,0 +1,56 @@
+/* This overlay belongs only to the memory transmission interaction. */
+body[data-upload="true"][data-screen="game"] .interaction-dock,
+body.touch-controls[data-upload="true"][data-screen="game"] .interaction-dock,
+body.controller-connected[data-upload="true"][data-screen="game"] .interaction-dock {
+  position: absolute; left: 50%; right: auto; top: 50%; bottom: auto;
+  transform: translate(-50%, -50%); width: min(700px, calc(100vw - 32px));
+  max-height: calc(100svh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow: auto; padding: 0; background: none; border: 0; box-shadow: none;
+  text-align: left; pointer-events: auto; overscroll-behavior: contain;
+}
+.upload-terminal { box-sizing: border-box; color: #f2e4cd; background: linear-gradient(145deg, #132632f5, #08121cf2 72%); border: 1px solid #d6a966a8; box-shadow: 0 18px 70px #0009, inset 0 0 45px #dba35a0d; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.upload-terminal *, .upload-terminal *::before, .upload-terminal *::after { box-sizing: border-box; }
+.upload-terminal__header, .upload-terminal__footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 20px; font-size: 10px; letter-spacing: .13em; }
+.upload-terminal__header { border-bottom: 1px solid #d3ae7750; color: #e8c693; }
+.upload-terminal__header i { font-style: normal; color: #ad8051; }
+.upload-terminal__status { color: #c8d3d2; text-align: right; }
+.upload-terminal__status b { display: inline-block; width: 6px; height: 6px; margin-right: 7px; background: #e6b56f; border-radius: 50%; }
+.upload-terminal__body { display: grid; grid-template-columns: minmax(0, 1fr) 150px; min-height: 190px; }
+.upload-terminal__memory { align-self: center; padding: 20px 26px; min-width: 0; }
+.upload-terminal__label, .upload-terminal__progress, .upload-terminal__response > span { color: #d7ae78; font-size: 10px; letter-spacing: .15em; }
+.upload-terminal h2 { margin: 10px 0; color: #fff2dd; font: 400 clamp(22px, 3vw, 34px)/1.16 Georgia, serif; overflow-wrap: anywhere; }
+.upload-terminal__prompt, .upload-terminal__response p { margin: 0; color: #d2d9d6; font: 14px/1.5 system-ui, sans-serif; overflow-wrap: anywhere; }
+.upload-terminal__lane { position: relative; min-height: 180px; overflow: hidden; border-left: 1px solid #d3ae7738; background: linear-gradient(90deg, #c8914c08, #e1b47613, #c8914c08); }
+.upload-terminal__chevron { position: absolute; left: 0; right: 0; top: 12px; text-align: center; color: #ffd89d; font: 32px/1 sans-serif; }
+.upload-terminal__track { position: absolute; inset: 45px 0 10px; display: flex; flex-direction: column; align-items: center; justify-content: space-around; }
+.upload-terminal__track span { width: 3px; height: 12px; background: #d7ae785e; }
+.upload-terminal__packet { position: absolute; left: 50%; bottom: 19px; transform: translate(-50%, calc(var(--upload-progress, 0) * -90px)); width: 80px; padding: 7px; border: 1px solid #e1b67d; background: #182d37; color: #ffe1b1; text-align: center; font-size: 8px; letter-spacing: .13em; }
+.upload-terminal__packet strong { display: block; font: 20px/1.1 sans-serif; }
+.upload-terminal[data-stage="sending"] .upload-terminal__packet { animation: upload-packet 1.3s ease-in forwards; }
+.upload-terminal[data-stage="sending"] .upload-terminal__track span { animation: upload-trail 1.3s ease-in 1; }
+.upload-terminal[data-stage="sending"] .upload-terminal__track span:nth-child(2) { animation-delay: .2s; }
+.upload-terminal[data-stage="sending"] .upload-terminal__track span:nth-child(3) { animation-delay: .4s; }
+.upload-terminal__progress { display: flex; align-items: center; gap: 12px; padding: 0 20px 15px; }
+.upload-terminal__progress progress { appearance: none; flex: 1; width: 100%; height: 3px; border: 0; background: linear-gradient(to right, #efbe7c calc(var(--upload-progress, 0) * 100%), #ffffff25 0); color: #efbe7c; }
+.upload-terminal__progress progress::-webkit-progress-bar { background: linear-gradient(to right, #efbe7c calc(var(--upload-progress, 0) * 100%), #ffffff25 0); }
+.upload-terminal__progress progress::-webkit-progress-value { background: #efbe7c; }
+.upload-terminal__progress progress::-moz-progress-bar { background: #efbe7c; }
+.upload-terminal__response { border-top: 1px solid #d3ae7738; padding: 13px 20px; }
+.upload-terminal__response p { margin-top: 5px; }
+.upload-terminal[data-mode="silence"] .upload-terminal__response > span { color: #b8c3c5; }
+.upload-terminal__footer { border-top: 1px solid #d3ae7750; color: #aebdbd; min-height: 68px; }
+.upload-terminal__button { min-height: 44px; padding: 10px 16px; border: 1px solid #f4cc92; background: #e4b879; color: #17232a; font: 700 12px/1.2 system-ui, sans-serif; cursor: pointer; }
+.upload-terminal__button:focus-visible { outline: 3px solid #fff3dc; outline-offset: 3px; }
+@keyframes upload-packet { to { transform: translate(-50%, -120px); opacity: .15; } }
+@keyframes upload-trail { 50% { background: #ffe0a7; box-shadow: 0 0 10px #ffc77b; } }
+@media (max-width: 600px) { .upload-terminal__header, .upload-terminal__footer { padding: 10px 13px; font-size: 9px; } .upload-terminal__body { grid-template-columns: minmax(0, 1fr) 90px; min-height: 145px; } .upload-terminal__memory { padding: 16px; } .upload-terminal__lane { min-height: 145px; } .upload-terminal__packet { width: 62px; } .upload-terminal__prompt, .upload-terminal__response p { font-size: 13px; } }
+@media (max-height: 550px) { .upload-terminal__body { min-height: 110px; } .upload-terminal__lane { min-height: 110px; } .upload-terminal__memory { padding-block: 10px; } .upload-terminal__footer { min-height: 50px; padding-block: 5px; } }
+@media (prefers-reduced-motion: reduce) { .upload-terminal *, .upload-terminal *::before, .upload-terminal *::after { animation: none !important; transition: none !important; } }
+body.reduced-motion .upload-terminal *, body.reduced-motion .upload-terminal *::before, body.reduced-motion .upload-terminal *::after { animation: none !important; transition: none !important; }
+
+.upload-terminal[data-stage="ready"][data-mode="reply"] .upload-terminal__body, .upload-terminal[data-stage="ready"][data-mode="partial"] .upload-terminal__body { touch-action: none; }
+.upload-terminal__channel { position: absolute; inset: 0; display: grid; place-items: center; color: #e1b67d; font: 64px/1 sans-serif; }
+
+/* The terminal supplies the current action; avoid overlapping background HUD. */
+body[data-upload="true"] .mission-objective,
+body[data-upload="true"] .play-heading h1 { display: none; }

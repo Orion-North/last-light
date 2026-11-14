@@ -20,7 +20,8 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
   navigator: nav = globalThis.navigator, window: win = globalThis.window, document: doc = globalThis.document, now: clock = () => globalThis.performance.now() } = {}) {
   let enabled = true, paused = false, blurred = false, haptics = true, destroyed = false, pad = null, previous = {}, frame;
   let inputMode = 'drive', menuNeedsNeutral = true, menuDirection = '', menuRepeatAt = 0;
-  let touchActive = false, touchAt = -Infinity, lastPollAt = null;
+  let touchActive = false, touchAt = -Infinity, lastPollAt = null, touchBlocked = false;
+  let touchPoint = { x: 0, y: 0, id: null };
   let device = null, closing = false, connecting = false, generation = 0, pending = null, writing = null, lastReport = '', outputFailed = false;
   let terrain = { moving: false, blocked: false, power: 1 }, lastPulse = -Infinity, terrainAt = -Infinity;
   let lastStatus = '', rumbling = false;
@@ -33,9 +34,10 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
     const key = JSON.stringify(value);
     if (key !== lastStatus) { lastStatus = key; onStatus(value); }
   }
-  function neutral() { onInput({ steer: 0, throttle: 0, lookX: 0, lookY: 0, connected: !!pad }); }
-  function releaseTouch() {
-    if (touchActive) { touchActive = false; onTouch({ x: 0, y: 0, active: false }); }
+  function neutral() { onInput({ steer: 0, throttle: 0, lookX: 0, lookY: 0, connected: !!pad, actualSample: false }); }
+  function releaseTouch(cancelled = true) {
+    if (cancelled && touchActive) touchBlocked = true;
+    if (touchActive) { touchActive = false; onTouch({ ...touchPoint, active: false, cancelled }); }
   }
   function inputReport(event) {
     if (event.device !== device || !device?.opened || closing || !active() || !originalDualSense(pad)) return;
@@ -43,14 +45,19 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
     if (event.reportId !== 1 || data?.byteLength !== 63 || typeof data.getUint8 !== 'function') return;
     // Sony-authored Linux hid-playstation: USB common payload points[0] at32.
     // Contact bit7 means inactive; coordinates are packed little-endian12-bit.
-    let offset = 32;
-    if (data.getUint8(offset) & 0x80) offset = 36;
-    if (data.getUint8(offset) & 0x80) { releaseTouch(); return; }
+    const first = !(data.getUint8(32) & 0x80), second = !(data.getUint8(36) & 0x80);
+    if (!first && !second) { releaseTouch(false); touchBlocked = false; return; }
+    if (first && second) { releaseTouch(); touchBlocked = true; return; }
+    if (touchBlocked) return;
+    const offset = first ? 32 : 36;
+    const id = data.getUint8(offset) & 0x7f;
+    if (touchActive && id !== touchPoint.id) { releaseTouch(); touchBlocked = true; return; }
     const middle = data.getUint8(offset + 2);
     const x = data.getUint8(offset + 1) | ((middle & 15) << 8);
     const y = (middle >> 4) | (data.getUint8(offset + 3) << 4);
     touchAt = clock(); touchActive = true;
-    onTouch({ x: clamp(x / 1919 * 2 - 1), y: clamp(y / 1079 * 2 - 1), active: true });
+    touchPoint = { x: clamp(x / 1919 * 2 - 1), y: clamp(y / 1079 * 2 - 1), id };
+    onTouch({ ...touchPoint, active: true, cancelled: false });
   }
   function gateMenu() { menuNeedsNeutral = true; menuDirection = ''; menuRepeatAt = 0; }
   function latchButtons() { previous = Object.fromEntries(Object.keys(ACTIONS).map(i => [i, pressed(pad, i)])); }
@@ -148,7 +155,7 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
       } else if (active()) {
         const trigger = button(pad, 7) - button(pad, 6);
         onInput({ steer: inputMode === 'inspect' ? 0 : axis(pad.axes?.[0]), throttle: inputMode === 'inspect' ? 0 : Math.abs(trigger) > 0.05 ? trigger : -axis(pad.axes?.[1]),
-          lookX: axis(pad.axes?.[2]), lookY: axis(pad.axes?.[3]), connected: true });
+          lookX: axis(pad.axes?.[2]), lookY: axis(pad.axes?.[3]), connected: true, actualSample: true });
         if (terrain.moving && now - terrainAt < 400 && now - lastPulse >= 160 - clamp(terrain.roughness, 0, 1) * 50 - clamp(Math.abs(terrain.speed || 0) / 3, 0, 1) * 30) { feedback(terrain.blocked ? 'blocked' : 'terrain'); lastPulse = now; }
       }
     }

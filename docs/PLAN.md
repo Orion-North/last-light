@@ -95,8 +95,12 @@ Scanned dry surfaces, clearer landmark geometry, and a dust-layered Mars sky imp
 place and mood. Every implementation pass gets a separate agent review and fixes;
 playtesting must still establish enjoyment and emotion. Native desktop remains deferred.
 
-Sending is now physical play: align a schematic 3D uplink with a broad sky guide,
-then explicitly send. A visible outbound packet and reply accompany the familiar
-sound pattern. Standard controllers use the right stick; optional supported USB
-DualSense touch coordinates also steer the link. iPad retains the stick/drag path.
-The story appears in short centered captions, without a corner dialogue card.
+## Terminal upload — v0.5
+
+Choose a memory, then swipe it upward in a central terminal and wait for Earth’s
+receipt. The optional USB DualSense touchpad performs the gesture; standard
+controllers hold the right stick upward or press the bottom face button. Screen
+drag and an Upload button keep iPad and keyboard play complete. The panel holds
+one memory title, one instruction, and a short response. Later silence and the
+archive have distinct call/keep actions, preserving the historical outcome.
+Short thoughts remain centered captions outside the terminal.

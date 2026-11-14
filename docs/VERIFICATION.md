@@ -125,3 +125,16 @@ Earth's recovery effort, and the personalized ending.
 - Asset budget: public assets total18,943,571bytes, including5,075,233bytes of new
   scanned maps. Six1K maps use about32MiB decoded RGBA+mips before overhead;
   this is a budget estimate, not an iPad GPU measurement.
+
+## v0.5 terminal upload — November 14, 2026
+
+- 32 JavaScript syntax checks, 12 scene contracts, local asset and GLB checks passed.
+- All 12 engine test files passed, including swipe release/cancel/identity/duration,
+  slow screen drag, real vs synthetic controller samples, and terminal modes.
+- Static build completed. Independent Sol review found no remaining critical issue.
+- Local browser: upward mouse drag entered sending, then Earth receipt; held Enter
+  across choice stayed ready; fresh Enter after pause/resume sent successfully.
+  The latter run was muted with reduced motion. No console warnings/errors observed.
+- Terminal checked at 1280×720 and 820×1180 portrait; temporary viewport reset.
+- Physical DualSense touchpad, iPad controller input and haptic feel remain untested.
+  Screen drag is verified; controller/HID paths have deterministic fixture coverage.

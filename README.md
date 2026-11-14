@@ -3,7 +3,7 @@
 A playable, real-time 3D story about NASA's Opportunity rover: discovery,
 attachment, a fading signal, and the things that remain.
 
-**Playable v0.4.** [Play on GitHub Pages](https://orion-north.github.io/last-light/). Built with parallel Codex agents. The game uses NASA's
+**Playable v0.5.** [Play on GitHub Pages](https://orion-north.github.io/last-light/). Built with parallel Codex agents. The game uses NASA's
 textured rover model, a navigable original Mars environment, an original adaptive
 score, and a complete three-act story. No account or AI API is needed by the game
 itself. A hosting provider may apply its own access gate.
@@ -39,7 +39,7 @@ the detailed NASA model alone is 11.91 MB. The optional poster adds about 2 MB.
 
 - Controller-first: left stick drives during travel and selects in menus; right stick looks and aims. Keyboard/touch remain supported.
 - Follow six local observation markers. Assisted driving is available.
-- Drive, reveal a geological feature and hold the view steady, choose a memory, then align the uplink and send it home. Geological targets are
+- Drive, reveal a geological feature and hold the view steady, choose a memory, then swipe a memory upward through the uplink terminal. Geological targets are
   authored 3D reconstructions with readable layers and grains. There is no
   photography system. Brief thoughts appear as centered cinematic captions; discovered science and
   memories remain available in the optional journal (J / □).
@@ -50,7 +50,7 @@ the detailed NASA model alone is 11.91 MB. The optional poster adds about 2 MB.
 - DualSense: left stick or R2/L2 drive; right stick looks; × interacts; D-pad
   selects; ○ goes back; △ resets camera; Options pauses.
 - Terrain rumble follows surface roughness, slope load, speed, and blocked wheels.
-  Optional original DualSense USB touchpad aiming and adaptive triggers are in Settings. iPad uses right-stick aiming. Hardware
+  Optional original DualSense USB touchpad uploads and adaptive triggers are in Settings. iPad uses right-stick or button uploads. Hardware
   feel remains untested; see [controller support](docs/CONTROLLERS.md).
 - Sound begins on entering the story unless you opt out; mute anytime.
 - Escape opens settings and pauses. Reduced motion, restart, and local progress

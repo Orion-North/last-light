@@ -237,3 +237,23 @@ User explicitly requested publication of the completed draft. Codex uploads the
 licensed textures and source through a release branch, promotes the complete
 tree to main, and verifies the Pages workflow and live game. Previous v0.3
 stability instructions applied while playtesting, before this release request.
+
+## UPLOAD-05 — terminal and deliberate upward gesture
+
+User requested a terminal view and upward touchpad upload interaction. Shared
+`develop/v0.5`, base c65f669; disjoint ownership. Keep real history and muted play.
+
+- GESTURE-05 / Sol: `src/engine/upload-gesture.js`, its test, controller input
+  release metadata/tests, handoff. Recognize deliberate upward swipe on actual
+  release; cancellation, stale input, contact changes and pause cannot send.
+- TERMINAL-05 / Terra 6.1: `src/ui/upload-terminal.js`, `src/ui/upload-terminal.css`,
+  handoff. Render concise central instrument panel with selected memory, visual
+  upload lane/status and acknowledgment, no command typing or paragraphs.
+- Codex: main integration, fallback right-stick/button/touch controls, scoped
+  build/browser checks, review, release. Input handlers and renderer remain with
+  integrator except explicitly assigned controller protocol metadata.
+
+UPLOAD-05 lanes integrated and independently reviewed. Review caught held-stick
+synthetic neutral, repeated Enter, and misleading receipt labels; all corrected.
+Slow screen drag gets an untimed path while USB swipes retain their duration gate.
+Browser swipe upload reached sending and receipt; final checks recorded in VERIFICATION.

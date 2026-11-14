@@ -59,7 +59,7 @@ browser can prevent any software cleanup; reset delivery is best effort.
 ## Integration
 
 `createController({onInput, onAction, onStatus})` starts requestAnimationFrame
-polling. Input is `{steer, throttle, lookX, lookY, connected}`. Action names are
+polling. Input is `{steer, throttle, lookX, lookY, connected, actualSample}`. Action names are
 `primary`, `back`, `journal`, `camera`, `pause`, `navUp`, `navDown`, `navLeft`,
 `navRight`. Status supplies `connected`, `id`, `haptics` (device capability),
 `adaptiveSupported` (browser capability), `adaptiveConnected` (working output),
@@ -129,9 +129,8 @@ not a claim that physical iPad controller behavior has been tested.
 ## Optional USB touch coordinates and menu scrolling
 
 The existing explicit original-DualSense USB connection also listens for touch
-reports. It does not request device access automatically. `onTouch({x,y,active})`
-reports normalized coordinates from -1 to 1, with positive Y downward. First
-active contact wins. Pause, blur, hidden pages, disconnect, destroy, and reports
+reports. It does not request device access automatically. `onTouch({x,y,active,id,cancelled})`
+reports normalized coordinates from -1 to 1, with positive Y downward. Multiple active contacts cancel the gesture until all fingers lift. Pause, blur, hidden pages, disconnect, destroy, and reports
 stale for over 250 ms release the active contact. Unsupported devices and report
 formats are ignored. Right-stick and screen controls remain the required fallback;
 the optional USB route requires `navigator.hid`, and is unavailable on iPad Safari.
@@ -147,4 +146,17 @@ Menu mode additionally emits `onScroll(deltaY)` from right-stick Y, including
 paused menus. Delta is in pixels, capped at 21 per frame and 420 per second of
 bounded frame time. The main UI chooses the scrollable dialog/panel; camera and
 driving remain neutral. USB touch does not emit a send action: the main UI owns
-aiming, confirmation, and fixed historical receipt outcomes.
+gesture recognition, confirmation, and fixed historical receipt outcomes.
+
+## v0.5 terminal uploads
+
+On the memory terminal, swipe upward and release the optional USB touchpad.
+A single contact must move at least .55 normalized units upward with at most .35
+horizontal drift, within 70–1800ms. Cancellation, stale reports, changing fingers,
+pause and disconnect never count as a release that sends. Screen/mouse drags use
+the same distance/release rules without a maximum duration for slower movement.
+
+The required controller alternative is neutral right stick, then hold up for .65s,
+or press the bottom face button. Synthetic neutral events cannot arm the gesture;
+held inputs across screens must be released first. Enter or the visible Upload
+button is also available. iPad does not need USB touchpad access to finish the game.

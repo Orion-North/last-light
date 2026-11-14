@@ -29,12 +29,13 @@ function usb() {
     async sendReport(id, data) { this.reports.push({ id, data: Array.from(data) }); } });
 }
 
-function touchReport(device, { x = 0, y = 0, active = true, second = false, reportId = 1, length = 63 } = {}) {
+function touchReport(device, { x = 0, y = 0, active = true, second = false, both = false, id = 3, reportId = 1, length = 63 } = {}) {
   const data = new DataView(new ArrayBuffer(length));
   if (length >= 40) {
     data.setUint8(32, 0x80); data.setUint8(36, 0x80);
     const offset = second ? 36 : 32;
-    data.setUint8(offset, active ? 3 : 0x83);
+    data.setUint8(offset, active ? id : 0x80 | id);
+    if (both) data.setUint8(second ? 32 : 36, 4);
     data.setUint8(offset + 1, x & 255);
     data.setUint8(offset + 2, ((x >> 8) & 15) | ((y & 15) << 4));
     data.setUint8(offset + 3, y >> 4);
@@ -49,16 +50,17 @@ test('opted-in USB touch decodes packed coordinates and either active contact', 
   touchReport(device); assert.deepEqual(f.touches, []); // no implicit permission/listener
   await f.driver.connectAdaptiveTriggers();
   touchReport(device, { x: 1919, y: 1079 });
-  assert.deepEqual(f.touches.at(-1), { x: 1, y: 1, active: true });
+  assert.deepEqual(f.touches.at(-1), { x: 1, y: 1, id: 3, active: true, cancelled: false });
   touchReport(device, { x: 0, y: 0, second: true });
-  assert.deepEqual(f.touches.at(-1), { x: -1, y: -1, active: true });
+  assert.deepEqual(f.touches.at(-1), { x: -1, y: -1, id: 3, active: true, cancelled: false });
   touchReport(device, { x: 960, y: 540 });
   assert.ok(Math.abs(f.touches.at(-1).x) < .002 && Math.abs(f.touches.at(-1).y) < .002);
   const count = f.touches.length;
   touchReport(device, { reportId: 0x31 }); touchReport(device, { length: 12 });
   assert.equal(f.touches.length, count);
+  const lastPoint = f.touches.at(-1);
   touchReport(device, { active: false });
-  assert.deepEqual(f.touches.at(-1), { x: 0, y: 0, active: false });
+  assert.deepEqual(f.touches.at(-1), { ...lastPoint, active: false, cancelled: false });
   await f.driver.destroy();
 });
 
@@ -71,21 +73,42 @@ test('USB touch releases on interruption, stale report, unplug, and explicit dis
     () => { f.doc.hidden = true; f.doc.dispatchEvent(new Event('visibilitychange')); },
   ]) {
     touchReport(device); assert.equal(f.touches.at(-1).active, true);
-    interrupt(); assert.equal(f.touches.at(-1).active, false);
+    interrupt(); assert.equal(f.touches.at(-1).active, false); assert.equal(f.touches.at(-1).cancelled, true);
     const count = f.touches.length; touchReport(device); assert.equal(f.touches.length, count);
     f.doc.hidden = false; f.doc.dispatchEvent(new Event('visibilitychange'));
     f.win.dispatchEvent(new Event('focus')); f.driver.setPaused(false);
+    touchReport(device, { active: false });
   }
   touchReport(device); f.tick(251); assert.equal(f.touches.at(-1).active, false);
+  assert.equal(f.touches.at(-1).cancelled, true); touchReport(device, { active: false });
   touchReport(device); f.pads([]); f.tick(252); assert.equal(f.touches.at(-1).active, false);
-  f.pads([f.pad]); f.tick(253); touchReport(device);
+  f.pads([f.pad]); f.tick(253); touchReport(device, { active: false }); touchReport(device);
   await f.driver.disconnectAdaptiveTriggers(); assert.equal(f.touches.at(-1).active, false);
   const count = f.touches.length; touchReport(device); assert.equal(f.touches.length, count);
-  await f.driver.connectAdaptiveTriggers(); touchReport(device);
+  await f.driver.connectAdaptiveTriggers(); touchReport(device, { active: false }); touchReport(device);
   const unplug = new Event('disconnect'); unplug.device = device; f.hid.dispatchEvent(unplug);
   assert.equal(f.touches.at(-1).active, false); await settle();
-  await f.driver.connectAdaptiveTriggers(); touchReport(device);
+  await f.driver.connectAdaptiveTriggers(); touchReport(device, { active: false }); touchReport(device);
   await f.driver.destroy(); assert.equal(f.touches.at(-1).active, false);
+});
+
+test('touch replacement and two fingers cancel instead of producing a real release', async () => {
+  const f = fixture(), device = usb(); f.pads([f.pad]); f.tick();
+  f.hid.requestDevice = async () => [device]; await f.driver.connectAdaptiveTriggers();
+  touchReport(device, { id: 5, x: 1000, y: 200 });
+  const original = f.touches.at(-1);
+  touchReport(device, { id: 6, x: 1000, y: 200 });
+  assert.deepEqual(f.touches.at(-1), { ...original, active: false, cancelled: true });
+  const count = f.touches.length;
+  touchReport(device, { id: 6 }); touchReport(device, { active: false });
+  assert.equal(f.touches.length, count); // no second release may commit
+  touchReport(device, { id: 7 }); assert.equal(f.touches.at(-1).active, true);
+  touchReport(device, { id: 7, both: true }); assert.equal(f.touches.at(-1).cancelled, true);
+  const afterTwo = f.touches.length;
+  touchReport(device, { id: 7 }); assert.equal(f.touches.length, afterTwo);
+  touchReport(device, { active: false }); touchReport(device, { id: 8, second: true });
+  assert.equal(f.touches.at(-1).id, 8); assert.equal(f.touches.at(-1).active, true);
+  await f.driver.destroy();
 });
 
 test('menu right stick scrolls while paused with bounded delta and neutral game input', async () => {
@@ -182,6 +205,20 @@ test('inspection retains right-stick look without drive and drive mode restores 
   f.driver.setPaused(true); assertNeutral(f.inputs.at(-1));
   f.driver.setPaused(false); f.driver.setInputMode('drive'); f.tick();
   assert.equal(f.inputs.at(-1).throttle, 1); assert.equal(f.inputs.at(-1).steer, 1);
+  await f.driver.destroy();
+});
+
+test('synthetic neutral reports cannot masquerade as physically sampled neutral sticks', async () => {
+  const f = fixture(); f.pad.axes[3] = -1; f.pads([f.pad]); f.tick();
+  assert.equal(f.inputs.at(-1).actualSample, true);
+  f.driver.setInputMode('inspect');
+  assertNeutral(f.inputs.at(-1)); assert.equal(f.inputs.at(-1).actualSample, false);
+  f.tick(10); assert.equal(f.inputs.at(-1).lookY, -1); assert.equal(f.inputs.at(-1).actualSample, true);
+  f.pad.axes[3] = 0; f.tick(20);
+  assert.equal(f.inputs.at(-1).lookY, 0); assert.equal(f.inputs.at(-1).actualSample, true);
+  f.driver.setPaused(true); assert.equal(f.inputs.at(-1).actualSample, false);
+  f.driver.setInputMode('menu'); f.tick(30); assert.equal(f.inputs.at(-1).actualSample, false);
+  f.win.dispatchEvent(new Event('blur')); assert.equal(f.inputs.at(-1).actualSample, false);
   await f.driver.destroy();
 });
 

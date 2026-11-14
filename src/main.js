@@ -5,6 +5,8 @@ import { createLandscape } from './ui/landscape.js';
 import { restoreSession, serializeSession } from './session.js';
 import { createController } from './input/controller.js';
 import { currentObjective, inputMode } from './ui/objectives.js';
+import { renderUploadTerminal } from './ui/upload-terminal.js';
+import { createUploadGesture, createStickUpload } from './engine/upload-gesture.js';
 import { createInvestigation } from './engine/investigation.js';
 import { createInteractionWait } from './engine/interaction-wait.js';
 import { discoveredScenes, transmissionProfile, missionConditions, endingMemories } from './ui/experience.js';
@@ -48,7 +50,10 @@ let reached = false;
 let exploring = false;
 let transmitting = false;
 let contacting = false;
-let contactQuality = 0;
+const uploadGesture = createUploadGesture();
+const pointerUpload = createUploadGesture({ maxDurationMs: Infinity });
+const stickUpload = createStickUpload();
+let uploadInputAt = 0;
 let touchContact = null;
 let contactPointer = null;
 let restoreSendFocus = false;
@@ -87,6 +92,7 @@ function setExploring(value) {
 }
 function setWorld(environment, mode) {
   document.body.dataset.environment = environment;
+  if(mode!=='game')document.body.dataset.upload='false';
   document.body.dataset.screen = mode;
   view?.setScene(environment, { power: scenes[state.sceneIndex]?.power ?? 100, signal: scenes[state.sceneIndex]?.signal ?? 100 });
   view?.setMode?.(mode);
@@ -120,11 +126,6 @@ function telemetry(scene) {
   return `<aside class="flight-status" aria-label="Dramatized mission conditions">${missionConditions(scene).map(text=>`<span>${text}</span>`).join('')}<span aria-label="${state.memories.length} memories">◇ ${state.memories.length}</span></aside>`;
 }
 
-function contactMark(mode, waiting = false) {
-  const answered = mode === 'reply' && !waiting;
-  return `<div class="contact-mark ${waiting ? 'waiting' : ''} ${mode}" aria-hidden="true"><span>●</span><i></i><span>${answered ? '●' : '○'}</span></div>`;
-}
-
 function syncInputMode() {
   const mode = inputMode({screen, phase:state.phase, modal:!!document.querySelector('dialog[open]'), investigating:investigating || contacting, travelling:!reached});
   controller?.setInputMode?.(mode);
@@ -136,8 +137,7 @@ function syncInputMode() {
 function updateInputHint() {
   const moving = screen === 'game' && state.phase === 'observe' && !reached;
   if(contacting) {
-    const family=controllerFamily(controllerId,settings.prompts);
-    $('#input-hint').innerHTML = controllerConnected ? `${touchSurfaceAvailable?'Slide touchpad / ':''}${controllerGlyph('look',family)} Aim link · ${controllerGlyph('primary',family)} Send` : 'Arrow keys / drag to aim · Enter / tap to send';
+    $('#input-hint').textContent = uploadPrompt();
     return;
   }
   if(investigating) {
@@ -190,8 +190,13 @@ function renderGame({ focus = false } = {}) {
   const choice = scene.choices.find(c=>c.id===state.selected);
   const goal = goals[state.sceneIndex];
   const contact = transmissionProfile(scene);
-  if(state.phase==='transmit' && !transmitting && scene.signal>0 && !graphicsError && !state.paused) {
-    if(!contacting) {contacting=true;contactQuality=0;touchContact=null;view?.setContact?.(true,{mode:contact.mode});announce('Aim the link toward the ring, then send your memory.');}
+  document.body.dataset.upload = ['transmit','received'].includes(state.phase) ? 'true' : 'false';
+  if(state.phase==='transmit' && !transmitting && scene.signal>0 && !state.paused) {
+    if(!contacting) {
+      contacting=true;resetUpload();
+      view?.setContact?.(true,{mode:contact.mode});view?.setContact?.(false);
+      announce(uploadPrompt());
+    }
   } else stopContact();
   $('#waypoint-hud').hidden=!goal || reached || state.phase!=='observe';
   $('#waypoint-hud').textContent=goal ? `◇ ${goal.label}` : '';
@@ -205,11 +210,13 @@ function renderGame({ focus = false } = {}) {
     if (state.sceneIndex <= 1) content += '<p class="pace-note">Take your time. Exploring does not use up power.</p>';
   } else if (state.phase === 'choose') {
     content = `<p class="discovery-line">${escape(scene.discovery)}</p><div class="choices compact-choices">${scene.choices.map(c=>`<button class="choice" data-action="choose" data-choice="${escape(c.id)}"><span class="choice-label">${escape(c.shortLabel || c.label)}</span><span class="choice-detail">Choose a memory ◇</span></button>`).join('')}</div>`;
-  } else if (state.phase === 'transmit') {
-    content = `<p class="inner-voice">${escape(choice.shortReply || choice.reply)}</p>${transmitting ? `${contactMark(contact.mode,true)}<p class="contact-status" role="status">${contact.waiting}</p>` : `${contacting ? '<div class="uplink-instrument"><p id="contact-hint">Aim the light toward the distant ring</p><progress id="contact-progress" max="1" value="0" aria-label="Link alignment"></progress><small>Move the light into the ring, then send.</small></div>' : ''}<button class="primary-button" data-action="transmit" ${contacting?'disabled':''}>${contact.action} ${arrow}</button>`}`;
-  } else {
-    content = `${contactMark(contact.mode)}<p class="transmission-label">${contact.result}</p><p class="transmission-text" tabindex="-1">${escape(scene.response || scene.transmission)}</p><button class="quiet-button continue-button" data-action="next">${scenes[state.sceneIndex+1]?.end ? 'Carry these memories' : scene.signal ? 'Keep going' : 'When you’re ready'} ${arrow}</button>`;
+  } else if (state.phase === 'transmit' || state.phase === 'received') {
+    content = renderUploadTerminal({title:choice?.memory?.title || scene.title,mode:contact.mode,
+      stage:state.phase==='received'?'received':transmitting?'sending':'ready',
+      prompt:state.phase==='received'?'':transmitting?contact.waiting:contacting?uploadPrompt():contact.mode==='archive'?'Keep this moment in the mission archive.':'Send a call. Listen for a reply.',
+      response:scene.response || scene.transmission});
   }
+
   app.innerHTML = `<section class="play-screen"><header class="play-heading"><p class="eyebrow">${escape(scene.sol)}</p><h1 tabindex="-1">${escape(state.phase==='observe' ? scene.approachTitle || scene.title : scene.title)}</h1></header>${telemetry(scene)}<aside class="mission-objective" aria-label="Current objective"><span>${state.phase==='observe'?'EXPLORE':state.phase==='choose'?'REMEMBER':state.phase==='transmit'?'CONNECT':'CONTINUE'}</span><strong>${escape(currentObjective({scene,phase:state.phase,goal,reached,investigating,transmitting}))}</strong></aside><article class="interaction-dock" aria-label="Current interaction" aria-busy="${scanning || transmitting}">${content}<div class="dock-footer"><span>${scene.act===1?'WONDER':scene.act===2?'THE STORM':'REMEMBRANCE'}</span><button class="quiet-button" data-action="journal">Journal</button></div></article></section>`;
   setExploring(exploring);
   $('#world-controls').hidden = false;
@@ -264,14 +271,28 @@ function scan() {
   },1000);
 }
 
+function uploadPrompt() {
+  if(controllerConnected) return touchSurfaceAvailable ? 'Swipe up on the touchpad to upload.' : 'Push the right stick up to upload, or press the bottom face button.';
+  return settings.touch ? 'Swipe the memory upward, or tap Upload.' : 'Drag the memory upward, or press Enter to upload.';
+}
+function updateUploadProgress(result) {
+  if(!contacting || state.paused)return;
+  const progress=$('#upload-progress');if(progress) {progress.value=result.progress;progress.style.setProperty('--upload-progress',result.progress);}
+  app.querySelector('.upload-terminal')?.style.setProperty('--upload-progress',result.progress);
+  sound.setActivity?.({contactActive:result.progress>0,contactQuality:result.progress});
+  if(result.commit)sendMemory();
+}
+function resetUpload() {
+  uploadGesture.reset();pointerUpload.sample({active:false,cancelled:true},performance.now());pointerUpload.reset();stickUpload.reset();contactPointer=null;uploadInputAt=performance.now();
+  updateUploadProgress({progress:0,commit:false});
+}
 function stopContact() {
   if(!contacting)return;
-  contacting=false;touchContact=null;contactPointer=null;view?.setContact?.(false);view?.setContactInput?.({x:0,y:0});sound.setActivity?.({contactActive:false});
+  contacting=false;resetUpload();view?.setContact?.(false);view?.setContactInput?.({x:0,y:0});sound.setActivity?.({contactActive:false});
 }
 
 function sendMemory() {
   if (transmitting || state.paused || state.phase !== 'transmit' || screen !== 'game') return;
-  if(contacting && contactQuality<.75) {announce('Aim the light toward the distant ring, then send.');return;}
   stopContact();
   const contact = transmissionProfile(scenes[state.sceneIndex]);
   if(scenes[state.sceneIndex].signal>0) view?.sendContact?.(contact.mode);
@@ -403,7 +424,7 @@ $('#confirm-restart').addEventListener('click',()=>{
 });
 $('.brand').addEventListener('click',event=>{event.preventDefault();cancelScan();renderTitle();window.scrollTo(0,0);});
 $('#explore-toggle').addEventListener('click',()=>setExploring(!exploring));
-$('#camera-reset').addEventListener('click',()=>{if(contacting)view?.setContact?.(true,{mode:transmissionProfile(scenes[state.sceneIndex]).mode});else if(investigating)view?.setInvestigation?.(true);else view?.focusRover?.();});
+$('#camera-reset').addEventListener('click',()=>{if(contacting)resetUpload();else if(investigating)view?.setInvestigation?.(true);else view?.focusRover?.();});
 
 app.addEventListener('click',event=>{
   const button=event.target.closest('[data-action]');
@@ -441,16 +462,17 @@ function drive() {
   view?.setDrive?.({forward:Math.max(-1,Math.min(1,forward+padInput.throttle)),turn:Math.max(-1,Math.min(1,turn-padInput.steer))});
 }
 window.addEventListener('keydown',event=>{
+  if(event.repeat && ['Enter',' '].includes(event.key)) {event.preventDefault();return;}
   if (event.key==='Escape' && !document.querySelector('dialog[open]')) { event.preventDefault();openModal('#settings-modal');return; }
   if (event.key.toLowerCase()==='j' && !document.querySelector('dialog[open]') && screen!=='title') {event.preventDefault();openJournal();return;}
   if (['INPUT','TEXTAREA','SELECT'].includes(event.target.tagName) || document.querySelector('dialog[open]')) return;
   const key=event.key.toLowerCase();
   if(contacting && key==='enter' && !event.target.closest('button,a,input,summary')) {event.preventDefault();sendMemory();return;}
-  if((investigating || contacting) && ['arrowup','arrowdown','arrowleft','arrowright'].includes(key)) {event.preventDefault();pressed.add(key);inspectionLook();return;}
+  if(investigating && ['arrowup','arrowdown','arrowleft','arrowright'].includes(key)) {event.preventDefault();pressed.add(key);inspectionLook();return;}
   if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(key) && screen==='game') {event.preventDefault();pressed.add(key);drive();}
 });
-function inspectionLook() {const value={x:(pressed.has('arrowright')?1:0)-(pressed.has('arrowleft')?1:0),y:(pressed.has('arrowdown')?1:0)-(pressed.has('arrowup')?1:0)};if(contacting)view?.setContactInput?.(value);else if(investigating)view?.setLook?.(value);}
-window.addEventListener('keyup',event=>{pressed.delete(event.key.toLowerCase());if(investigating || contacting)inspectionLook();else drive();});
+function inspectionLook() {const value={x:(pressed.has('arrowright')?1:0)-(pressed.has('arrowleft')?1:0),y:(pressed.has('arrowdown')?1:0)-(pressed.has('arrowup')?1:0)};if(investigating)view?.setLook?.(value);}
+window.addEventListener('keyup',event=>{pressed.delete(event.key.toLowerCase());if(investigating)inspectionLook();else drive();});
 window.addEventListener('blur',()=>{pressed.clear();drive();});
 document.querySelectorAll('[data-drive]').forEach(button=>{
   const key={forward:'w',back:'s',left:'a',right:'d'}[button.dataset.drive];
@@ -470,16 +492,22 @@ canvas.addEventListener('world-status',event=>{
   if(status==='error') { $('.world').dataset.fallback='true'; announce(message); }
   if(screen==='game' && state.phase==='observe') renderGame();
 });
-canvas.addEventListener('pointerdown',event=>{if(contacting) {contactPointer={x:event.clientX,y:event.clientY};canvas.setPointerCapture(event.pointerId);}});
-canvas.addEventListener('pointermove',event=>{if(contacting && contactPointer) {view?.nudgeContact?.({x:(event.clientX-contactPointer.x)*.004,y:(event.clientY-contactPointer.y)*.004});contactPointer={x:event.clientX,y:event.clientY};}});
-for(const type of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(type,()=>{contactPointer=null;if(contacting)view?.setContactInput?.({x:0,y:0});});
-canvas.addEventListener('contact-sample',event=>{
-  if(!contacting || state.paused)return;
-  contactQuality=event.detail.quality;
-  const progress=$('#contact-progress');if(progress)progress.value=contactQuality;
-  const hint=$('#contact-hint');if(hint)hint.textContent=contactQuality>=.75?'Link aligned. Send your memory.':'Aim the light toward the distant ring';
-  const send=app.querySelector('[data-action="transmit"]');if(send)send.disabled=contactQuality<.75;
-  sound.setActivity?.({contactActive:true,contactQuality});
+app.addEventListener('pointerdown',event=>{
+  const body=event.target.closest('.upload-terminal__body');
+  if(!contacting || state.paused || !body || contactPointer || touchContact)return;
+  event.preventDefault();const rect=body.getBoundingClientRect();
+  contactPointer={id:event.pointerId,rect,body};stickUpload.reset();body.setPointerCapture(event.pointerId);
+  updateUploadProgress(pointerUpload.sample({x:(event.clientX-rect.left)/rect.width*2-1,y:Math.max(-1,Math.min(1,(event.clientY-rect.top)/rect.height*2-1)),active:true,id:event.pointerId},performance.now()));
+});
+app.addEventListener('pointermove',event=>{
+  if(!contacting || !contactPointer || event.pointerId!==contactPointer.id)return;
+  event.preventDefault();const {rect}=contactPointer;
+  updateUploadProgress(pointerUpload.sample({x:(event.clientX-rect.left)/rect.width*2-1,y:Math.max(-1,Math.min(1,(event.clientY-rect.top)/rect.height*2-1)),active:true,id:event.pointerId},performance.now()));
+});
+for(const type of ['pointerup','pointercancel','lostpointercapture'])app.addEventListener(type,event=>{
+  if(!contactPointer || event.pointerId!==contactPointer.id)return;
+  const {rect}=contactPointer;contactPointer=null;stickUpload.reset();uploadGesture.reset();
+  updateUploadProgress(pointerUpload.sample({x:(event.clientX-rect.left)/rect.width*2-1,y:Math.max(-1,Math.min(1,(event.clientY-rect.top)/rect.height*2-1)),active:false,cancelled:type!=='pointerup',id:event.pointerId},performance.now()));
 });
 canvas.addEventListener('inspection-sample',event=>{
   if(!investigating || state.paused) return;
@@ -511,7 +539,7 @@ function controllerAction(action) {
   if(action==='pause') { if(dialog) dialog.close(); else openModal('#settings-modal'); return; }
   if(action==='back') { if(dialog) dialog.close(); else if(exploring) setExploring(false); else openModal('#settings-modal'); return; }
   if(action==='journal') { if(dialog?.id==='journal-modal') dialog.close(); else if(!dialog && screen!=='title') openJournal(); return; }
-  if(action==='camera' && !dialog) {if(contacting)view?.setContact?.(true,{mode:transmissionProfile(scenes[state.sceneIndex]).mode});else if(investigating)view?.setInvestigation?.(true);else view?.focusRover?.();return;}
+  if(action==='camera' && !dialog) {if(contacting)resetUpload();else if(investigating)view?.setInvestigation?.(true);else view?.focusRover?.();return;}
   const targets=menuTargets();
   if(action.startsWith('nav')) {
     if(exploring) setExploring(false);
@@ -541,7 +569,8 @@ controller=createController({
   onInput(input) {
     padInput={throttle:input.throttle,steer:input.steer};drive();
     if(contacting) {
-      if(!touchContact && !contactPointer && !['arrowup','arrowdown','arrowleft','arrowright'].some(key=>pressed.has(key))) view?.setContactInput?.({x:input.lookX,y:input.lookY});
+      const now=performance.now(),dt=(now-uploadInputAt)/1000;uploadInputAt=now;
+      if(input.actualSample && !touchContact && !contactPointer)updateUploadProgress(stickUpload.sample(input.lookY,dt));
       view?.setLook?.({x:0,y:0});return;
     }
     if(!investigating || !['arrowup','arrowdown','arrowleft','arrowright'].some(key=>pressed.has(key))) view?.setLook?.({x:screen==='game'&&!state.paused&&state.phase==='observe'?input.lookX:0,y:screen==='game'&&!state.paused&&state.phase==='observe'?input.lookY:0});
@@ -549,11 +578,11 @@ controller=createController({
   onAction:controllerAction,
   onScroll(deltaY) {const target=document.querySelector('dialog[open]') || app.querySelector('.brief-ending,.interaction-dock');target?.scrollBy({top:deltaY,behavior:'instant'});},
   onTouch(point) {
-    if(!contacting || state.paused)return;
-    if(point.active) {
-      if(touchContact)view?.nudgeContact?.({x:(point.x-touchContact.x)*1.2,y:(point.y-touchContact.y)*1.2});
-      touchContact=point;
-    } else {touchContact=null;view?.setContactInput?.({x:0,y:0});}
+    const began=point.active&&!touchContact;touchContact=point.active?point:null;
+    const result=uploadGesture.sample(point,performance.now());
+    if(!contacting || state.paused || contactPointer)return;
+    if(began || !point.active)stickUpload.reset();
+    updateUploadProgress(result);
   },
   onStatus(status) {
     const disconnected = controllerConnected && !status.connected;
@@ -571,16 +600,14 @@ controller=createController({
     refreshControllerPrompts();
     $('#adaptive-connect').disabled=!status.adaptiveSupported || status.adaptiveOpen;
     $('#adaptive-disconnect').hidden=!status.adaptiveOpen;
-    $('#adaptive-status').textContent=status.message || (status.adaptiveConnected?'USB touchpad and trigger features connected.':status.adaptiveSupported?'Optional: original DualSense via USB. Click or tap to connect.':'USB features unavailable here. Use the right stick to aim.');
+    $('#adaptive-status').textContent=status.message || (status.adaptiveConnected?'USB touchpad and trigger features connected.':status.adaptiveSupported?'Optional: original DualSense via USB. Click or tap to connect.':'USB features unavailable here. Use the right stick to upload.');
   },
 });
 // An isolated preview can suppress physical pad input while another tab is playtested.
 controller.setEnabled(!padPreviewMuted);
 controller.setHaptics(settings.haptics && !padPreviewMuted);
 $('#haptics-setting').checked=settings.haptics;
-$('#haptics-setting').addEventListener('change',event=>{settings.haptics=event.target.checked;// An isolated preview can suppress physical pad input while another tab is playtested.
-controller.setEnabled(!padPreviewMuted);
-controller.setHaptics(settings.haptics && !padPreviewMuted);applyMotion();});
+$('#haptics-setting').addEventListener('change',event=>{settings.haptics=event.target.checked;controller.setHaptics(settings.haptics && !padPreviewMuted);applyMotion();});
 $('#adaptive-connect').addEventListener('click',()=>controller.connectAdaptiveTriggers());
 $('#adaptive-disconnect').addEventListener('click',()=>controller.disconnectAdaptiveTriggers());
 window.addEventListener('blur',()=>{padInput={throttle:0,steer:0};pause();});
