@@ -18,7 +18,7 @@ const faceLabels = {
 export function controllerButtonName(action, family = 'generic') {
   const face = faceActions.indexOf(action);
   if (face >= 0) return (faceLabels[family] || faceLabels.generic)[face];
-  return { move: 'Left stick', look: 'Right stick', select: 'D-pad',
+  return { move: 'Left stick', look: 'Right stick', swipe: 'Touchpad', select: 'D-pad',
     pause: family === 'playstation' ? 'Options' : 'Menu',
     forward: family === 'playstation' ? 'R2' : 'Right trigger',
     reverse: family === 'playstation' ? 'L2' : 'Left trigger' }[action] || 'Controller';
@@ -37,6 +37,8 @@ export function controllerGlyph(action, family = 'generic') {
     shape = `<circle cx="16" cy="16" r="14"/><text x="16" y="21" text-anchor="middle" fill="currentColor" stroke="none" font-size="15" font-family="sans-serif" font-weight="600">${faceLabels.xbox[face]}</text>`;
   } else if (face >= 0) {
     shape = [[16,24],[24,16],[8,16],[16,8]].map(([x,y],i)=>`<circle cx="${x}" cy="${y}" r="4.5" ${i===face?'fill="currentColor"':'opacity=".4"'}/>`).join('');
+  } else if (action === 'swipe') {
+    shape = '<rect x="3" y="7" width="26" height="18" rx="4"/><path d="M16 22V11m-5 5 5-5 5 5"/>';
   } else if (action === 'move' || action === 'look') {
     shape = `<path d="M16 2v3m0 22v3M2 16h3m22 0h3"/><circle cx="16" cy="16" r="10"/><text x="16" y="20.5" text-anchor="middle" fill="currentColor" stroke="none" font-size="13" font-family="sans-serif">${action==='move'?'L':'R'}</text>`;
   } else if (action === 'select') {

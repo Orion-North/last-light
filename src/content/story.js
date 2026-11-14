@@ -21,14 +21,14 @@ export const scenes = [
   {
     id: 'first-morning', act: 1, chapter: 'I · A world to bring home',
     subtitle: 'I have something to show them.',
-    objective: 'Open your eyes',
-    discovery: 'Pancam’s paired cameras help scientists see depth, inspect rocks, and choose where to drive.',
+    objective: 'Raise your cameras',
+    discovery: 'Choose your first view of Mars to send home.',
     response: 'Earth, imagined: We see what you see. Good morning.',
     sol: 'SOL 01 · JANUARY 2004', title: 'Someone is waiting.',
     text: 'There is ground beneath you now. A shallow bowl of red earth. Pale stone. A sky no one has stood under.\n\nYour cameras turn. Somewhere impossibly far away, people lean toward their screens. They have spent years imagining this place. For a moment, you are their eyes.\n\nYou were built for ninety Martian days. This is the first.',
     thought: 'I do not know what a morning is yet. But I have something to show them.',
     environment: 'dawn', power: 100, signal: 100,
-    actionLabel: 'Open your eyes',
+    actionLabel: 'Raise your cameras',
     observation: {
       title: 'Two little eyes. A whole new world.',
       text: 'The panoramic camera, Pancam, sits high on the mast. Its paired cameras help scientists see depth as well as detail. They can study the ground, choose where to drive, and decide which rocks deserve a closer look.\n\nAn image is more than a view. It is the beginning of the next question.',

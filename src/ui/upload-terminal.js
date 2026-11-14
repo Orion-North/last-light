@@ -30,7 +30,16 @@ export function renderUploadTerminal({ title, mode, stage, prompt, response }) {
     <header class="upload-terminal__header"><span>${header}</span><span class="upload-terminal__status"><b aria-hidden="true"></b>${status}</span></header>
     <div class="upload-terminal__body">
       <div class="upload-terminal__memory"><span class="upload-terminal__label">SELECTED MEMORY</span><h2>${escapeHtml(title)}</h2><p class="upload-terminal__prompt">${escapeHtml(prompt)}</p></div>
-      <div class="upload-terminal__lane" aria-hidden="true">${upload ? '<div class="upload-terminal__chevron">⌃</div><div class="upload-terminal__track"><span></span><span></span><span></span></div><div class="upload-terminal__packet"><span>MEMORY</span><strong>↑</strong></div>' : '<div class="upload-terminal__channel">◌</div>'}</div>
+      <div class="upload-terminal__instrument" aria-hidden="true">
+        <div class="upload-terminal__destination"><b></b><span>${mode === 'silence' ? 'OPPORTUNITY' : mode === 'archive' ? 'MISSION ARCHIVE' : 'EARTH'}</span></div>
+        <div class="upload-terminal__lane">
+          <svg class="upload-terminal__dish" viewBox="0 0 320 320" fill="none"><circle cx="160" cy="160" r="144"/><circle cx="160" cy="160" r="119"/><ellipse cx="160" cy="160" rx="65" ry="144"/><path d="M16 160h288M160 16v288M58 58l204 204M58 262 262 58"/><path class="upload-terminal__reflector" d="M39 205Q160 318 281 205M67 237Q160 290 253 237M160 160l-40 117m40-117 40 117"/></svg>
+          <span class="upload-terminal__axis"></span>
+          <span class="upload-terminal__bearing">${mode === 'archive' ? 'PRESERVE' : mode === 'silence' ? 'LISTEN' : 'DEEP SPACE'}</span>
+          ${upload ? '<div class="upload-terminal__packet"><span>MEMORY</span><strong>↑</strong></div>' : '<div class="upload-terminal__channel">◌</div>'}
+        </div>
+        <span class="upload-terminal__origin">${mode === 'silence' ? 'EARTH / RECOVERY' : mode === 'archive' ? 'EARTH / REMEMBRANCE' : 'OPPORTUNITY / MARS'}</span>
+      </div>
     </div>
     ${upload && stage === 'ready' ? '<div class="upload-terminal__progress"><span>GESTURE</span><progress id="upload-progress" max="1" value="0" aria-label="Upload gesture progress" style="--upload-progress:0"></progress></div>' : ''}
     ${stage === 'received' ? `<div class="upload-terminal__response" role="status"><span>${status}</span><p>${escapeHtml(response)}</p></div>` : ''}

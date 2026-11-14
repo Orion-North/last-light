@@ -15,4 +15,4 @@ const server = http.createServer(async (req, res) => {
     res.end(await readFile(target));
   } catch { res.writeHead(404); res.end('Not found'); }
 });
-server.listen(port, '0.0.0.0', () => console.log(`Local: http://localhost:${port}`));
+server.listen(port, '127.0.0.1', () => console.log(`Local: http://localhost:${port}`));

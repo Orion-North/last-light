@@ -138,3 +138,23 @@ Earth's recovery effort, and the personalized ending.
 - Terminal checked at 1280×720 and 820×1180 portrait; temporary viewport reset.
 - Physical DualSense touchpad, iPad controller input and haptic feel remain untested.
   Screen drag is verified; controller/HID paths have deterministic fixture coverage.
+
+## v0.6 authored presentation and onboarding — November 14, 2026
+
+- 34 JavaScript syntax checks, 12 scene contracts and referenced assets passed.
+  All 13 engine test files passed, including paused briefing time, speed/braking,
+  and uplink mode semantics. Static build passed.
+- Three parallel Sol lanes researched professional game information design,
+  implemented the interface and geology, and independently reviewed lifecycle.
+- Browser: full opening completed; revised twelve-second opening paused, resumed
+  after enabling reduced motion, and skipped with Enter to the same first action.
+  Saved sessions resumed directly. First upload worked by drag; next by button.
+- Both routes reached their targets. Manual keyboard drive moved the rover.
+  Last Chance and Berry Bowl recorded after moving the view and holding still.
+  Updated rock textures, grain size/material, brushed patch and close camera were
+  visually checked. Final glyph-led control guide is at the left edge.
+- Checked 1280×720 desktop and 820×1180 portrait; compact 390×844 uplink was checked
+  before the final control-legend change and its overlapping telemetry removed.
+  Temporary viewport restored. No browser warnings/errors observed.
+- Real iPad GPU performance, physical DualSense gestures/haptics, and emotional
+  impact still require the user's device playtest. Automated checks cannot prove them.

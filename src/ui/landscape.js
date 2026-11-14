@@ -4,13 +4,13 @@ import { sampleSurface } from '../input/surface.js';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
+import { mergeVertices, mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 /** A real, navigable Martian diorama. NASA's rover is loaded from a local GLB. */
 export function createLandscape(canvas) {
   const noop = () => {};
   const empty = { setScene: noop, setReducedMotion: noop, setPaused: noop,
-    setMode: noop, setDrive: noop, stopDrive: noop, setInvestigation: noop, setContact: noop, setContactInput: noop, nudgeContact: noop, sendContact: noop, cancelContactPulse: noop, focusRover: noop, inspect: noop,
+    setMode: noop, setIntro: noop, setDrive: noop, stopDrive: noop, setInvestigation: noop, setContact: noop, setContactInput: noop, nudgeContact: noop, sendContact: noop, cancelContactPulse: noop, focusRover: noop, inspect: noop,
     setWaypoint: noop, setObservationTarget: noop, travelToWaypoint: noop, reset: noop, destroy: noop };
   const status = (state, message) => canvas?.dispatchEvent(new CustomEvent('world-status', {
     detail: { state, message }, bubbles: true,
@@ -71,6 +71,7 @@ export function createLandscape(canvas) {
   let look = {x:0,y:0};
   let lastTrackPosition = new THREE.Vector3();
   let cameraTween = null;
+  let intro = null;
   let waypoint = null;
   let observationTarget = null;
   let inspecting = false;
@@ -212,13 +213,14 @@ export function createLandscape(canvas) {
   strataMaterials.forEach(material => {
     setDrySurface(material, .9);
     setSedimentSurface(material);
-    material.userData.normalStrength = .14;
+    material.userData.normalStrength = .42;
   });
   // Clockwise weathered silhouette: broad low shoulders, chipped rising crown.
-  const outcropOutline = [[-1.5, .06], [-1.29, .88], [-.97, 1.23],
-    [-.48, 1.34], [.22, 1.31], [.83, 1.18], [1.31, .79],
+  const outcropOutline = [[-1.5, .06], [-1.32, .58], [-1.03, .99],
+    [-.63, 1.36], [-.13, 1.3], [.43, 1.13], [.99, .86],
     [1.48, .13], [.92, -.09], [-.91, -.07]];
   const lastChance = new THREE.Group();
+  const laminaBatches = strataMaterials.map(() => []);
   lastChance.position.set(7, surfaceHeight(7, -8.9) - .08, -8.9);
   // Each packet has inclined laminae truncated against a different boundary.
   // Their alternating dips make the crossing pattern readable in actual relief.
@@ -266,23 +268,43 @@ export function createLandscape(canvas) {
       }
       if (polygon.length < 3) continue;
       const shape = new THREE.Shape(polygon.map(([x, y]) => new THREE.Vector2(x, y)));
-      const geometry = own(new THREE.ExtrudeGeometry(shape, { depth: .95,
+      let geometry = own(new THREE.ExtrudeGeometry(shape, { depth: .72,
         bevelEnabled: true, bevelSegments: 2, steps: 2, bevelSize: .017, bevelThickness: .012 }));
       const vertices = geometry.attributes.position;
+      const uv = geometry.attributes.uv;
+      const faceNormals = geometry.attributes.normal;
       for (let i = 0; i < vertices.count; i += 1) {
         const x = vertices.getX(i), y = vertices.getY(i), z = vertices.getZ(i);
+        // Continuous metre-scale mapping on the exposed face, independent of
+        // triangulation and individual lamina shape. Side faces use their depth.
+        const front = Math.abs(faceNormals.getZ(i)) > .6;
+        uv.setXY(i, (front ? x : x + z) * 1.35, y * 1.35);
         vertices.setXYZ(i, x + .016 * Math.sin(y * 19 + z * 7),
-          y + .022 * Math.sin(x * 5.7) + .009 * Math.sin(x * 17 + z * 5),
-          z + .035 * noise(x * 8 + 12, y * 9));
+          y + .065 * Math.sin(x * 2.3 + packet * 1.7) + .014 * Math.sin(x * 13 + z * 5),
+          z + .035 * noise(x * 8 + 12, y * 9)
+            + .07 * Math.sin(x * 2.8 + packet) - .045 * Math.cos(y * 11 + x * 3));
       }
       vertices.needsUpdate = true;
+      // ExtrudeGeometry is non-indexed: recomputing normals directly produces
+      // a visibly faceted fan on each broad cap. Weld before smoothing instead.
+      geometry.deleteAttribute('normal');
+      const source = geometry;
+      geometry = own(mergeVertices(source, .0001));
+      resources.delete(source); source.dispose();
       geometry.computeVertexNormals();
-      const layer = new THREE.Mesh(geometry, strataMaterials[(band + 12 + packet) % 4]);
-      layer.position.z = -.45 + Math.sin(band * 2.4 + packet) * .008;
-      layer.castShadow = layer.receiveShadow = true;
-      lastChance.add(layer);
+      geometry.translate(0, 0, -.18 + Math.sin(band * 2.4 + packet) * .016);
+      laminaBatches[(band + 12 + packet) % 4].push(geometry);
     }
   }
+  // Four material batches instead of one draw call per lamina.
+  laminaBatches.forEach((batch, index) => {
+    if (!batch.length) return;
+    const geometry = own(mergeGeometries(batch));
+    batch.forEach(part => { resources.delete(part); part.dispose(); });
+    const mesh = new THREE.Mesh(geometry, strataMaterials[index]);
+    mesh.castShadow = mesh.receiveShadow = true;
+    lastChance.add(mesh);
+  });
   const outcropBack = new THREE.Mesh(rockGeometries[1], strataMaterials[1]);
   outcropBack.position.set(-.08, .45, -.35);
   outcropBack.scale.set(1.35, .65, .57);
@@ -297,41 +319,74 @@ export function createLandscape(canvas) {
 
   const berryBowl = new THREE.Group();
   berryBowl.position.set(-5, surfaceHeight(-5, -11.8), -11.8);
-  const bowlOutline = [[-1.43, -.3], [-1.15, -.77], [-.47, -.9],
-    [.24, -.85], [1.1, -.65], [1.47, -.08], [1.24, .48],
-    [.68, .85], [-.18, .88], [-.9, .63], [-1.48, .15]];
-  const bowlShape = new THREE.Shape(bowlOutline.map(([x, z]) => new THREE.Vector2(x, z)));
-  const bowlGeometry = own(new THREE.ExtrudeGeometry(bowlShape, { depth: .15,
-    bevelEnabled: true, bevelSegments: 1, bevelSize: .045, bevelThickness: .035, steps: 1 }));
-  bowlGeometry.rotateX(-Math.PI / 2);
-  const bowlVertices = bowlGeometry.attributes.position;
-  for (let i = 0; i < bowlVertices.count; i += 1) {
-    const x = bowlVertices.getX(i), y = bowlVertices.getY(i), z = bowlVertices.getZ(i);
-    bowlVertices.setY(i, y + .018 * Math.sin(x * 7 + z * 4));
+  // An eroded hollow in intact bedrock, with a broken perimeter and concave
+  // surface: the loose concretions collect here rather than floating on a plate.
+  function bowlHeight(x, z) {
+    const radius = Math.hypot((x + .18) / 1.42, (z - .06) / .9);
+    return .105 + .18 * THREE.MathUtils.smoothstep(radius, .18, .94)
+      + .025 * Math.sin(x * 7 + z * 4) + .014 * Math.sin(z * 19 - x * 3)
+      - .045 * Math.exp(-((x - .67) ** 2 + (z + .24) ** 2) / .008)
+      - .035 * Math.exp(-((x + .71) ** 2 + (z - .31) ** 2) / .006);
   }
-  bowlGeometry.computeVertexNormals();
-  const slab = new THREE.Mesh(bowlGeometry, strataMaterials[2]);
+  const bowlGeometry = own(makeBowlGeometry(bowlHeight));
+  const bowlMaterial = own(strataMaterials[2].clone());
+  setDrySurface(bowlMaterial, .9);
+  setSedimentSurface(bowlMaterial);
+  setBowlSurface(bowlMaterial);
+  const slab = new THREE.Mesh(bowlGeometry, bowlMaterial);
   slab.receiveShadow = slab.castShadow = true;
   berryBowl.add(slab);
   const grainGeometry = own(new THREE.SphereGeometry(1, 12, 8));
-  const grainMaterial = own(new THREE.MeshStandardMaterial({ color: '#4c5358',
+  const grainVertices = grainGeometry.attributes.position;
+  for (let i = 0; i < grainVertices.count; i += 1) {
+    const x = grainVertices.getX(i), y = grainVertices.getY(i), z = grainVertices.getZ(i);
+    const wear = .96 + .045 * Math.sin(x * 9 + y * 8) * Math.sin(z * 7 - y * 4);
+    grainVertices.setXYZ(i, x * wear, y * wear, z * wear);
+  }
+  grainGeometry.computeVertexNormals();
+  const grainMaterial = own(new THREE.MeshStandardMaterial({ color: '#a9adb0',
     roughness: .79, metalness: .05, bumpMap: outcropTexture, bumpScale: .012 }));
-  const grains = new THREE.InstancedMesh(grainGeometry, grainMaterial, 68);
+  const grains = new THREE.InstancedMesh(grainGeometry, grainMaterial, 96);
   const grainRandom = seededRandom(7403);
   for (let i = 0; i < grains.count; i += 1) {
     const angle = grainRandom() * Math.PI * 2;
-    const radius = Math.sqrt(grainRandom()) * 1.08;
-    const x = Math.cos(angle) * radius, z = Math.sin(angle) * radius * .65;
-    const size = .055 + grainRandom() * .035;
-    dummy.position.set(x, .19 + size - radius * .025, z);
-    dummy.rotation.set(0, 0, 0);
-    dummy.scale.setScalar(size);
+    const radius = Math.pow(grainRandom(), .8) * 1.08;
+    let x = Math.cos(angle) * radius;
+    const z = Math.sin(angle) * radius * .65;
+    // A deliberately brushed comparison patch exposes the host rock beside the
+    // nodules. Keep its whole radius free, including overhanging grain edges.
+    if (Math.hypot(x - .5, z - .16) < .38) x -= .78;
+    const size = (.055 + grainRandom() * .035) * .75;
+    // Every third nodule remains partly locked into the host sediment.
+    const embedded = i % 3 === 0;
+    dummy.position.set(x, bowlHeight(x, z) + size * (embedded ? .15 : .72), z);
+    dummy.rotation.set(grainRandom() * 3, grainRandom() * 6, grainRandom() * 3);
+    dummy.scale.set(size, size * (.84 + grainRandom() * .2), size);
+    grains.setColorAt(i, new THREE.Color().setHSL(.59, .045, .67 + grainRandom() * .14));
     dummy.updateMatrix();
     grains.setMatrixAt(i, dummy.matrix);
   }
   grains.castShadow = grains.receiveShadow = true;
   berryBowl.add(grains);
   scene.add(berryBowl);
+  // Fractured shoulders and talus tie each hero to the ground. Shared geometry
+  // and one instanced batch keep staging inexpensive on mobile GPUs.
+  const talus = own(new THREE.InstancedMesh(rockGeometries[2], strataMaterials[1], 34));
+  const talusRandom = seededRandom(6021);
+  for (let i = 0; i < talus.count; i += 1) {
+    const center = i < 22 ? lastChance.position : berryBowl.position;
+    const angle = talusRandom() * Math.PI * 2;
+    const radius = 1.35 + talusRandom() * .8;
+    const x = center.x + Math.cos(angle) * radius;
+    const z = center.z + Math.sin(angle) * radius * .65;
+    const size = .09 + talusRandom() * .27;
+    dummy.position.set(x, surfaceHeight(x, z) + size * .11, z);
+    dummy.rotation.set(talusRandom() * .5, angle, talusRandom() * .4);
+    dummy.scale.set(size * 1.7, size * .45, size);
+    dummy.updateMatrix(); talus.setMatrixAt(i, dummy.matrix);
+  }
+  talus.castShadow = talus.receiveShadow = true;
+  scene.add(talus);
   collisions.push({ x: -5, z: -11.8, radius: 1.3 });
   observationSites.push({ x: -5, z: -10,
     target: berryBowl.position.clone().add(new THREE.Vector3(0, .2, 0)),
@@ -368,7 +423,7 @@ export function createLandscape(canvas) {
   loadSurfaceMaps({ map: 'textures/ground/albedo.jpg', normalMap: 'textures/ground/normal.jpg',
     roughnessMap: 'textures/ground/roughness.jpg' }, [terrainMaterial], 80, .45);
   loadSurfaceMaps({ map: 'textures/rock/albedo.jpg', normalMap: 'textures/rock/normal.jpg',
-    roughnessMap: 'textures/rock/roughness.jpg' }, [rockMaterial, ...strataMaterials], 1.1, .7);
+    roughnessMap: 'textures/rock/roughness.jpg' }, [rockMaterial, ...strataMaterials, bowlMaterial], 1.1, .7);
 
   const sun = new THREE.DirectionalLight('#ffd4a3', 3.2);
   sun.position.set(-28, 7, -58);
@@ -608,13 +663,9 @@ export function createLandscape(canvas) {
   }
 
   function contactFrame() {
-    const horizontal = new THREE.Vector3(Math.sin(contactTargetYaw), 0, Math.cos(contactTargetYaw));
-    const side = new THREE.Vector3(horizontal.z, 0, -horizontal.x);
-    const halfFov = THREE.MathUtils.degToRad(camera.fov * .5);
-    const range = Math.max(11.6, 4.8 / (2 * Math.tan(halfFov) * Math.max(.25, camera.aspect) * .82));
-    const target = contactOrigin.clone().addScaledVector(contactDirection, 2.5);
-    return { target, position: target.clone().addScaledVector(horizontal, -range)
-      .addScaledVector(side, range * -.75).add(new THREE.Vector3(0, range * .17, 0)) };
+    // Earth is represented by the uplink interface; keep the player beside
+    // Opportunity instead of pulling back to fit the entire antenna beam.
+    return desiredFrame(false);
   }
 
   function setContact(active, options = {}) {
@@ -709,11 +760,12 @@ export function createLandscape(canvas) {
   }
 
   function setObservationTarget(value) {
+    const changed = !value || !observationTarget || value.x !== observationTarget.x || value.z !== observationTarget.z;
     if (!value || !observationTarget || value.x !== observationTarget.x || value.z !== observationTarget.z) investigation = false;
     observationTarget = value && Number.isFinite(value.x) && Number.isFinite(value.z)
       ? { x: value.x, z: value.z, label: value.label } : null;
     if (inspecting) {
-      if (observationTarget) inspect();
+      if (observationTarget && !changed) inspect();
       else focusRover();
     }
   }
@@ -850,13 +902,24 @@ export function createLandscape(canvas) {
       controls.maxDistance = Math.max(site?.max || 7, fitDistance * 1.45);
       return { position: target.clone().add(offset), target };
     }
-    const offset = inspect ? new THREE.Vector3(3.2, 1.65, 3.8)
-      : mode === 'ending' ? new THREE.Vector3(6.5, 3.4, 9.3)
-        : new THREE.Vector3(narrow ? 5.3 : 5.6, narrow ? 3.3 : 2.5, narrow ? 8.3 : 7.7);
-    const target = vehicle.position.clone().add(new THREE.Vector3(mode==='title' && !narrow ? -1.7 : 0, 0.75, 0));
-    if (inspect) target.copy(vehicle.position).add(new THREE.Vector3(0, 0.75, 0));
+    if (mode === 'game' || inspect) {
+      const target = vehicle.position.clone().add(new THREE.Vector3(0, .75, 0));
+      const offset = new THREE.Vector3(3.2, .9, 3.8);
+      const halfFov = THREE.MathUtils.degToRad(camera.fov * .5);
+      // Fit the rover's 2.4m wheel footprint plus a small shoulder in portrait.
+      // Landscape stays intimate; an iPad/phone still retains the whole rover.
+      const fit = 2.8 / (2 * Math.tan(halfFov) * Math.max(camera.aspect, .25) * .86);
+      const range = Math.max(offset.length(), fit);
+      offset.setLength(range);
+      controls.maxDistance = Math.max(7.5, range * 1.3);
+      return { position: target.clone().add(offset), target };
+    }
+    const offset = mode === 'ending' ? new THREE.Vector3(6.5, 3.4, 9.3)
+      : new THREE.Vector3(narrow ? 5.3 : 5.6, narrow ? 3.3 : 2.5, narrow ? 8.3 : 7.7);
+    const target = vehicle.position.clone().add(new THREE.Vector3(mode === 'title' && !narrow ? -1.7 : 0, .75, 0));
     return { position: vehicle.position.clone().add(offset), target };
   }
+
   function focusRover(immediate = false) {
     if (disposed) return;
     cancelContactPulse();
@@ -907,17 +970,13 @@ export function createLandscape(canvas) {
 
   function returnFromInspection() {
     if (!inspecting) return;
-    const previousFrame = roverFrame;
     inspecting = false;
     roverFrame = null;
     controls.minDistance = 3.3;
     controls.maxDistance = 28;
     controls.minPolarAngle = .32;
     controls.maxPolarAngle = Math.PI * .475;
-    const desired = previousFrame ? {
-      position: vehicle.position.clone().add(previousFrame.position),
-      target: vehicle.position.clone().add(previousFrame.target),
-    } : desiredFrame(false);
+    const desired = desiredFrame(false);
     if (reduced) {
       camera.position.copy(desired.position);
       controls.target.copy(desired.target);
@@ -939,7 +998,7 @@ export function createLandscape(canvas) {
     // Begin beside the exposed face (or low beside the grain-bearing surface).
     // Orbiting then reveals real geometry; there is no concealed image/reticle.
     const oblique = site.kind === 'layers' ? new THREE.Vector3(3.8, 1.1, 1.1)
-      : new THREE.Vector3(.7, 1.1, 3.8);
+      : new THREE.Vector3(2.4, 1.1, 2.8);
     desired.position.copy(desired.target).add(oblique.setLength(fittedDistance));
     if (reduced) {
       camera.position.copy(desired.position);
@@ -1017,7 +1076,7 @@ export function createLandscape(canvas) {
   }
 
   function moveRover(delta) {
-    if (mode !== 'game' || !modelReady || modelFailed || !canDrive || investigation || contactActive || contactPulse) return;
+    if (intro || mode !== 'game' || !modelReady || modelFailed || !canDrive || investigation || contactActive || contactPulse) return;
     let forward = THREE.MathUtils.clamp(drive.forward, -1, 1);
     let turn = THREE.MathUtils.clamp(drive.turn, -1, 1);
     if (forward || turn) route = null;
@@ -1140,7 +1199,7 @@ export function createLandscape(canvas) {
         controls.target.lerp(cameraTween.target, amount);
         if (camera.position.distanceTo(cameraTween.position) < .015) cameraTween = null;
       }
-      if(!contactActive && !contactPulse && (look.x || look.y)) {
+      if(!intro && !contactActive && !contactPulse && (look.x || look.y)) {
         cameraTween=null;
         const offset=camera.position.clone().sub(controls.target);
         const orbit=new THREE.Spherical().setFromVector3(offset);
@@ -1154,6 +1213,37 @@ export function createLandscape(canvas) {
     }
     frame = requestAnimationFrame(animate);
   }
+  function setIntro(active, { progress = 0 } = {}) {
+    if (!active) {
+      if (!intro) return;
+      const returned = mode === 'game' ? desiredFrame(false) : intro;
+      camera.position.copy(returned.position);
+      controls.target.copy(returned.target);
+      intro = null;
+      stopDrive(); look = { x: 0, y: 0 };
+      controls.enabled = !intro && !paused && !contactActive && !contactPulse;
+      controls.update(); render();
+      return;
+    }
+    if (reduced || disposed) return;
+    if (!intro) {
+      stopDrive(); look = { x: 0, y: 0 }; cameraTween = null;
+      // Flush OrbitControls' last damping step before recording the return view.
+      const damping = controls.enableDamping;
+      controls.enableDamping = false; controls.update(); controls.enableDamping = damping;
+      intro = { position: camera.position.clone(), target: controls.target.clone() };
+    }
+    controls.enabled = false;
+    const t = THREE.MathUtils.clamp(Number(progress) || 0, 0, 1);
+    const hero = lastChance.position.clone().add(new THREE.Vector3(0, .65, .5));
+    const heroCamera = hero.clone().add(new THREE.Vector3(-1.5, 1.9, 5.8));
+    // One continuous establish-and-return move, driven by the caller's paused clock.
+    const amount = t < .55 ? THREE.MathUtils.smoothstep(t, .08, .45)
+      : 1 - THREE.MathUtils.smoothstep(t, .66, 1);
+    camera.position.lerpVectors(intro.position, heroCamera, amount);
+    controls.target.lerpVectors(intro.target, hero, amount);
+    render();
+  }
   function resize() {
     if (disposed) return;
     const rect = canvas.getBoundingClientRect();
@@ -1164,6 +1254,8 @@ export function createLandscape(canvas) {
     camera.updateProjectionMatrix();
     renderer.setSize(width, height, false);
     if (inspecting && Math.abs(camera.aspect / previousAspect - 1) > .08) inspect(true);
+    else if (mode === 'game' && !intro && !contactFraming
+      && Math.abs(camera.aspect / previousAspect - 1) > .08) focusRover(true);
     if (contactFraming && Math.abs(camera.aspect / previousAspect - 1) > .08) {
       contactCamera = contactFrame();
       camera.position.copy(contactCamera.position);
@@ -1194,6 +1286,7 @@ export function createLandscape(canvas) {
 
   return {
     setScene,
+    setIntro,
     setMode(value) {
       const nextMode = ['title', 'game', 'ending'].includes(value) ? value : 'title';
       if (nextMode === mode) return;
@@ -1210,6 +1303,7 @@ export function createLandscape(canvas) {
     sendContact,
     cancelContactPulse,
     setDrive(value = {}) {
+      if (intro) return;
       if (value.forward || value.turn) route = null;
       drive = {
         forward: THREE.MathUtils.clamp(Number(value.forward) || 0, -1, 1),
@@ -1217,9 +1311,11 @@ export function createLandscape(canvas) {
       };
     },
     setLook(value={}) {
+      if (intro) return;
       look={x:THREE.MathUtils.clamp(Number(value.x)||0,-1,1),y:THREE.MathUtils.clamp(Number(value.y)||0,-1,1)};
     },
     setReducedMotion(value) {
+      if (value && intro) setIntro(false);
       reduced = Boolean(value);
       controls.enableDamping = !reduced;
       if (reduced && cameraTween) {
@@ -1233,7 +1329,7 @@ export function createLandscape(canvas) {
     },
     setPaused(value) {
       paused = Boolean(value);
-      controls.enabled = !paused && !contactActive && !contactPulse;
+      controls.enabled = !intro && !paused && !contactActive && !contactPulse;
       if (paused) {cancelContactPulse();blur();look={x:0,y:0};}
       previous = 0;
     },
@@ -1243,6 +1339,7 @@ export function createLandscape(canvas) {
     setObservationTarget,
     travelToWaypoint,
     reset() {
+      setIntro(false);
       route = null;
       waypoint = null;
       observationTarget = null;
@@ -1333,11 +1430,64 @@ function setSedimentSurface(material) {
       #ifdef USE_MAP
         vec3 sedimentSample = texture2D(map, vMapUv).rgb;
         float mineralGrain = dot(sedimentSample, vec3(.2126, .7152, .0722));
-        // Generic scanned fractures must not masquerade as the authored strata.
-        diffuseColor.rgb *= vec3(.82, .80, .75) * (.85 + .25 * mineralGrain);
+        // Retain the scanned mineral relief and tonal variation while muting
+        // its orange tint. The original near-constant gray erased all detail.
+        vec3 mineral = mix(vec3(mineralGrain), sedimentSample, .30);
+        diffuseColor.rgb *= .22 + 1.18 * mineral;
       #endif`);
   };
-  material.customProgramCacheKey = () => 'dry-light-sediment-v1';
+  material.customProgramCacheKey = () => 'dry-light-sediment-v2';
+}
+
+// A visible brushed comparison circle is part of the same bowl draw call.
+function setBowlSurface(material) {
+  const sedimentCompile = material.onBeforeCompile;
+  material.onBeforeCompile = shader => {
+    sedimentCompile(shader);
+    shader.vertexShader = 'varying vec3 vBowlPosition;\n' + shader.vertexShader;
+    shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>',
+      '#include <begin_vertex>\nvBowlPosition = position;');
+    shader.fragmentShader = 'varying vec3 vBowlPosition;\n' + shader.fragmentShader;
+    shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', `
+      #include <color_fragment>
+      float brushRadius = length(vBowlPosition.xz - vec2(.5, .16));
+      float brush = (1.0 - smoothstep(.265, .30, brushRadius))
+        * smoothstep(.08, .16, vBowlPosition.y);
+      float sweep = .98 + .02 * sin(brushRadius * 210.0);
+      diffuseColor.rgb *= mix(vec3(1.0), vec3(1.32, 1.27, 1.19) * sweep, brush);
+    `);
+  };
+  material.customProgramCacheKey = () => 'dry-brushed-bowl-v1';
+}
+
+// Radial rings give the hollow real depth and a chipped lip; lower ring closes
+// the sides. UVs stay in world scale for the existing scanned stone maps.
+function makeBowlGeometry(height) {
+  const positions = [], uv = [], indices = [];
+  const segments = 64, rings = 12;
+  for (let ring = 0; ring <= rings + 2; ring += 1) {
+    const radius = Math.min(ring / rings, 1);
+    for (let segment = 0; segment <= segments; segment += 1) {
+      const angle = segment / segments * Math.PI * 2;
+      const edge = 1 + .075 * Math.sin(angle * 5) + .045 * Math.cos(angle * 9);
+      const x = Math.cos(angle) * radius * 1.48 * edge;
+      const z = Math.sin(angle) * radius * .91 * edge;
+      positions.push(x, ring === rings + 2 ? -.09 : height(x, z), z);
+      // Duplicate the rim for independent side UVs: no vertical stretching of
+      // the planar top scan down the thickness of the broken plate.
+      if (ring > rings) uv.push(angle * 1.6, ring === rings + 2 ? -.12 : height(x, z) * 1.35);
+      else uv.push(x * 1.35, z * 1.35);
+      if (ring && segment) {
+        const a = ring * (segments + 1) + segment, b = a - segments - 1;
+        indices.push(a, a - 1, b, b, a - 1, b - 1);
+      }
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geometry.setIndex(indices); geometry.computeVertexNormals();
+  return geometry;
 }
 
 function makeRockGeometry(variant) {

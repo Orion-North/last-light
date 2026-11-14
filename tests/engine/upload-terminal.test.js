@@ -38,3 +38,20 @@ test('content is escaped and stage buttons are available', () => {
   assert.match(received, /&lt;reply&gt;/);
   assert.match(received, /data-action="next"/);
 });
+
+test('each lifecycle keeps a spatial instrument and explicit destination', () => {
+  for (const mode of ['reply', 'partial', 'silence', 'archive']) {
+    for (const stage of ['ready', 'sending', 'received']) {
+      const html = render(mode, stage);
+      assert.match(html, /class="upload-terminal__body"/);
+      assert.match(html, /class="upload-terminal__instrument" aria-hidden="true"/);
+      assert.match(html, /class="upload-terminal__dish"/);
+      assert.match(html, /class="upload-terminal__axis"/);
+      assert.match(html, /style="--upload-progress:0"/);
+      assert.equal((html.match(/data-action=/g) || []).length, stage === 'sending' ? 0 : 1);
+    }
+  }
+  assert.match(render('reply', 'ready'), /<span>EARTH<\/span>/);
+  assert.match(render('silence', 'ready'), /<span>OPPORTUNITY<\/span>/);
+  assert.match(render('archive', 'received'), /<span>MISSION ARCHIVE<\/span>/);
+});

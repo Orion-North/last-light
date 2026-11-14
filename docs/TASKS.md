@@ -257,3 +257,24 @@ UPLOAD-05 lanes integrated and independently reviewed. Review caught held-stick
 synthetic neutral, repeated Enter, and misleading receipt labels; all corrected.
 Slow screen drag gets an untimed path while USB swipes retain their duration gate.
 Browser swipe upload reached sending and receipt; final checks recorded in VERIFICATION.
+
+## DESIGN-06 — authored instruments, artifacts and onboarding
+
+User requests real-game-informed design, improved 3D artifacts, faster rover,
+and clearer purpose with a possible cutscene. Shared develop/v0.6; disjoint paths.
+- UPLINK-06 / Sol: upload-terminal.js/css and their tests, handoff. Research real
+  game presentation then replace boxed panel with an authored full-scene uplink
+  instrument; preserve interaction selectors/contracts and all outcome modes.
+- ARTIFACT-06 / Sol: landscape.js, optional new artifacts.js, handoff. Research
+  geological references and improve actual 3D investigation targets and landmark
+  staging within mobile budgets; preserve renderer API and input/camera contracts.
+- CRITIQUE-06 / Sol: docs/reviews/DESIGN-06.md only. Research professional game
+  onboarding/information design, recommend actionable short opening and scrutinize
+  implementation as lanes land. No runtime edits.
+- Codex: main onboarding integration, intro UI, drive pace, documentation, tests,
+  browser checks and publication. Coordinate any renderer interface additions.
+
+DESIGN-06 implementation integrated: open antenna interface, twelve-second skippable
+opening, explicit arrival/inspection cues, faster movement, and refined geometry.
+Independent Sol lifecycle/source review passed; source and engine checks pass.
+Browser verification and release evidence are recorded in VERIFICATION.md.

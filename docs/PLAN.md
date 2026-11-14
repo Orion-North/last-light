@@ -104,3 +104,18 @@ drag and an Upload button keep iPad and keyboard play complete. The panel holds
 one memory title, one instruction, and a short response. Later silence and the
 archive have distinct call/keep actions, preserving the historical outcome.
 Short thoughts remain centered captions outside the terminal.
+
+## Authored presentation — v0.6
+
+A twelve-second skippable camera introduction establishes identity, geology and the
+send-home purpose. It previews the outcrop, then returns to the first camera action;
+saved sessions bypass it. The upload uses an open antenna diagram with visible
+origin/destination and a moving memory, keeping the landscape visible. Journey
+steps change with the current role; arrivals and investigations use explicit verbs.
+
+Last Chance has curved, chipped lamination and scanned microdetail. Berry Bowl
+has an actual depression and varied embedded/loose grains; merged/instanced
+geometry keeps these hero objects to eight draw calls. The reconstructions remain
+artistic teaching assets, not surveyed geometry. Manual speed rises from .85 to
+1.15 world units/s, assisted from 1.2 to 1.45; braking and steering stay controlled.
+Design research and independent critique: reviews/DESIGN-06.md.

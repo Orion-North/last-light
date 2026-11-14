@@ -1,5 +1,6 @@
 import { scenes, sources, credits } from './content/story.js';
 import { createState, transition } from './engine/game.js';
+import { createBriefing, briefingBeats } from './engine/briefing.js';
 import { createSound } from './audio/sound.js';
 import { createLandscape } from './ui/landscape.js';
 import { restoreSession, serializeSession } from './session.js';
@@ -10,7 +11,7 @@ import { createUploadGesture, createStickUpload } from './engine/upload-gesture.
 import { createInvestigation } from './engine/investigation.js';
 import { createInteractionWait } from './engine/interaction-wait.js';
 import { discoveredScenes, transmissionProfile, missionConditions, endingMemories } from './ui/experience.js';
-import { controllerFamily, controllerGlyph, controllerHint, controllerButtonName, validPromptStyle } from './ui/controller-prompts.js';
+import { controllerFamily, controllerGlyph, controllerButtonName, validPromptStyle } from './ui/controller-prompts.js';
 
 const $ = (selector) => document.querySelector(selector);
 const app = $('#app');
@@ -33,6 +34,8 @@ try {
   if (storedSettings && validPromptStyle(storedSettings.prompts)) settings.prompts = storedSettings.prompts;
 } catch { /* Private browsing can still play. */ }
 let screen = 'title';
+let briefingFrame = 0;
+let briefingActive = false;
 let view;
 let controller;
 let padInput = { throttle: 0, steer: 0 };
@@ -85,7 +88,7 @@ function focusContent(selector = 'h1') {
 function setExploring(value) {
   exploring = value;
   document.body.classList.toggle('exploring', value);
-  $('#explore-toggle').textContent = value ? 'Show HUD' : 'Hide HUD';
+  $('#explore-toggle').innerHTML = `<span aria-hidden="true">◫</span><span class="sr-only">${value ? 'Show HUD' : 'Hide HUD'}</span>`;
   $('#explore-toggle').setAttribute('aria-expanded', String(!value));
   const panel = app.querySelector('.interaction-dock');
   if (panel) panel.inert = value;
@@ -103,6 +106,7 @@ function setWorld(environment, mode) {
 }
 
 function renderTitle() {
+  stopBriefing();
   cancelTransmission();
   stopContact();
   restoreSendFocus = false;
@@ -122,6 +126,47 @@ function renderTitle() {
   refreshControllerPrompts();
 }
 
+function stopBriefing() {
+  cancelAnimationFrame(briefingFrame);briefingFrame=0;briefingActive=false;
+  view?.setIntro?.(false);
+}
+function finishBriefing() {
+  if(!briefingActive || state.paused)return;
+  stopBriefing();lastScene=null;renderGame({focus:true});
+  announce('First, raise your cameras. Send your first view of Mars.');
+}
+function startBriefing() {
+  stopBriefing();cancelScan();cancelTransmission();stopContact();
+  screen='intro';briefingActive=true;setExploring(false);
+  setWorld('dawn','game');document.body.dataset.screen='intro';
+  $('#world-controls').hidden=true;$('#waypoint-hud').hidden=true;
+  view?.stopDrive?.();view?.setIntro?.(true,{progress:0});
+  const beat=briefingBeats[0];
+  app.innerHTML=`<section class="mission-briefing" aria-label="Mission introduction"><div class="briefing-caption"><p class="eyebrow" id="briefing-label">${beat.label}</p><h1 id="briefing-title">${beat.title}</h1><p id="briefing-cue">${beat.cue}</p><div class="briefing-steps" aria-hidden="true"><i class="current"></i><i></i><i></i></div></div><button class="briefing-skip" data-action="skip-intro">Skip introduction <span aria-hidden="true">↗</span></button></section>`;
+  refreshControllerPrompts();focusContent('[data-action="skip-intro"]');announce(`${beat.title} ${beat.cue}`);
+  const timeline=createBriefing();let previous=performance.now(),lastBeat=0;
+  function frame(now) {
+    if(!briefingActive)return;
+    const {progress,beat,complete}=timeline.step((now-previous)/1000,state.paused || document.hidden || (!worldReady && !graphicsError));previous=now;
+    if(!state.paused && !document.hidden) view?.setIntro?.(true,{progress});
+    if(beat!==lastBeat) {
+      lastBeat=beat;const content=briefingBeats[beat];
+      $('#briefing-label').textContent=content.label;$('#briefing-title').textContent=content.title;$('#briefing-cue').textContent=content.cue;
+      app.querySelectorAll('.briefing-steps i').forEach((el,i)=>el.classList.toggle('current',i===beat));
+      announce(`${content.title} ${content.cue}`);
+    }
+    if(complete)finishBriefing();else briefingFrame=requestAnimationFrame(frame);
+  }
+  briefingFrame=requestAnimationFrame(frame);
+}
+
+function journeyRail(scene) {
+  if(scene.signal===0)return '<p class="journey-rail">EARTH / RECOVERY OPERATIONS</p>';
+  const steps=goals[state.sceneIndex]?['Drive','Examine','Send']:['Look','Choose','Send'];
+  const active=state.phase==='transmit'||state.phase==='received'?2:state.phase==='choose'||investigating||goals[state.sceneIndex]&&reached?1:0;
+  return `<p class="journey-rail" aria-label="Journey steps">${steps.map((label,i)=>`<span ${i===active?'aria-current="step"':''}>${String(i+1).padStart(2,'0')} ${label}</span>`).join('<i aria-hidden="true">/</i>')}</p>`;
+}
+
 function telemetry(scene) {
   return `<aside class="flight-status" aria-label="Dramatized mission conditions">${missionConditions(scene).map(text=>`<span>${text}</span>`).join('')}<span aria-label="${state.memories.length} memories">◇ ${state.memories.length}</span></aside>`;
 }
@@ -135,24 +180,18 @@ function syncInputMode() {
 }
 
 function updateInputHint() {
-  const moving = screen === 'game' && state.phase === 'observe' && !reached;
-  if(contacting) {
-    $('#input-hint').textContent = uploadPrompt();
-    return;
-  }
-  if(investigating) {
-    $('#input-hint').innerHTML = controllerConnected ? `${controllerGlyph('look',controllerFamily(controllerId,settings.prompts))} Move view · Release to record` : 'Arrow keys / drag to move view · Stop to record';
-    return;
-  }
-  const hints = {
-    touch: moving ? 'Hold arrows to drive · Drag to look' : 'Tap to interact · Drag to look',
-    keyboard: moving ? 'WASD / arrows drive · Drag to look' : 'Tab to select · Enter to interact · J journal',
-    dualsense: moving ? 'L drive · R look · × interact' : 'D-pad select · × interact · □ journal',
-    gamepad: moving ? 'Left stick drive · Right stick look' : 'D-pad select · Bottom button interact',
-  };
-  if (controllerConnected || settings.prompts !== 'auto') {
-    $('#input-hint').innerHTML = controllerHint(controllerFamily(controllerId,settings.prompts),moving);
-  } else $('#input-hint').textContent = hints[inputDevice];
+  const moving=screen==='game' && state.phase==='observe' && !reached;
+  const family=controllerFamily(controllerId,settings.prompts);
+  const pad=controllerConnected || settings.prompts!=='auto';
+  const row=(action,label,key)=>`<span class="controller-hint" aria-label="${pad?controllerButtonName(action,family):key}: ${label.toLowerCase()}">${pad?controllerGlyph(action,family):`<kbd>${key}</kbd>`}<span>${label}</span></span>`;
+  let hints;
+  if(contacting) hints=(controllerConnected&&touchSurfaceAvailable?row('swipe','Swipe up','↑'):row('look',pad?'Hold up':'Drag up','↑'))+row('primary','Upload','Enter');
+  else if(investigating) hints=row('look','Look','↑↓←→')+'<span class="control-rest">Hold still to record</span>';
+  else if(moving) hints=row('move','Drive','WASD')+row('look','Look','Drag');
+  else hints=row('move','Select','Tab')+row('primary','Confirm','Enter');
+  if(!contacting && !investigating)hints+=row('journal','Memories','J');
+  if(settings.touch&&!pad) hints=contacting?'<span class="controller-hint"><kbd>↑</kbd>Swipe to upload</span>':investigating?'<span class="controller-hint"><kbd>↔</kbd>Drag to look</span><span class="control-rest">Hold still to record</span>':moving?'<span class="controller-hint"><kbd>↔</kbd>Drag to look</span>':'<span class="controller-hint"><kbd>·</kbd>Tap to choose</span>';
+  $('#input-hint').innerHTML=hints;
 }
 
 function refreshControllerPrompts() {
@@ -165,6 +204,7 @@ function refreshControllerPrompts() {
   };
   app.querySelectorAll('[data-action]').forEach(button=>decorate(button,button.dataset.action==='journal'?'journal':'primary'));
   decorate($('#settings-toggle'),'pause');
+  $('#camera-reset').innerHTML='<span class="camera-reset-mark" aria-hidden="true">↺</span><span class="sr-only">Recenter camera</span>';
   decorate($('#camera-reset'),'camera');
   document.querySelectorAll('dialog [data-close]').forEach(button=>decorate(button,'back'));
   const guide = [['move','Drive'],['forward','Forward'],['reverse','Reverse'],['look','Look'],['primary','Interact'],['select','Select'],['journal','Journal'],['camera','Camera'],['back','Back'],['pause','Pause']];
@@ -217,7 +257,7 @@ function renderGame({ focus = false } = {}) {
       response:scene.response || scene.transmission});
   }
 
-  app.innerHTML = `<section class="play-screen"><header class="play-heading"><p class="eyebrow">${escape(scene.sol)}</p><h1 tabindex="-1">${escape(state.phase==='observe' ? scene.approachTitle || scene.title : scene.title)}</h1></header>${telemetry(scene)}<aside class="mission-objective" aria-label="Current objective"><span>${state.phase==='observe'?'EXPLORE':state.phase==='choose'?'REMEMBER':state.phase==='transmit'?'CONNECT':'CONTINUE'}</span><strong>${escape(currentObjective({scene,phase:state.phase,goal,reached,investigating,transmitting}))}</strong></aside><article class="interaction-dock" aria-label="Current interaction" aria-busy="${scanning || transmitting}">${content}<div class="dock-footer"><span>${scene.act===1?'WONDER':scene.act===2?'THE STORM':'REMEMBRANCE'}</span><button class="quiet-button" data-action="journal">Journal</button></div></article></section>`;
+  app.innerHTML = `<section class="play-screen"><header class="play-heading">${journeyRail(scene)}<p class="eyebrow">${escape(scene.sol)}</p><h1 tabindex="-1">${escape(state.phase==='observe' ? scene.approachTitle || scene.title : scene.title)}</h1></header>${telemetry(scene)}<aside class="mission-objective" aria-label="Current objective"><span>${state.phase==='observe'?'EXPLORE':state.phase==='choose'?'REMEMBER':state.phase==='transmit'?'CONNECT':'CONTINUE'}</span><strong>${escape(currentObjective({scene,phase:state.phase,goal,reached,investigating,transmitting}))}</strong></aside><article class="interaction-dock" aria-label="Current interaction" aria-busy="${scanning || transmitting}">${content}<div class="dock-footer"><span>${scene.act===1?'WONDER':scene.act===2?'THE STORM':'REMEMBRANCE'}</span><button class="quiet-button" data-action="journal">Journal</button></div></article></section>`;
   setExploring(exploring);
   $('#world-controls').hidden = false;
   $('.drive-pad').hidden = state.phase!=='observe' || reached;
@@ -272,8 +312,9 @@ function scan() {
 }
 
 function uploadPrompt() {
-  if(controllerConnected) return touchSurfaceAvailable ? 'Swipe up on the touchpad to upload.' : 'Push the right stick up to upload, or press the bottom face button.';
-  return settings.touch ? 'Swipe the memory upward, or tap Upload.' : 'Drag the memory upward, or press Enter to upload.';
+  if(controllerConnected && touchSurfaceAvailable)return 'Swipe upward on the touchpad.';
+  if(controllerConnected)return 'Lift the memory toward Earth.';
+  return settings.touch?'Swipe upward to send.':'Drag upward to send.';
 }
 function updateUploadProgress(result) {
   if(!contacting || state.paused)return;
@@ -419,8 +460,8 @@ $('#settings-toggle').addEventListener('click',()=>openModal('#settings-modal'))
 $('#credits-button').addEventListener('click',()=>{$('#settings-modal').close();openModal('#credits-modal');});
 $('#restart-button').addEventListener('click',()=>{$('#settings-modal').close();openModal('#restart-modal');});
 $('#confirm-restart').addEventListener('click',()=>{
-  $('#restart-modal').close(); cancelScan();cancelTransmission();lastDistance=0; state=createState(); lastScene=null; reached=false; save();
-  view?.reset?.(); renderGame({focus:true}); window.scrollTo(0,0);
+  $('#restart-modal').close(); stopBriefing();cancelScan();cancelTransmission();lastDistance=0; state=createState(); lastScene=null; reached=false; save();
+  view?.reset?.(); startBriefing(); window.scrollTo(0,0);
 });
 $('.brand').addEventListener('click',event=>{event.preventDefault();cancelScan();renderTitle();window.scrollTo(0,0);});
 $('#explore-toggle').addEventListener('click',()=>setExploring(!exploring));
@@ -430,7 +471,8 @@ app.addEventListener('click',event=>{
   const button=event.target.closest('[data-action]');
   if (!button || button.disabled) return;
   switch(button.dataset.action) {
-    case 'begin': if(!soundPreferenceSet)toggleSound(true); state=saved || createState(); state={...state,paused:false}; lastScene=null; renderGame({focus:true}); save(); break;
+    case 'begin': { const fresh=!saved;if(!soundPreferenceSet)toggleSound(true); state=saved || createState(); state={...state,paused:false}; lastScene=null;if(fresh)startBriefing();else renderGame({focus:true});save();break; }
+    case 'skip-intro': finishBriefing();break;
     case 'observe': scan(); break;
     case 'assist-observation': cancelScan();act({type:'OBSERVE'});break;
     case 'choose': act({type:'CHOOSE',choiceId:button.dataset.choice}); break;
@@ -464,7 +506,7 @@ function drive() {
 window.addEventListener('keydown',event=>{
   if(event.repeat && ['Enter',' '].includes(event.key)) {event.preventDefault();return;}
   if (event.key==='Escape' && !document.querySelector('dialog[open]')) { event.preventDefault();openModal('#settings-modal');return; }
-  if (event.key.toLowerCase()==='j' && !document.querySelector('dialog[open]') && screen!=='title') {event.preventDefault();openJournal();return;}
+  if (event.key.toLowerCase()==='j' && !document.querySelector('dialog[open]') && screen==='game') {event.preventDefault();openJournal();return;}
   if (['INPUT','TEXTAREA','SELECT'].includes(event.target.tagName) || document.querySelector('dialog[open]')) return;
   const key=event.key.toLowerCase();
   if(contacting && key==='enter' && !event.target.closest('button,a,input,summary')) {event.preventDefault();sendMemory();return;}
@@ -538,6 +580,7 @@ function controllerAction(action) {
   const dialog=document.querySelector('dialog[open]');
   if(action==='pause') { if(dialog) dialog.close(); else openModal('#settings-modal'); return; }
   if(action==='back') { if(dialog) dialog.close(); else if(exploring) setExploring(false); else openModal('#settings-modal'); return; }
+  if(briefingActive && !dialog) {if(action==='primary')finishBriefing();return;}
   if(action==='journal') { if(dialog?.id==='journal-modal') dialog.close(); else if(!dialog && screen!=='title') openJournal(); return; }
   if(action==='camera' && !dialog) {if(contacting)resetUpload();else if(investigating)view?.setInvestigation?.(true);else view?.focusRover?.();return;}
   const targets=menuTargets();
@@ -591,7 +634,7 @@ controller=createController({
     touchSurfaceAvailable=status.adaptiveConnected;
     if (disconnected && !padPreviewMuted) {
       pressed.clear();padInput={throttle:0,steer:0};view?.stopDrive?.();
-      if(screen==='game' && !document.querySelector('dialog[open]')) {openModal('#settings-modal');announce('Controller disconnected. Journey paused. Reconnect or close settings to continue with other controls.');}
+      if((screen==='game' || briefingActive) && !document.querySelector('dialog[open]')) {openModal('#settings-modal');announce('Controller disconnected. Journey paused. Reconnect or close settings to continue with other controls.');}
     }
     document.body.classList.toggle('controller-connected',status.connected);
     const detectedFamily = controllerFamily(status.id);

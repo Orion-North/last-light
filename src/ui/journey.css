@@ -1,0 +1,30 @@
+body[data-screen="intro"] { overflow:hidden; }
+body[data-screen="intro"] .topbar { position:fixed; inset:0 0 auto; z-index:6; }
+.mission-briefing { position:fixed; inset:0; background:linear-gradient(#040a1022 8%,transparent 40%,#040a1099 90%); color:#fff1d7; }
+.mission-briefing::before,.mission-briefing::after { content:""; position:absolute; left:0; right:0; height:7vh; background:#070c10; }
+.mission-briefing::before { top:0; }.mission-briefing::after { bottom:0; }
+.briefing-caption { position:absolute; bottom:18%; left:10%; right:10%; text-shadow:0 2px 14px #000; }
+.briefing-caption h1 { font:400 clamp(34px,5vw,64px)/1.08 var(--serif); margin:12px 0; max-width:800px; }
+.briefing-caption > p:last-of-type { font:clamp(15px,1.8vw,20px)/1.5 var(--sans); color:#e8e1d2; }
+.briefing-steps { display:flex; gap:8px; margin-top:28px; }.briefing-steps i { height:2px;width:24px;background:#fff4; }.briefing-steps .current { width:64px;background:#efc58a; }
+.briefing-skip { position:absolute; z-index:1; bottom:8%; right:5%; background:transparent; color:#f4e6d3; border:0; border-bottom:1px solid #e7c58b66; min-height:44px; padding:8px 10px; font:12px var(--sans); cursor:pointer; }
+.briefing-skip:focus-visible { outline:2px solid #ffe2b7;outline-offset:5px; }
+.journey-rail { display:flex; flex-wrap:wrap; gap:10px; margin:0 0 15px; font:9px var(--mono); text-transform:uppercase;letter-spacing:.12em;color:#d4cbc0; }
+.journey-rail span[aria-current] { color:#ffe1ae; border-bottom:1px solid #eac184; padding-bottom:5px; }.journey-rail i { font-style:normal;opacity:.5; }
+body[data-screen="game"] .play-heading { top:100px; }
+body[data-screen="game"] .mission-objective { top:200px; background:linear-gradient(90deg,#081119bb,transparent);border:0;border-left:2px solid #eac184;box-shadow:none;padding:10px 16px;max-width:320px; }
+body[data-upload="true"] .journey-rail { display:none; }
+@media(max-width:900px) { body[data-screen="game"] .mission-objective { top:225px;left:20px; } }
+@media(max-width:600px) { .briefing-caption { left:7%;right:7%;bottom:22%; }.briefing-caption h1 { font-size:38px; } .journey-rail { gap:7px;font-size:8px; } body[data-screen="game"] .play-heading { top:120px; } body[data-screen="game"] .mission-objective { top:245px;max-width:calc(100vw - 40px); } }
+@media(max-height:550px) and (min-width:601px) { body[data-screen="game"] .play-heading { top:80px; } body[data-screen="game"] .mission-objective { top:174px; } .briefing-caption { bottom:20%; }.briefing-caption h1 { font-size:36px; } .briefing-steps { margin-top:12px; } }
+
+/* A small left-side control legend, with the glyph always leading the verb. */
+body[data-screen="game"] #world-controls { left:24px;right:auto;bottom:22px;transform:none;width:auto;max-width:210px;display:grid;grid-template-columns:44px 44px;gap:6px;padding:0;border:0;background:none;justify-content:start; }
+body[data-screen="game"] #input-hint { grid-column:1 / -1;grid-row:1;display:grid;gap:8px;width:auto;min-width:145px;text-align:left;margin-bottom:7px; }
+#input-hint .controller-hint { display:flex;justify-content:flex-start;gap:10px;margin:0;font:11px var(--sans);color:#fff0d9;text-shadow:0 2px 6px #000; }
+#input-hint kbd { box-sizing:border-box;display:inline-grid;place-items:center;min-width:28px;height:27px;padding:0 4px;border:1px solid #e4d0ae77;border-radius:4px;background:#10181c99;color:#ffe8c4;font:9px var(--mono); }
+#input-hint .control-rest { font:10px var(--sans);color:#eadcc6;text-shadow:0 2px 6px #000; }
+body[data-screen="game"] #world-controls > .secondary-button { width:44px;min-height:44px;padding:6px;display:flex;align-items:center;justify-content:center;gap:0;border-color:#e4d0ae55;background:#10181c77;font-size:22px; }
+#camera-reset.with-controller-glyph .camera-reset-mark { display:none; }
+body[data-screen="game"] #world-controls .drive-pad { grid-column:1 / -1; }
+@media(max-width:600px) { body[data-screen="game"] #world-controls { left:14px;bottom:14px;max-width:180px; } body[data-upload="true"] #world-controls > .secondary-button { display:none; } body[data-upload="true"] #input-hint { display:flex;gap:14px;min-width:0;white-space:nowrap; } }

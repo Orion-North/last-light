@@ -160,3 +160,12 @@ The required controller alternative is neutral right stick, then hold up for .65
 or press the bottom face button. Synthetic neutral events cannot arm the gesture;
 held inputs across screens must be released first. Enter or the visible Upload
 button is also available. iPad does not need USB touchpad access to finish the game.
+
+## v0.6 presentation and pace
+
+Contextual glyphs lead short verbs in a left-side guide. The upload prompt avoids
+repeating the entire control mapping; the guide distinguishes stick hold, optional
+USB touchpad swipe and the explicit button. Keyboard and touch retain readable
+alternatives. Gameplay and uplink stay close to the rover; geological inspection
+frames the current evidence. The twelve-second mission introduction is skippable,
+pauses with the game and uses a static view under reduced motion.

@@ -14,19 +14,19 @@ test('manual start is gradual, monotonic, and never overshoots either target', (
   let previous = { speed: 0, turnRate: 0 };
   for (let i = 0; i < 30; i++) {
     const result = motion.step({ forward: 1, turn: 1 }, .05);
-    assert.ok(result.speed >= previous.speed && result.speed <= .85);
+    assert.ok(result.speed >= previous.speed && result.speed <= 1.15);
     assert.ok(result.turnRate >= previous.turnRate && result.turnRate <= .85);
     if (!i) { near(result.speed, .08); near(result.turnRate, .2); }
     previous = result;
   }
-  near(previous.speed, .85);
+  near(previous.speed, 1.15);
   near(previous.turnRate, .85);
 });
 
 test('release brakes monotonically to rest within a bounded distance', () => {
   const motion = createDriveMotion();
   cruise(motion);
-  let previous = .85;
+  let previous = 1.15;
   let distance = 0;
   for (let i = 0; i < 20; i++) {
     const { speed, turnRate } = motion.step({}, .02);
@@ -35,7 +35,7 @@ test('release brakes monotonically to rest within a bounded distance', () => {
     previous = speed;
     if (i === 19) assert.deepEqual({ speed, turnRate }, { speed: 0, turnRate: 0 });
   }
-  assert.ok(distance > 0 && distance < .13);
+  assert.ok(distance > 0 && distance < .24);
 });
 
 test('reverse brakes through zero before accelerating in the opposite direction', () => {
@@ -44,7 +44,7 @@ test('reverse brakes through zero before accelerating in the opposite direction'
   near(motion.step({ forward: -1 }, .08 / 3).speed, 0);
   near(motion.step({ forward: -1 }, .05).speed, -.08);
   const result = cruise(motion, { forward: -1, turn: -1 });
-  near(result.speed, -.85);
+  near(result.speed, -1.15);
   near(result.turnRate, -.85);
 });
 
@@ -85,9 +85,9 @@ test('untrusted axes and deltas are safe and bounded', () => {
   near(result.turnRate, -.2);
 });
 
-test('assisted movement bypasses smoothing and preserves existing route scales', () => {
+test('assisted movement bypasses smoothing and uses bounded route scales', () => {
   const motion = createDriveMotion();
-  assert.deepEqual(motion.step({ forward: .5, turn: -.5, assisted: true }, .01), { speed: .6, turnRate: -.75 });
-  assert.deepEqual(motion.step({ forward: -1, turn: 1, assisted: true }, .01), { speed: -1.2, turnRate: 1.5 });
+  assert.deepEqual(motion.step({ forward: .5, turn: -.5, assisted: true }, .01), { speed: .725, turnRate: -.75 });
+  assert.deepEqual(motion.step({ forward: -1, turn: 1, assisted: true }, .01), { speed: -1.45, turnRate: 1.5 });
   assert.deepEqual(motion.step({ assisted: true }, .01), { speed: 0, turnRate: 0 });
 });

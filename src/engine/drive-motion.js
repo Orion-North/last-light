@@ -16,10 +16,10 @@ export function createDriveMotion() {
     const turn = axis(input?.turn);
     const delta = Number.isFinite(deltaSeconds) ? Math.max(0, Math.min(.05, deltaSeconds)) : 0;
     if (input?.assisted === true) {
-      speed = forward * 1.2;
+      speed = forward * 1.45;
       turnRate = turn * 1.5;
     } else {
-      const target = forward * .85;
+      const target = forward * 1.15;
       if (speed * target < 0) {
         // Spend time stopping first, then accelerate only with time left over.
         const stoppingTime = Math.abs(speed) / 3;
