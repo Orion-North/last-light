@@ -1,5 +1,6 @@
 /** One concrete instruction at a time; historical outcomes are never a player score. */
 export function currentObjective({ scene, phase, goal, reached, investigating, transmitting }) {
+  if (investigating && !['stone-ripples','blueberries'].includes(scene.id)) return ['dust','last-image'].includes(scene.id)?'Look into the dusty sky and hold still':'Survey the ground and horizon';
   if (investigating) return scene.id === 'blueberries' ? 'Look down at the round grains, then hold still' : 'Face the crossing layers, then hold still';
   if (phase === 'observe' && goal && !reached) return `Drive to ${goal.label}`;
   if (phase === 'observe') return goal && reached ? `Arrived · ${scene.objective}` : scene.objective;

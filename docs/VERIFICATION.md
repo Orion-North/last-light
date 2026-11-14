@@ -270,3 +270,39 @@ Earth's recovery effort, and the personalized ending.
   actual world target even off-screen, updates while traveling, and hides at
   arrival. Desktop screenshot retained as last-light-v10-desktop.jpg outside the
   repository. No iPad pass was performed after its target was withdrawn.
+
+## v0.11 — manual fieldwork, spatial signal and composed score
+
+- 111 tests across 16 engine/desktop files pass. Source validation checks 39 JS
+  modules, 12 scene contracts and assets; static build and whitespace check pass.
+  The 2,048 legacy archive paths still round-trip; new recorded observations
+  preserve IDs. Survey tests cover every authored target, interrupted holds,
+  stalled frames and overlapping bearings that must require new movement.
+- PLAY-11A completed the entire frozen v0.10 baseline in an isolated browser,
+  muted, with six assisted travel legs and two assisted geology observations;
+  first/final sends used simulated analog triggers. Ending and eleven archive
+  records were observed. See its candid report; this was not a full manual route.
+- PLAY-11B and PLAY-11C could not access browsers. Their reports are explicitly
+  source/engine critiques, not full playthroughs or audio auditions.
+- Integrated v0.11 targeted browser checks: manual first-site travel and arrival,
+  fixed-eye sky aiming/steady recording, automatic archive selection, both-trigger
+  charge/release, visible partial outgoing signal, incomplete receipt, Earth
+  handover and reversed Earth-to-Mars call. Final sky observation was retested
+  after reducing it from three bearings to one sustained view. No physical
+  controller or user's public playtest tab was used.
+- Improved drive camera follows rover heading; a world marker and explicit
+  rover-relative steering guide support manual travel. Autodrive/API/path planner
+  are removed. Blocked-wheel text supplements existing rumble.
+- New original authored score sections and synthesis/mixing changes pass mocked
+  graph/lifecycle and musical-structure tests. They have NOT received a listening
+  audition or speaker/headphone mix certification in this session.
+- The whole final revised journey, physical haptic feel and emotional quality
+  still require player testing. Relative mast bearings are authored interactions,
+  not scientific raycasts; travel, link diagram/time and views are dramatizations.
+
+Follow-through: PLAY-11A manually drove the revised build from origin to Last
+Chance, then onward to Berry Bowl, completing BOTH investigations without Skip.
+Root independently verified the newer chase camera, rover-relative guidance,
+manual arrival and deliberate layer observation. No runtime warnings/errors in
+root's isolated fixture. The science remains an authored reconstruction viewed
+from different angles; it is not yet an interactive brushing/tool simulation.

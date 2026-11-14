@@ -45,7 +45,7 @@ unsupported Web Audio. No network audio. Procedural restrained ambient sound.
 
 `createLandscape(canvas)` returns {setScene(environment, {power, signal}?),
 setReducedMotion(boolean), setPaused(boolean), destroy()}. Real Three.js/WebGL2 world, NASA rover GLB, driving and orbit controls.
-Additional API: setMode, setDrive, focusRover, inspect, setWaypoint, setObservationTarget, travelToWaypoint,
+Additional API: setMode, setDrive, focusRover, inspect, setWaypoint, setObservationTarget, setSurvey,
 reset. Emits world-status, rover-move, waypoint-reached.
 Observation targets persist independently of the navigation marker. Set one on
 scene entry (including resume) before inspect. Changing target releases inspection.
@@ -60,3 +60,9 @@ Discovery entries unlock after OBSERVE; all previous observations remain readabl
 
 Root owns index.html and src/main.js and all integration. Visual owns style.css
 and landscape.js only. HTML layout IDs/classes supplied in task.
+
+
+Survey view: `setSurvey(true)` establishes a fixed-eye look, then emits
+`survey-sample {yaw,pitch,steady}` every ~100ms. Angles are relative gaze radians,
+positive right/down. False, reset, remote view and exit stop it. Root uses
+createSurvey to record deliberate steady bearings; no state advancement in view.

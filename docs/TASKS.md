@@ -431,3 +431,43 @@ Landmark direction projects from the world, including behind-camera targets.
 Graphics improves light/ground/shadow coherence without new assets or draw calls.
 103 tests and desktop browser flow pass; human feel/emotional clarity remain the
 next playtest questions. Windows and Pages publication are owned by Codex.
+
+## PLAY-11 — playable actions, complete critical reviews, music and signal
+
+User requests full-playthrough critiques, no autodrive, a composed adaptive
+soundtrack and visible signal travel to Earth. Shared develop/v0.11, disjoint paths:
+- SOUND-11 / Sol: src/audio/, tests/engine/music.test.js, docs/SOUNDTRACK.md,
+  docs/handoffs/SOUND-11.md. Compose and implement an original adaptive score;
+  document musical brief, motifs, arrangement, mix and actual verification.
+- PLAY-11A / Sol: docs/reviews/PLAY-11A.md only. Full baseline browser playthrough,
+  critical gameplay review with observed action/feedback and recommendations.
+- PLAY-11B / Sol: docs/reviews/PLAY-11B.md only. Full baseline browser playthrough,
+  critical narrative/pacing review; distinguish witnessed behavior from inference.
+- Codex: runtime, sending presentation, no-autodrive implementation, integration,
+  tests, publication. Reviewers may later receive separate implementation lanes.
+
+Review baseline at localhost:4174, own isolated tabs. Never touch the user's
+public playtest tab or physical controller. Baseline fixture simulates pad input
+without hardware output. Do not claim a full playthrough if unable to finish it.
+
+PLAY-11 integrated: nine menus replaced by recorded observations; five mast
+profiles vary from one sustained sky measurement to a three-view valley survey.
+The storm recalls the player's actual first view. Root removed all autodrive
+runtime/pathfinding, rebuilt sending as Mars/Earth signal travel and incorporated
+review fixes for reversed call direction, packet/receipt timing, mismatched
+pressure display and final-frame spoilers. Music lane completed distinct authored
+arrangements, timbres and foreground ducking. VIEW-11 fixes occlusion/inspection
+framing and supplies fixed-eye gaze sampling. Root added rover-relative chase
+camera and steering guidance after witnessed manual-navigation confusion.
+
+PLAY-11A finished the whole baseline through ending/archive; its route included
+assistance and is labeled accordingly. B/C browser access was unavailable, so
+those are source reviews only. Root/agent targeted final-build checks supplement,
+but do not constitute a claimed full manual playthrough of every revised scene.
+Automated result: 111 tests, 39 syntax checks, 12 scene contracts; build passes.
+
+Final targeted review: PLAY-11A completed both revised geological stops via
+manual driving and genuine inspection input (no Skip), including sequential
+Last Chance → Berry Bowl travel. Source reviews remain labeled separately.
+Root verified chase-camera first arrival and geological recording; physical
+feedback and soundtrack listening remain for human playtest.

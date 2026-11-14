@@ -1,6 +1,6 @@
 <!doctype html><meta charset="utf-8"><title>Last Light — controller fixture</title>
 <style>body{margin:0;background:#101820;color:#eee;font:14px system-ui}nav{height:68px;display:flex;align-items:center;gap:10px;padding:0 14px}button{padding:12px}iframe{width:100%;height:100vh;border:0}small{max-width:260px}</style>
-<nav aria-label="Simulated controller"><b>INPUT FIXTURE</b><button data-pressure="0,0">Release both</button><button data-pressure="1,0">Left only</button><button data-pressure="0.04,0">Light press</button><button data-pressure="0.5,0.5">Half squeeze</button><button data-pressure="1,1">Full squeeze</button><button id="cross">Cross</button><button id="options">Options</button><small>Local test only. This simulates input, not physical feedback.</small></nav><iframe title="Game under test"></iframe>
+<nav aria-label="Simulated controller"><b>INPUT FIXTURE</b><button data-pressure="0,0">Release both</button><button data-pressure="1,0">Left only</button><button data-pressure="0.04,0">Light press</button><button data-pressure="0.5,0.5">Half squeeze</button><button data-pressure="1,1">Full squeeze</button><button id="cross">Cross</button><button id="options">Options</button><button data-axis="2,-1,150">Look left</button><button data-axis="2,1,150">Look right</button><button data-axis="3,-1,150">Look up</button><button data-axis="3,1,150">Look down</button><button data-axis="1,-1,2000">Forward 2s</button><button data-axis="0,-1,300">Turn left</button><button data-axis="0,1,300">Turn right</button><output id="fixture-sample"></output><small>Local test only. This simulates input, not physical feedback.</small></nav><iframe title="Game under test"></iframe>
 <script type="module">
 // Test-only fixture, excluded from production by scripts/build.mjs.
 import {scenes} from '../../src/content/story.js';
@@ -17,11 +17,13 @@ const buttons=Array.from({length:17},()=>({value:0,pressed:false,touched:false})
 const pad={id:'DualSense simulated fixture',index:0,mapping:'standard',connected:true,axes:[0,0,0,0],buttons};
 window.fixturePad=pad;
 const html=await(await fetch('../../index.html')).text();
-const boot=`<base href="../../"><script>Object.defineProperty(navigator,'getGamepads',{value:()=>[parent.fixturePad]});window.addEventListener('DOMContentLoaded',()=>{const bar=parent.document.querySelector('nav').cloneNode(true);bar.hidden=false;bar.style='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#101820;display:flex;gap:8px;align-items:center;padding:10px;font:12px system-ui';bar.addEventListener('pointerdown',e=>e.preventDefault());for(const b of bar.querySelectorAll('[data-pressure]'))b.onclick=()=>parent.fixturePressure(b.dataset.pressure);bar.querySelector('#cross').onclick=()=>parent.fixtureTap(0);bar.querySelector('#options').onclick=()=>parent.fixtureTap(9);document.body.append(bar);});<\/script>`;
+const boot=`<base href="../../"><script>Object.defineProperty(navigator,'getGamepads',{value:()=>[parent.fixturePad]});window.addEventListener('DOMContentLoaded',()=>{const bar=parent.document.querySelector('nav').cloneNode(true);bar.hidden=false;bar.style='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#101820;display:flex;gap:8px;align-items:center;padding:5px;flex-wrap:wrap;font:10px system-ui';bar.addEventListener('pointerdown',e=>e.preventDefault());for(const b of bar.querySelectorAll('[data-pressure]'))b.onclick=()=>parent.fixturePressure(b.dataset.pressure);for(const b of bar.querySelectorAll('[data-axis]'))b.onclick=()=>parent.fixtureAxis(b.dataset.axis);document.addEventListener('survey-sample',e=>{bar.querySelector('#fixture-sample').textContent='gaze '+e.detail.yaw.toFixed(2)+','+e.detail.pitch.toFixed(2);});bar.querySelector('#cross').onclick=()=>parent.fixtureTap(0);bar.querySelector('#options').onclick=()=>parent.fixtureTap(9);document.body.append(bar);});<\/script>`;
 document.querySelector('iframe').srcdoc=html.replace('<head>','<head>'+boot);
 function set(i,v){buttons[i]={value:v,pressed:v>.5,touched:v>0};}
 window.fixturePressure=value=>{const [l,r]=value.split(',').map(Number);set(6,l);set(7,r);};
 document.querySelector('nav').hidden=true;document.querySelector('nav').style.display='none';
 function tap(i){set(i,1);setTimeout(()=>set(i,0),120);}
 window.fixtureTap=tap;
+let axisTimer=0;
+window.fixtureAxis=value=>{clearTimeout(axisTimer);pad.axes.fill(0);const [axis,level,ms]=value.split(',').map(Number);pad.axes[axis]=level;axisTimer=setTimeout(()=>pad.axes.fill(0),ms);};
 </script>

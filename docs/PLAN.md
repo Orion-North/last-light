@@ -150,3 +150,18 @@ existing touch/keyboard fallback stays, but graphics and verification prioritize
 desktop. Immediate stronger independent trigger vibration, concrete choice
 meanings and first-view previews, an explicit Earth perspective handover, and
 more grounded lighting/shadows address the latest playtest feedback.
+
+
+## Current target — v0.11
+
+Manual rover travel only. Replace nine text selections with records produced by
+observing the world. Two geological close-ups and five varied mast observations
+lead to the established squeeze/release rhythm. The storm recalls the actual
+first selected view. Mars/Earth signal travel, partial arrival, reversed recovery
+calls and missing receipts communicate the story through feedback. Compose
+distinct adaptive musical sections; preserve quiet and accessibility.
+
+Full baseline critique: PLAY-11A completed the browser journey (assisted baseline
+route, muted); PLAY-11B/C lacked browser access and are source reviews only.
+The new build gets targeted browser checks; neither automated paths nor review
+prose establish that it is enjoyable or emotionally successful.

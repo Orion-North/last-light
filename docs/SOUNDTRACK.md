@@ -1,88 +1,98 @@
-# Something to show them — Last Light's original score
+# Something to show them — original adaptive score
 
-The score gives Opportunity a small musical identity before the storm takes pieces
-of it away. It is composed music rendered through Web Audio, not random ambient
-notes. No commercial soundtrack, sample, or transcribed melody is used.
+## Composer's brief
 
-## Musical plan
+Opportunity needs a recognizable identity before its routine breaks. The score
+moves from curiosity to familiarity, then loses its ability to complete a phrase.
+Earth's music remembers the rover without pretending it has answered. The ending
+holds both the discoveries and the machine in the same ensemble. This is original
+procedural chamber music, with authored pitches/rhythms, no borrowed recordings,
+no external samples, no network requests and no runtime AI.
 
-The five-note **home motif is D4–A4–E4–F♯4–D4**. A reaching fifth is followed by a
-more hesitant return. Its opening rhythm, in eighth-note positions, is 0, 3, 5,
-8, 12. Soft attacks and spaces between phrases make it a companion to reading.
-The phrase is in slow 6/8; tempo stretches as energy fades. A short answering
-phrase follows in the brighter sections. Four authored returns alternate a complete statement, solo motif, altered answer,
-and answer-led recollection. Each cycle has an additional 7–25-second breathing
-gap. The solo statement ends early and leaves a longer unscored space.
+## Themes and dramatic arrangement
 
-| Story | Musical behavior |
+The home call is **D4–A4–E4–F♯4–D4**, at eighth-note positions **0, 3, 5, 8, 12**.
+The upward fifth reaches outward; the ninth and third find a tentative home.
+The answer ends through B3 toward D4. Slow 6/8 gives the rover a walking breath.
+Four returns include a full call/answer, unaccompanied call, changed answer and
+answer-led recollection. Long composed rests let place and player action lead.
+
+| Scene family | Composition and orchestration |
 | --- | --- |
-| Discovery | Warm felt-piano/plucked timbre states the motif. Separated bass notes and one brief upper harmonic occasionally support it; the second return is solo. Open D/add9, B-minor, G, and suspended-A colors suggest wonder. |
-| The storm | The same identity is recognizable, but the third lowers and the answer disappears. Fewer supporting layers and more wind leave the phrase exposed. The final image retains only two notes. |
-| Earth waits | A quieter recollection returns in a human-feeling register. The frame is spacious rather than threatening. |
-| Contact lost / final call | Deliberate silence after the received/narration phase: melody, harmony, cues, and wind are withdrawn. |
-| Remembrance | After a short breath, the complete motif returns with gentle upper notes. This honors what remains rather than announcing a victory. |
+| First wonder | Felt/harp home theme, open D/add9, B-minor, G and A colors; isolated low roots and a brief filtered triangle harmonic. |
+| Geology (indices 1–2) | Separate **D5–E5–A5–F♯5–E5–D5** strata cell at positions 1,4,7,13,17,21. Inharmonic glass makes close observation sparkle. A quiet descending felt counterline answers later; open fifth/ninth voicings leave room for detail. |
+| Lived routine / sunset | **A3–D4–F♯4–E4** rocks in repeated groups, later rising to A4. The reaching call has become practiced middle-register work. Harmony shifts under it without a big cinematic swell. |
+| Storm | Home pitches return displaced to positions 0,4,9,17,28; F♯ becomes F and the final note falls to C♯ instead of resolving home. Alternating returns omit that ending entirely. Low D/B♭/A harmony contains a close semitone; no bright glass counterline. Wind occupies more space as the ensemble withdraws. |
+| Fading | Only D4 and E4 remain, eleven eighths apart, with no bass or sustained layer. Unfinished is the point. |
+| Earth waits | A different reed timbre descends **A3–F♯3–E3–D3**. B/G roots and suspended inner voices keep this human recollection distinct from the rover call. Martian wind is absent. |
+| Narrative silence | Indices 7 and 10 at `received` cancel all scheduled/active voices, wind and mechanical sound. No replacement drone or success sound. |
+| Remembrance | Complete home identity returns after 1.8 seconds. The first answer opens toward D5 rather than closing down; high glass recalls the geological cell within the same phrase. It acknowledges the discoveries without a triumphant fanfare. |
 
-## Principles and primary references
+Ordinary phrases occupy eight bars (48 eighths), followed by 7–25 seconds of
+additional space depending on section/return. The second statement ends early
+and rests longer. Exploration can therefore remain unhurried without a constant
+melodic loop. Authored score data is in `src/audio/score.js`.
 
-- Austin Wintory's [GDC session overview on Journey and Monaco](https://www.gdcvault.com/play/1015569/Journey-vs-Monaco-Music-is)
-  describes narrative structure and reconciling adaptivity with musicality. Our
-  application is a recurring identity whose arrangement follows the story.
-- Andrew Prahlow's [official biography](https://www.andrewprahlow.com/bio) describes
-  emotive soundscapes grounded in chamber minimalism and familiarity. Our
-  application is a small warm ensemble within an enormous unfamiliar landscape.
-- The [GDC adaptive orchestral soundtrack session](https://gdcvault.com/play/1013209/Implementing-an-Adaptive-Live-Orchestral)
-  emphasizes runtime mixing and testing alongside composition. Our application is
-  separate melody, harmony, bass, and environmental layers, with guarded scheduling.
+## Instrument and sound design
 
-These are design interpretations of the published descriptions, not claims to have
-watched full talks or reproduced either composer's work. Prahlow's page was
-available through its official indexed text; direct fetching returned an error.
+Three cached mono instrument families render locally at up to 24 kHz:
 
-## Implementation and integration
+- Felt/harp: five slightly inharmonic decaying partials, faster high-partial decay,
+  a deterministic short felt transient and a softened onset.
+- Glass: fundamental plus 2.756× and 5.404× partials with independent damping;
+  a shorter scored duration and a restrained level keep sparkle from becoming UI.
+- Reed: odd-partial emphasis and a slower breath onset in the middle/low register.
 
-`createSound()` retains its existing calls and adds optional `setActivity` feedback. Call **`setNarrative(sceneIndex, phase)`
-after `setScene(environment)`** on every render. Scene 7 and scene 10 become silent
-at `received`; scene 11 restores the theme. Indices refer to the current twelve-scene
-script; update these cues if its order changes.
+A filtered triangle harmonic supports occasional chords. This deliberately small
+synthetic ensemble does not claim to be recorded piano or orchestral strings.
+The three persistent environmental/activity sources remain wind, wheel/carrier
+triangle and filtered grit. Terrain updates allocate no new voices. Investigation
+suppresses wheels. Pressure builds late with the held-charge fraction, then falls
+to a finite charged tail. All mechanical/radio sound is dramatized feedback,
+not a recording of Mars or a model of radio physics.
 
-An 80 ms scheduler looks only 350 ms ahead. Mute, pause, hidden tabs, scene changes,
-and teardown cancel queued/active notes; resumption never bursts through missed
-events. Audio requires the existing user gesture. The score is optional and carries
-no information needed to finish the story. Browser listening and device-volume
-balancing remain part of final integration QA.
+## Adaptive implementation and mix hierarchy
 
+`createSound()` preserves its public API. Call `setScene(environment)` followed by
+`setNarrative(sceneIndex, phase)` on render. Scene 11 takes precedence for the
+ending; the two explicit silences override everything. Geology is selected by
+indices 1–2 in a bright environment. Update this mapping if scene order changes.
 
-## v0.4 sound design
+Section transitions discard the former queue and active notes, take a 0.7-second
+breath, then begin the new arrangement. They are deliberate phrase resets rather
+than claimed seamless crossfades. Same-section phase changes preserve musical
+continuity. An 80 ms scheduler looks 350 ms ahead; resumed/throttled time never
+fires a backlog. Remembrance has its longer initial breath.
 
-The sustained timbre uses a single filtered triangle voice per note, with at most
-one brief harmonic in ordinary phrases. The quieter, softer pluck attack and
-solo returns avoid a continuous simulated string section. Remembrance alone adds
-a final upper color. No reference-game recording or melody is included.
+Musical instruments feed a separate score bus. Recording, charge, send and real
+receipt cues briefly duck that bus to 43%; active pressure also ducks it. Smooth
+recovery restores space after the cue. Environmental/mechanical/cue routes bypass
+the score duck and share the conservative master/compressor. This establishes:
 
-`cue('investigate')` is a short low mechanical two-step; `observe` marks recording.
-`transmit` is a high, short three-pulse gesture. `received` answers with a lower,
-rounder A3–D4–F♯4/F4 figure. Per-kind debouncing rejects duplicate events without
-suppressing a genuine reply immediately after another interaction. None of these
-cues replaces a visible instruction or receipt.
+1. Action feedback: low investigation latch, short charge confirmation, rising
+   three-pulse departure, slower lower-register real receipt.
+2. Score: identity and dramatic structure, yielding while the player sends.
+3. Place/activity: restrained terrain, carrier and wind, with Earth free of Mars wind.
 
-`setActivity({moving, speed, roughness, investigating, contactActive,
-contactQuality})` accepts a **complete snapshot**; omitted values become false/0.
-Numeric inputs clamp to 0–1. The integration refreshes activity while it occurs.
-After 0.8 seconds without a refresh, mechanical/carrier sound fades away. One quiet
-filtered triangle oscillator suggests electric wheel loading; a bandpassed copy
-of the existing procedural noise supplies surface contact. Investigation suppresses
-wheel sound. Active link alignment reuses these same sources: quality raises a
-quiet 180–280 Hz carrier and reduces grit, making alignment perceptible by ear.
-This is dramatized interaction feedback, not recorded rover audio or radio physics.
+Receipt cues are explicitly blocked on Earth-side indices 8 onward, even if an
+integration mistakenly requests one. Visible receipt semantics remain authoritative;
+sound never grants success and all actions work muted. Per-kind debounce bounds
+repeated cues without swallowing a different adjacent event.
 
-There are only three persistent sources (wind, motor/carrier, grit), a single
-scheduler, cached mono pluck buffers capped at 24 kHz, and no per-update allocation
-of audio sources. Pause/mute/visibility gates cancel score/cue voices, silence the
-persistent graph, and do not replay missed notes. Narrative silence also removes
-activity feedback; destroy stops all persistent sources and closes the context.
+Mute, pause and hidden tabs cancel all finite voices/timers and silence persistent
+sources. Destroy also stops those sources, closes the context and removes the
+visibility listener. Resume starts a fresh phrase. Construction does not create
+an AudioContext; user activation remains required.
 
-The observable graph tests verify variation/rests, cue distinction, bounded
-activity sources, stale-input shutdown, mute/pause/visibility, narrative silence,
-and teardown. These tests do not render audio. No headphone, speaker, actual iPad,
-or human musical/emotional listening verification was performed for this pass;
-levels and pacing still need that listening pass.
+## Verification and listening status
+
+SOUND-11: 13 deterministic Node music tests pass, including original lifecycle,
+activity and silence coverage plus distinct authored chapter material, bounded
+orchestration, solo returns, cancelled transitions, Earth receipt prevention,
+Earth wind removal and score duck/recovery. Source/build checks are recorded in
+the handoff. Tests observe graph/scheduling and generated nonzero sample buffers;
+they do **not** establish perceived mix quality, musical emotion or hardware sound.
+No actual listening session, headphone/speaker balancing, audio audition export,
+physical controller check or public playtest interaction was performed for this
+pass. A human full-game listening pass remains necessary, particularly for glass
+brightness, low reed audibility and the dramatic duration of rests.

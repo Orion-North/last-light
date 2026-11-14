@@ -10,8 +10,8 @@ import { mergeVertices, mergeGeometries } from 'three/addons/utils/BufferGeometr
 export function createLandscape(canvas) {
   const noop = () => {};
   const empty = { setMissionAge: noop, setScene: noop, setReducedMotion: noop, setPaused: noop,
-    setMode: noop, setIntro: noop, previewMemory: noop, revealFirstView: noop, setRemoteView: noop, setDrive: noop, stopDrive: noop, setInvestigation: noop, setContact: noop, setContactInput: noop, nudgeContact: noop, sendContact: noop, cancelContactPulse: noop, focusRover: noop, inspect: noop,
-    setWaypoint: noop, setObservationTarget: noop, travelToWaypoint: noop, reset: noop, destroy: noop };
+    setMode: noop, setIntro: noop, previewMemory: noop, revealFirstView: noop, setRemoteView: noop, setDrive: noop, stopDrive: noop, setSurvey: noop, setInvestigation: noop, setContact: noop, setContactInput: noop, nudgeContact: noop, sendContact: noop, cancelContactPulse: noop, focusRover: noop, inspect: noop,
+    setWaypoint: noop, setObservationTarget: noop, reset: noop, destroy: noop };
   const status = (state, message) => canvas?.dispatchEvent(new CustomEvent('world-status', {
     detail: { state, message }, bubbles: true,
   }));
@@ -57,6 +57,12 @@ export function createLandscape(canvas) {
   let wasMoving = false;
   let roverFrame = null;
   let investigation = false;
+  let inspectionOrigin = null;
+  let inspectionTravel = 0;
+  let orbitGesture = false;
+  let survey = null;
+  let surveySampleTime = 0;
+  let surveyPointer = null;
   let contactActive = false;
   let contactFraming = false;
   let contactInput = { x: 0, y: 0 };
@@ -73,6 +79,7 @@ export function createLandscape(canvas) {
   let sampleDirection = new THREE.Vector3();
   let distance = 0;
   let look = {x:0,y:0};
+  let lastManualLook = -Infinity;
   let lastTrackPosition = new THREE.Vector3();
   let cameraTween = null;
   let intro = null;
@@ -81,7 +88,6 @@ export function createLandscape(canvas) {
   let inspecting = false;
   let remoteView = false;
   let memoryPreview = null;
-  let route = null;
   let planetState = null;
   const resources = new Set();
   const own = (resource) => { resources.add(resource); return resource; };
@@ -99,7 +105,8 @@ export function createLandscape(canvas) {
   controls.maxPolarAngle = Math.PI * 0.475;
   controls.rotateSpeed = 0.52;
   controls.zoomSpeed = 0.7;
-  controls.addEventListener('start', () => { cameraTween = null; });
+  controls.addEventListener('start', () => { cameraTween = null; orbitGesture = true; });
+  controls.addEventListener('end', () => { orbitGesture = false; });
   controls.addEventListener('change', () => { if (paused || reduced) render(); });
 
   // Smooth deterministic terrain, not a height-map illustration or flat backdrop.
@@ -321,7 +328,7 @@ export function createLandscape(canvas) {
   observationSites.push({ x: 7, z: -7,
     target: lastChance.position.clone().add(new THREE.Vector3(0, .67, .5)),
     normal: new THREE.Vector3(0, 0, 1), kind: 'layers',
-    offset: new THREE.Vector3(.65, 1.25, 4.1), min: 2.3, max: 6.5 });
+    offset: new THREE.Vector3(.5, 1.0, 3.2), min: 2.1, max: 6.5 });
 
   const berryBowl = new THREE.Group();
   berryBowl.position.set(-5, surfaceHeight(-5, -11.8), -11.8);
@@ -397,7 +404,7 @@ export function createLandscape(canvas) {
   observationSites.push({ x: -5, z: -10,
     target: berryBowl.position.clone().add(new THREE.Vector3(0, .2, 0)),
     normal: new THREE.Vector3(0, 1, 0), kind: 'grains',
-    offset: new THREE.Vector3(.35, 2.6, 2.8), min: 2.1, max: 5.8 });
+    offset: new THREE.Vector3(.25, 3.0, 1.45), min: 1.9, max: 5.8 });
 
   function loadSurfaceMaps(paths, materials, repeat, normalStrength) {
     const textureLoader = new THREE.TextureLoader();
@@ -647,7 +654,7 @@ export function createLandscape(canvas) {
     if (!contactActive) contactVisual.visible = false;
     guide.visible = true;
     beamTip.visible = true;
-    controls.enabled = !remoteView && !paused && !contactActive;
+    controls.enabled = !survey && !remoteView && !paused && !contactActive;
   }
 
   function sendContact(nextMode = 'reply') {
@@ -697,7 +704,7 @@ export function createLandscape(canvas) {
       contactActive = false;
       contactInput = { x: 0, y: 0 };
       contactVisual.visible = false;
-      controls.enabled = !remoteView && !paused;
+      controls.enabled = !survey && !remoteView && !paused;
       render();
       return;
     }
@@ -707,6 +714,7 @@ export function createLandscape(canvas) {
     inspecting = false;
     roverFrame = null;
     look = { x: 0, y: 0 };
+    setSurvey(false);
     contactActive = contactFraming = true;
     controls.enabled = false;
     controls.minDistance = 3.3;
@@ -795,7 +803,6 @@ export function createLandscape(canvas) {
 
   function setWaypoint(value) {
     guidanceTime = -Infinity;
-    route = null;
     if (!value || !Number.isFinite(value.x) || !Number.isFinite(value.z)) {
       waypoint = null;
       marker.visible = false;
@@ -826,58 +833,6 @@ export function createLandscape(canvas) {
   function blockedAt(x, z, margin = .8) {
     return Math.hypot(x, z) > 19 || collisions.some((rock) =>
       Math.hypot(x - rock.x, z - rock.z) < rock.radius + margin);
-  }
-
-  function travelToWaypoint() {
-    if (remoteView || !waypoint || waypoint.reached || !modelReady || paused || mode !== 'game') return false;
-    drive = { forward: 0, turn: 0 };
-    const cell = .8;
-    const start = { x: Math.round(vehicle.position.x / cell), z: Math.round(vehicle.position.z / cell) };
-    const id = (x, z) => `${x},${z}`;
-    const startId = id(start.x, start.z);
-    const open = [{ ...start, cost: 0, score: 0 }];
-    const best = new Map([[startId, 0]]);
-    const previousNode = new Map();
-    let found = null;
-    let visits = 0;
-    while (open.length && visits < 3500) {
-      open.sort((a, b) => a.score - b.score);
-      const current = open.shift();
-      visits += 1;
-      if (Math.hypot(current.x * cell - waypoint.x, current.z * cell - waypoint.z) < 1.25) {
-        found = current;
-        break;
-      }
-      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
-        const x = current.x + dx, z = current.z + dz;
-        if (blockedAt(x * cell, z * cell, 1.0)
-          || blockedAt((current.x + dx * .5) * cell, (current.z + dz * .5) * cell, 1.0)) continue;
-        const nextId = id(x, z);
-        const cost = current.cost + Math.hypot(dx, dz);
-        if (best.has(nextId) && best.get(nextId) <= cost) continue;
-        best.set(nextId, cost);
-        previousNode.set(nextId, id(current.x, current.z));
-        open.push({ x, z, cost,
-          score: cost + Math.hypot(x - waypoint.x / cell, z - waypoint.z / cell) });
-      }
-    }
-    if (!found) {
-      canvas.dispatchEvent(new CustomEvent('navigation-status', { bubbles: true,
-        detail: { state: 'blocked', message: 'No clear route. Drive toward the marker to explore another approach.' } }));
-      return false;
-    }
-    route = [];
-    let cursor = id(found.x, found.z);
-    while (cursor !== startId) {
-      const [x, z] = cursor.split(',').map(Number);
-      route.unshift({ x: x * cell, z: z * cell });
-      cursor = previousNode.get(cursor);
-      if (!cursor) break;
-    }
-    motion.reset();
-    if (inspecting) returnFromInspection();
-    else cameraTween = null;
-    return true;
   }
 
   function setMissionAge(years) {
@@ -951,16 +906,16 @@ export function createLandscape(canvas) {
       // A fixed portrait multiplier fails on tall phones because OrbitControls
       // then clamps it back to the old desktop zoom limit.
       const halfFov = THREE.MathUtils.degToRad(camera.fov * .5);
-      const horizontalFit = 3.25 / (2 * Math.tan(halfFov) * Math.max(camera.aspect, .2) * .82);
-      const verticalFit = 1.65 / (2 * Math.tan(halfFov) * .52);
-      const fitDistance = Math.max(offset.length(), horizontalFit + .8, verticalFit + .8);
+      const horizontalFit = 2.85 / (2 * Math.tan(halfFov) * Math.max(camera.aspect, .2) * .82);
+      const verticalFit = 1.45 / (2 * Math.tan(halfFov) * .72);
+      const fitDistance = Math.max(offset.length(), horizontalFit, verticalFit);
       offset.setLength(fitDistance);
       controls.maxDistance = Math.max(site?.max || 7, fitDistance * 1.45);
       return { position: target.clone().add(offset), target };
     }
     if (mode === 'game' || inspect) {
       const target = vehicle.position.clone().add(new THREE.Vector3(0, .75, 0));
-      const offset = new THREE.Vector3(3.2, .9, 3.8);
+      const offset = new THREE.Vector3(1.5, 1.3, -4.7).applyAxisAngle(new THREE.Vector3(0,1,0),heading);
       const halfFov = THREE.MathUtils.degToRad(camera.fov * .5);
       // Fit the rover's 2.4m wheel footprint plus a small shoulder in portrait.
       // Landscape stays intimate; an iPad/phone still retains the whole rover.
@@ -1010,11 +965,12 @@ export function createLandscape(canvas) {
     if (contactActive) setContact(false);
     contactFraming = false; contactCamera = null;
     inspecting = investigation = false; roverFrame = null; memoryPreview = null;
+    setSurvey(false);
     remoteView = next;
     // Flush any residual pointer damping before freezing the remote composition.
     const damping = controls.enableDamping;
     controls.enableDamping = false; controls.update(); controls.enableDamping = damping;
-    controls.enabled = !remoteView && !paused && !intro;
+    controls.enabled = !survey && !remoteView && !paused && !intro;
     controls.minDistance = 3.3; controls.minPolarAngle = .32;
     controls.maxPolarAngle = Math.PI * .475;
     // Role handover is a deliberate cut, including while its timeline is paused.
@@ -1059,8 +1015,8 @@ export function createLandscape(canvas) {
       && Math.hypot(site.x - observationTarget.x, site.z - observationTarget.z) < .5);
     controls.minDistance = site?.min || 2.3;
     controls.maxDistance = site?.max || 7;
-    controls.minPolarAngle = .32;
-    controls.maxPolarAngle = Math.PI * .43;
+    controls.minPolarAngle = .18;
+    controls.maxPolarAngle = Math.PI * .46;
     cameraTween = desiredFrame(true);
     if (reduced || immediate) {
       camera.position.copy(cameraTween.position);
@@ -1088,22 +1044,77 @@ export function createLandscape(canvas) {
     } else cameraTween = { ...desired, follow: true };
   }
 
+  function setSurvey(active) {
+    const next = Boolean(active && !remoteView && mode === 'game' && !disposed);
+    if (!next) {
+      if (!survey) return;
+      survey = null; surveyPointer = null;
+      look = { x: 0, y: 0 };
+      controls.enabled = !survey && !remoteView && !paused && !intro && !contactActive;
+      return;
+    }
+    survey = null;
+    investigation = false; inspectionOrigin = null; inspectionTravel = 0;
+    focusRover();
+    stopDrive(); look = { x: 0, y: 0 };
+    // Keep the eye safely above ground; survey rotates its gaze, not its orbit.
+    // This makes both skyward and groundward goals reachable without clipping.
+    survey = { origin: null, previous: null };
+    surveySampleTime = elapsed;
+    controls.enabled = false;
+  }
+
+  function aimSurvey(right, down) {
+    if (!survey?.origin || cameraTween || paused || remoteView) return;
+    const gaze = new THREE.Spherical().setFromVector3(controls.target.clone().sub(camera.position));
+    gaze.theta -= right;
+    gaze.phi = THREE.MathUtils.clamp(gaze.phi + down, .20, Math.PI - .20);
+    controls.target.copy(camera.position).add(new THREE.Vector3().setFromSpherical(gaze));
+  }
+  function surveyPointerDown(event) {
+    if (survey?.origin && !paused) surveyPointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
+  }
+  function surveyPointerMove(event) {
+    if (!surveyPointer || surveyPointer.id !== event.pointerId) return;
+    aimSurvey((event.clientX - surveyPointer.x) * .004, (event.clientY - surveyPointer.y) * .004);
+    surveyPointer.x = event.clientX; surveyPointer.y = event.clientY;
+    render();
+  }
+  function surveyPointerEnd() { surveyPointer = null; }
+
+  function sampleSurvey() {
+    if (!survey || paused || remoteView || cameraTween || elapsed - surveySampleTime < .1) return;
+    surveySampleTime = elapsed;
+    const direction = camera.getWorldDirection(new THREE.Vector3());
+    const gaze = new THREE.Spherical().setFromVector3(direction);
+    if (!survey.origin) {
+      survey.origin = { theta: gaze.theta, phi: gaze.phi };
+      survey.previous = direction.clone();
+    }
+    const yaw = -Math.atan2(Math.sin(gaze.theta - survey.origin.theta), Math.cos(gaze.theta - survey.origin.theta));
+    const pitch = gaze.phi - survey.origin.phi; // gaze polar grows DOWN
+    const steady = direction.angleTo(survey.previous) < .016;
+    survey.previous.copy(direction);
+    canvas.dispatchEvent(new CustomEvent('survey-sample', { bubbles: true,
+      detail: { yaw, pitch, steady } }));
+  }
+
   function setInvestigation(active) {
     if (remoteView) return;
     const site = observationSites.find(site => observationTarget
       && Math.hypot(site.x - observationTarget.x, site.z - observationTarget.z) < .5);
-    investigation = Boolean(active && site);
+    const next = Boolean(active && site);
+    if (!next && !investigation) return;
+    investigation = next;
+    inspectionOrigin = null; inspectionTravel = 0;
     sampleTime = elapsed;
     if (!investigation) return;
+    setSurvey(false);
     stopDrive();
     if (!inspecting) inspect();
     const desired = desiredFrame(true);
-    const fittedDistance = desired.position.distanceTo(desired.target);
-    // Begin beside the exposed face (or low beside the grain-bearing surface).
-    // Orbiting then reveals real geometry; there is no concealed image/reticle.
-    const oblique = site.kind === 'layers' ? new THREE.Vector3(3.8, 1.1, 1.1)
-      : new THREE.Vector3(2.4, 1.1, 2.8);
-    desired.position.copy(desired.target).add(oblique.setLength(fittedDistance));
+        // Begin with useful evidence already visible. Deliberate orbit reveals it;
+    // the camera animation itself never counts as the player's investigation.
     if (reduced) {
       camera.position.copy(desired.position);
       controls.target.copy(desired.target);
@@ -1135,9 +1146,15 @@ export function createLandscape(canvas) {
     const angularSpeed = direction.angleTo(sampleDirection) / interval;
     const relativeSpeed = camera.position.distanceTo(samplePosition) / Math.max(actualDistance, .1) / interval;
     const steady = !cameraTween && angularSpeed < .16 && relativeSpeed < .12;
-    const quality = THREE.MathUtils.clamp(facing * proximity, 0, 1);
-    const hint = ratio > 1.3 ? 'Move closer' : ratio < .65 ? 'Pull back a little'
-      : facing < .75 ? (site.kind === 'layers' ? 'Turn toward the layered face' : 'Look down at the grains')
+    if (!cameraTween) {
+      const directionFromSite = camera.position.clone().sub(site.target).normalize();
+      if (inspectionOrigin && (Math.abs(look.x) + Math.abs(look.y) > .05 || orbitGesture)) inspectionTravel += Math.min(.15, directionFromSite.angleTo(inspectionOrigin));
+      inspectionOrigin = directionFromSite;
+    } else { inspectionOrigin = null; inspectionTravel = 0; }
+    const revealed = inspectionTravel >= .11;
+    const quality = revealed ? THREE.MathUtils.clamp(facing * proximity, 0, 1) : 0;
+    const hint = !revealed ? (site.kind === 'layers' ? 'Look left or right across the layers' : 'Look around the grain-covered hollow')
+      : facing < .65 ? (site.kind === 'layers' ? 'Look back toward the broad layered face' : 'Look down into the hollow')
         : 'Hold this view';
     samplePosition.copy(camera.position);
     sampleDirection.copy(direction);
@@ -1149,7 +1166,6 @@ export function createLandscape(canvas) {
     const notifyStop = wasMoving;
     drive = { forward: 0, turn: 0 };
     contactInput = { x: 0, y: 0 };
-    route = null;
     motion.reset();
     wasMoving = false;
     if (notifyStop && !disposed) {
@@ -1186,25 +1202,10 @@ export function createLandscape(canvas) {
   }
 
   function moveRover(delta) {
-    if (remoteView || intro || mode !== 'game' || !modelReady || modelFailed || !canDrive || investigation || contactActive || contactPulse) return;
+    if (remoteView || intro || mode !== 'game' || !modelReady || modelFailed || !canDrive || investigation || survey || contactActive || contactPulse) return;
     let forward = THREE.MathUtils.clamp(drive.forward, -1, 1);
     let turn = THREE.MathUtils.clamp(drive.turn, -1, 1);
-    if (forward || turn) route = null;
-    const assisted = Boolean(route?.length);
-    if (assisted) {
-      let target = route[0];
-      if (Math.hypot(target.x - vehicle.position.x, target.z - vehicle.position.z) < .38) {
-        route.shift();
-        target = route[0];
-      }
-      if (target) {
-        const aim = Math.atan2(target.x - vehicle.position.x, target.z - vehicle.position.z);
-        const difference = Math.atan2(Math.sin(aim - heading), Math.cos(aim - heading));
-        turn = THREE.MathUtils.clamp(difference * 2.5, -1, 1);
-        forward = Math.abs(difference) < .9 ? Math.max(.2, 1 - Math.abs(difference)) : 0;
-      } else route = null;
-    }
-    const velocity = motion.step({ forward, turn, assisted }, delta);
+    const velocity = motion.step({ forward, turn }, delta);
     const moving = Boolean(velocity.speed || velocity.turnRate);
     if (!moving && !wasMoving) return;
     wasMoving = moving;
@@ -1235,6 +1236,12 @@ export function createLandscape(canvas) {
     }
     if (blocked && step) motion.reset();
     groundRover();
+    // Follow the direction the wheels travel, while preserving deliberate free look.
+    if((forward || turn) && elapsed-lastManualLook>2.5 && !orbitGesture) {
+      cameraTween=null;
+      const follow=desiredFrame(false),amount=1-Math.exp(-delta*2.8);
+      camera.position.lerp(follow.position,amount);controls.target.lerp(follow.target,amount);
+    }
     if (!moving || elapsed - eventTime > .08) {
       eventTime = elapsed;
       const texture=sampleSurface(surfaceHeight,{x:vehicle.position.x,z:vehicle.position.z,heading,speed:blocked ? 0 : Math.abs(velocity.speed),blocked});
@@ -1307,6 +1314,8 @@ export function createLandscape(canvas) {
       x: THREE.MathUtils.clamp(.5 + dx * scale, .12, .88),
       y: THREE.MathUtils.clamp(.5 + dy * scale, .32, .72),
       onScreen,
+      steering: Math.atan2(Math.sin(Math.atan2(waypoint.x-vehicle.position.x,waypoint.z-vehicle.position.z)-heading),Math.cos(Math.atan2(waypoint.x-vehicle.position.x,waypoint.z-vehicle.position.z)-heading)),
+      remaining: Math.hypot(waypoint.x-vehicle.position.x,waypoint.z-vehicle.position.z),
       // CSS rotation of an upward arrow: clockwise degrees, screen Y points down.
       angle: THREE.MathUtils.radToDeg(Math.atan2(dx, -dy)),
     } }));
@@ -1318,8 +1327,11 @@ export function createLandscape(canvas) {
     const ground = surfaceHeight(camera.position.x, camera.position.z);
     const targetGround = surfaceHeight(controls.target.x, controls.target.z);
     if (camera.position.y < ground + .85) camera.position.y = ground + .85;
-    if (controls.target.y < targetGround + .45) controls.target.y = targetGround + .45;
+    if (!survey && controls.target.y < targetGround + .45) controls.target.y = targetGround + .45;
     camera.lookAt(controls.target);
+    // Dedicated evidence close-ups omit the foreground rover that otherwise
+    // blocks the near-side rock/grains. Restored on every other world view.
+    vehicle.visible = !investigation;
     anchorShadows();
     renderer.render(scene, camera);
     sampleWaypointGuidance();
@@ -1349,17 +1361,26 @@ export function createLandscape(canvas) {
         controls.target.lerp(cameraTween.target, amount);
         if (camera.position.distanceTo(cameraTween.position) < .015) cameraTween = null;
       }
+      if(look.x || look.y || orbitGesture)lastManualLook=elapsed;
       if(!remoteView && !intro && !contactActive && !contactPulse && (look.x || look.y)) {
-        cameraTween=null;
-        const offset=camera.position.clone().sub(controls.target);
-        const orbit=new THREE.Spherical().setFromVector3(offset);
-        orbit.theta-=look.x*delta*1.6;
-        orbit.phi=THREE.MathUtils.clamp(orbit.phi+look.y*delta*1.2,controls.minPolarAngle,controls.maxPolarAngle);
-        camera.position.copy(controls.target).add(offset.setFromSpherical(orbit));
+        // Finish authored survey framing before accepting relative camera input.
+        if (!survey || !cameraTween && survey.origin) {
+          cameraTween = null;
+          if (survey) {
+            aimSurvey(look.x * delta * 1.6, look.y * delta * 1.2);
+          } else {
+            const offset=camera.position.clone().sub(controls.target);
+            const orbit=new THREE.Spherical().setFromVector3(offset);
+            orbit.theta-=look.x*delta*1.6;
+            orbit.phi=THREE.MathUtils.clamp(orbit.phi+look.y*delta*1.2,controls.minPolarAngle,controls.maxPolarAngle);
+            camera.position.copy(controls.target).add(offset.setFromSpherical(orbit));
+          }
+        }
       }
-      controls.update();
+      if (!survey || cameraTween) controls.update();
       render();
       sampleInspection();
+      sampleSurvey();
     }
     frame = requestAnimationFrame(animate);
   }
@@ -1371,7 +1392,7 @@ export function createLandscape(canvas) {
       controls.target.copy(returned.target);
       intro = null;
       stopDrive(); look = { x: 0, y: 0 };
-      controls.enabled = !remoteView && !intro && !paused && !contactActive && !contactPulse;
+      controls.enabled = !survey && !remoteView && !intro && !paused && !contactActive && !contactPulse;
       controls.update(); render();
       return;
     }
@@ -1405,7 +1426,7 @@ export function createLandscape(canvas) {
     renderer.setSize(width, height, false);
     if ((remoteView || memoryPreview) && Math.abs(camera.aspect / previousAspect - 1) > .08) frameMemory(true);
     else if (inspecting && Math.abs(camera.aspect / previousAspect - 1) > .08) inspect(true);
-    else if (mode === 'game' && !intro && !contactFraming
+    else if (mode === 'game' && !survey && !intro && !contactFraming
       && Math.abs(camera.aspect / previousAspect - 1) > .08) focusRover(true);
     if (contactFraming && Math.abs(camera.aspect / previousAspect - 1) > .08) {
       contactCamera = contactFrame();
@@ -1416,7 +1437,7 @@ export function createLandscape(canvas) {
     }
     render();
   }
-  function blur() { stopDrive(); contactInput = { x: 0, y: 0 }; }
+  function blur() { surveyPointer = null; orbitGesture = false; stopDrive(); contactInput = { x: 0, y: 0 }; }
   function contextLost(event) {
     event.preventDefault();
     paused = true;
@@ -1427,6 +1448,10 @@ export function createLandscape(canvas) {
   window.addEventListener('resize', resize, { passive: true });
   window.addEventListener('blur', blur);
   canvas.addEventListener('webglcontextlost', contextLost);
+  canvas.addEventListener('pointerdown', surveyPointerDown);
+  window.addEventListener('pointermove', surveyPointerMove);
+  window.addEventListener('pointerup', surveyPointerEnd);
+  window.addEventListener('pointercancel', surveyPointerEnd);
   const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resize) : null;
   resizeObserver?.observe(canvas);
   resize();
@@ -1446,13 +1471,14 @@ export function createLandscape(canvas) {
       const nextMode = ['title', 'game', 'ending'].includes(value) ? value : 'title';
       if (nextMode === mode) return;
       mode = nextMode;
-      if (mode !== 'game') { remoteView = false; memoryPreview = null; }
-      controls.enabled = !remoteView && !paused && !intro && !contactActive && !contactPulse;
+      if (mode !== 'game') { setSurvey(false); remoteView = false; memoryPreview = null; }
+      controls.enabled = !survey && !remoteView && !paused && !intro && !contactActive && !contactPulse;
       stopDrive();
       marker.visible = mode === 'game' && Boolean(waypoint && !waypoint.reached);
       focusRover();
     },
     stopDrive,
+    setSurvey,
     setInvestigation,
     setContact,
     setContactInput,
@@ -1461,7 +1487,6 @@ export function createLandscape(canvas) {
     cancelContactPulse,
     setDrive(value = {}) {
       if (intro || remoteView) return;
-      if (value.forward || value.turn) route = null;
       drive = {
         forward: THREE.MathUtils.clamp(Number(value.forward) || 0, -1, 1),
         turn: THREE.MathUtils.clamp(Number(value.turn) || 0, -1, 1),
@@ -1486,20 +1511,20 @@ export function createLandscape(canvas) {
     },
     setPaused(value) {
       paused = Boolean(value);
-      controls.enabled = !remoteView && !intro && !paused && !contactActive && !contactPulse;
+      controls.enabled = !survey && !remoteView && !intro && !paused && !contactActive && !contactPulse;
       if (paused) {cancelContactPulse();blur();look={x:0,y:0};}
+      if (survey) { controls.enabled = false; survey.previous = camera.getWorldDirection(new THREE.Vector3()); }
       previous = 0;
     },
     focusRover,
     inspect,
     setWaypoint,
     setObservationTarget,
-    travelToWaypoint,
     reset() {
+      setSurvey(false);
       remoteView = false; memoryPreview = null;
       missionAge.value = 0;
       setIntro(false);
-      route = null;
       waypoint = null;
       observationTarget = null;
       investigation = false;
@@ -1522,12 +1547,17 @@ export function createLandscape(canvas) {
     destroy() {
       if (disposed) return;
       cancelContactPulse();
+      survey = null; inspectionOrigin = null;
       disposed = true;
       if (frame) cancelAnimationFrame(frame);
       resizeObserver?.disconnect();
       window.removeEventListener('resize', resize);
       window.removeEventListener('blur', blur);
       canvas.removeEventListener('webglcontextlost', contextLost);
+      canvas.removeEventListener('pointerdown', surveyPointerDown);
+      window.removeEventListener('pointermove', surveyPointerMove);
+      window.removeEventListener('pointerup', surveyPointerEnd);
+      window.removeEventListener('pointercancel', surveyPointerEnd);
       controls.dispose();
       vehicle.traverse((object) => { if (object.isMesh) disposeModel(object); });
       for (const resource of resources) resource.dispose?.();

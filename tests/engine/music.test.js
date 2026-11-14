@@ -384,3 +384,67 @@ test('final hold compression builds late at fixed trigger pressure without addin
     assert.equal(h.sources.length, count);
   });
 });
+
+test('authored chapters change musical material, not only gain or tempo', async () => {
+  const { phrase, HOME } = await import('../../src/audio/score.js');
+  const melody = name => phrase(name).events.filter(e => e.volume >= .06).map(e => e.note);
+  assert.notDeepEqual(melody('geology'), melody('discovery'));
+  assert.notDeepEqual(melody('amber'), melody('discovery'));
+  assert.notDeepEqual(melody('storm'), melody('discovery'));
+  assert.ok(phrase('geology').events.some(e => e.instrument === 'glass'));
+  assert.ok(phrase('waiting').events.some(e => e.instrument === 'reed'));
+  assert.ok(phrase('remembrance').events.some(e => e.instrument === 'glass'), 'science identity survives in ending');
+  assert.deepEqual(phrase('silence').events, []);
+  const waiting = phrase('waiting').events.filter(e => e.instrument === 'reed');
+  assert.ok(waiting.every((e, i) => !i || e.note < waiting[i - 1].note), 'Earth recollection descends instead of answering the call');
+  for (const name of ['discovery', 'geology', 'amber', 'storm', 'fading', 'waiting', 'remembrance']) {
+    for (let n = 0; n < 4; n++) {
+      const p = phrase(name, n);
+      assert.ok(p.events.length <= 22, 'bounded chamber orchestration');
+      assert.ok(p.events.every(e => e.volume > 0 && e.duration > 0 && e.note >= 31 && e.note <= 88));
+      assert.ok(p.seconds > Math.max(...p.events.map(e => e.at)) * .48);
+    }
+  }
+  assert.deepEqual(phrase('discovery', 1).events.map(e => [e.note, e.at]), HOME, 'solo return preserves the exact identity');
+});
+
+test('chapter changes discard future material and Earth cannot produce a received cue', async () => {
+  await withMusic(async (sound, h) => {
+    await sound.start();
+    h.advance(4);
+    const former = h.notes().slice();
+    sound.setNarrative(1, 'observe');
+    assert.ok(former.every(s => s.stopped <= h.contexts[0].currentTime));
+    h.advance(4);
+    assert.ok(h.notes().length > former.length, 'geology begins after the transition breath');
+    sound.setScene('earth');
+    sound.setNarrative(8, 'observe');
+    const before = h.sources.length;
+    sound.cue('received');
+    assert.equal(h.sources.length, before, 'Earth waiting does not synthesize a rover answer');
+    const wind = h.sources.find(s => s.loop);
+    assert.equal(wind.connections[0].connections[0].gain.target, 0, 'Earth has no Martian wind');
+    h.advance(3);
+    const count = h.notes().length;
+    sound.setNarrative(10, 'received');
+    h.advance(40);
+    assert.equal(h.notes().length, count);
+    h.assertCanceled();
+  });
+});
+
+test('foreground cues duck score and recover without ducking the cue bus', async () => {
+  await withMusic(async (sound, h) => {
+    await sound.start();
+    h.advance(3);
+    const note = h.notes().find(s => s.kind === 'buffer');
+    const bus = note.connections[0].connections[0].connections[0];
+    assert.equal(bus.gain.target, 1);
+    const before = h.sources.length;
+    sound.cue('transmit');
+    assert.equal(bus.gain.target, .43);
+    assert.notEqual(h.sources[before].connections[0].connections[0], bus, 'cue bypasses music duck');
+    h.advance(2);
+    assert.equal(bus.gain.target, 1);
+  });
+});

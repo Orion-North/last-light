@@ -85,3 +85,20 @@ body[data-phase="choose"] .interaction-dock { bottom:12%; }
 body[data-screen="game"] #waypoint-hud:not([hidden]) { display:flex;flex-direction:column;align-items:center;gap:5px;position:fixed;transform:translate(-50%,-50%);max-width:210px;padding:7px 10px;border:0;background:radial-gradient(ellipse,#0d151acc,transparent 72%);color:#ffe0a2;text-align:center;font:10px/1.4 var(--mono);text-shadow:0 2px 5px #000; }
 body[data-screen="game"] #waypoint-hud::before { content:'↑';display:block;font:26px/1 var(--sans);transform:rotate(var(--bearing,0deg));color:#ffdb91; }
 body[data-screen="game"] #waypoint-hud[data-onscreen="true"]::before { content:'◇';transform:none;font-size:28px; }
+
+/* Mast survey: three visible bearings, one current action, no message selection. */
+.survey-instrument {text-align:center;max-width:620px;margin:auto;}
+.survey-aim{position:relative;width:160px;height:110px;margin:0 auto 14px;}
+.survey-center{position:absolute;left:calc(50% - 16px);top:calc(50% - 16px);width:32px;height:32px;border:1px solid #edf4f477;border-radius:50%;box-shadow:0 0 0 10px #10182022;}
+.survey-center::after,.survey-center::before{content:'';position:absolute;background:#f7e9cc88;}
+.survey-center::after{width:1px;height:12px;left:15px;top:9px;}
+.survey-center::before{height:1px;width:12px;left:9px;top:15px;}
+#survey-target{position:absolute;left:calc(50% - 4px);top:calc(50% - 4px);width:8px;height:8px;background:#ffd392;border-radius:50%;box-shadow:0 0 14px #ffcb77;transition:transform 100ms linear;}
+#survey-target[data-aligned="true"]{background:#eefaff;box-shadow:0 0 15px #d6efff;}
+.survey-ticks{display:flex;justify-content:center;gap:16px;font:10px/1.3 var(--mono);letter-spacing:.12em;color:#b5bec4;}
+.survey-ticks span{padding-bottom:7px;border-bottom:2px solid #b5bec433;}
+.survey-ticks [data-active="true"]{color:#ffe1ad;border-color:#ffe1ad;}
+.survey-ticks [data-recorded="true"]{color:#d6f2ff;border-color:#d6f2ff;}
+.survey-instrument .discovery-line{font-size:18px;margin:14px 0 8px;}
+.survey-instrument .pace-note{font-size:12px;margin:8px 0;}
+body[data-upload="true"] .interaction-dock .dock-footer{display:none;}

@@ -89,14 +89,14 @@ export const scenes = [
   {
     id: 'marathon', act: 1, chapter: 'I · A world to bring home',
     subtitle: 'Eleven years of mornings. Still another horizon.',
-    objective: 'Look back along the tracks',
+    objective: 'Survey the ground and horizon',
     discovery: 'On March 24, 2015, Opportunity passed 42.195 kilometres: a marathon, driven over eleven years.',
     response: 'Earth, imagined: A marathon. Let’s see what lies ahead.',
     sol: 'SOL 3968 · MARCH 24, 2015', title: 'Tomorrow kept coming.',
     text: 'Ninety mornings became hundreds. Hundreds became thousands. There were winters, slopes, patient detours. There were days when the whole task was simply to stay warm.\n\nToday your wheels carry you beyond a marathon’s distance. There is no finish line in the dust. No one waiting beside the path.\n\nBut across the distance, they are counting.',
     thought: 'I thought I was going somewhere. Perhaps I was learning how to stay.',
     environment: 'sunset', power: 82, signal: 100,
-    actionLabel: 'Look back along the tracks',
+    actionLabel: 'Survey the ground and horizon',
     observation: {
       title: 'Forty-two kilometres, one careful drive at a time',
       text: 'The distance is not a straight route. It is the sum of decisions: a rock worth stopping for, safer ground around a dune, another view from the rim.\n\nYour tracks are temporary. The observations sent home can be studied long after the wind has softened every mark.',
@@ -133,14 +133,14 @@ export const scenes = [
   {
     id: 'dust', act: 2, chapter: 'II · The light grows thin',
     subtitle: 'The light has always come back before.',
-    objective: 'Look toward the dimming Sun',
-    discovery: 'June 2018. Dust blocks the Sun. Your solar panels receive less energy; choosing a memory cannot change the storm.',
+    objective: 'Measure the fading light',
+    discovery: 'June 2018. Dust blocks the Sun. Your solar panels receive less energy. The sky grows darker.',
     response: 'Earth, imagined: We are watching the storm. We are still here.',
     sol: 'EARLY JUNE · 2018', title: 'The sky forgets its edges.',
     text: 'The horizon has become less certain. Dust settles between you and the Sun.\n\nYou turn toward the place where morning should be. Your solar panels wait for light that arrives more faintly than before.\n\nYou have known difficult days. Your people have helped you through so many of them.',
     thought: 'The light has always come back before.',
     environment: 'storm', power: 46, signal: 74,
-    actionLabel: 'Look toward the dimming Sun',
+    actionLabel: 'Measure the fading light',
     observation: {
       title: 'A machine that lives on sunlight',
       text: 'Solar panels turn sunlight into electrical energy. A thickening sky means less energy reaches the rover. During the real storm, this was a physical limit, not a puzzle a better choice could solve.\n\nHere, the fading indicator tells that part of the story. The memories you choose do not consume power or change what happened.',
@@ -200,7 +200,7 @@ export const scenes = [
     id: 'earth-listens', receiptMode: 'silence', act: 3, chapter: 'III · On the other side',
     subtitle: 'Now you are on Earth, with the people trying to reach Opportunity.',
     objective: 'Call Opportunity from Earth',
-    discovery: 'Now on Earth, you join the recovery effort. Choose what to remember as you call the silent rover.',
+    discovery: 'Now on Earth, you send a recovery command across the same distance. This time, you are waiting for Opportunity.',
     response: 'Earth’s call, imagined: Opportunity, this is home. No answer arrives.',
     sol: 'EARTH · AFTER JUNE 10, 2018', title: 'The people stay.',
     text: 'The story moves to Earth.\n\nA screen holds the last information that arrived. Outside the room, ordinary days continue. Inside, people watch the weather on another planet and work on ways to hear from a familiar machine.\n\nOpportunity does not answer. They call again.',
@@ -244,7 +244,7 @@ export const scenes = [
     id: 'last-call', receiptMode: 'silence', act: 3, chapter: 'III · On the other side',
     subtitle: 'On Earth, the final recovery commands go out. Opportunity does not answer.',
     objective: 'Make the final call from Earth',
-    discovery: 'February 12, 2019. Earth sends the final recovery commands. Choose a farewell for your archive; the rover does not respond.',
+    discovery: 'February 12, 2019. Send the final recovery call from Earth. Leave the channel open, and listen.',
     response: 'No signal is received. The last call ends.',
     sol: 'EARTH · FEBRUARY 12, 2019', title: 'Earth’s final call.',
     text: 'The final commands are sent.\n\nNothing you choose now will change the silence. Nothing you chose before caused it. This was a machine that worked through years it was never promised.\n\nThere is one last thing to decide in this story: how you want to remember the journey.',
@@ -281,3 +281,15 @@ export const scenes = [
     choices: [], transmission: '', end: true,
   },
 ];
+
+/** Only these two moments ask the player to curate a menu. Other records follow the work. */
+export function recordedChoice(scene, state) {
+  if (scene.id === 'first-morning' || scene.id === 'months' || scene.end) return null;
+  if (scene.id === 'smaller-world') {
+    const geology = state?.memories?.some(memory =>
+      (memory.sceneId === 'stone-ripples' && memory.choiceId === 'layers') ||
+      (memory.sceneId === 'blueberries' && memory.choiceId === 'care'));
+    return scene.choices.find(choice => choice.id === (geology ? 'discovery' : 'together'));
+  }
+  return scene.choices[0] ?? null;
+}

@@ -60,9 +60,9 @@ test('instrument exposes charge and quiet mode-aware receipt marks', () => {
   const html = render('reply', 'ready', { input: 'controller' });
   assert.match(html, /--charge-progress:0/);
   assert.match(html, /upload-terminal__seam/);
-  assert.match(html, /upload-terminal__signal/);
-  assert.doesNotMatch(html, /<svg|SELECTED MEMORY|MEMORY BUFFER/);
-  assert.match(html, /upload-terminal__receipt/);
+  assert.match(html, /signal-packet/);
+  assert.doesNotMatch(html, /SELECTED MEMORY|MEMORY BUFFER/);
+  assert.match(html, /signal-echo/);
   assert.match(html, /aria-hidden="true"/);
 });
 
@@ -82,4 +82,15 @@ test('selected meaning follows the choice and the route reverses on Earth',()=>{
   assert.match(render('silence','ready'),/EARTH<\/span><i[^>]*>→<\/i><span>OPPORTUNITY · MARS/);
   assert.doesNotMatch(render('archive','ready'),/>→<\/i>/);
   assert.doesNotMatch(render('reply','received',{meaning:'ready only'}),/ready only/);
+});
+
+test('spatial link explains both endpoints, compressed time, and archive difference', () => {
+  const send=render('reply','sending');
+  assert.match(send,/signal-world--mars/);
+  assert.match(send,/planet--earth/);
+  assert.match(send,/A signal travels from Opportunity on Mars to Earth/);
+  assert.match(send,/DISTANCE &amp;|DISTANCE & TRAVEL TIME COMPRESSED/);
+  assert.match(render('silence','received'),/NO RETURN SIGNAL/);
+  assert.match(render('partial','received'),/INCOMPLETE FRAME/);
+  assert.match(render('archive','received'),/THE DISCOVERIES REMAIN/);
 });

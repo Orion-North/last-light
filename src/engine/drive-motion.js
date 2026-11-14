@@ -15,10 +15,6 @@ export function createDriveMotion() {
     const forward = axis(input?.forward);
     const turn = axis(input?.turn);
     const delta = Number.isFinite(deltaSeconds) ? Math.max(0, Math.min(.05, deltaSeconds)) : 0;
-    if (input?.assisted === true) {
-      speed = forward * 1.45;
-      turnRate = turn * 1.5;
-    } else {
       const target = forward * 1.15;
       if (speed * target < 0) {
         // Spend time stopping first, then accelerate only with time left over.
@@ -30,7 +26,6 @@ export function createDriveMotion() {
         speed = approach(speed, target, rate * delta);
       }
       turnRate = approach(turnRate, turn * .85, 4 * delta);
-    }
     return { speed, turnRate };
   }
 

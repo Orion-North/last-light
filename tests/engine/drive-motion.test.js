@@ -85,9 +85,8 @@ test('untrusted axes and deltas are safe and bounded', () => {
   near(result.turnRate, -.2);
 });
 
-test('assisted movement bypasses smoothing and uses bounded route scales', () => {
-  const motion = createDriveMotion();
-  assert.deepEqual(motion.step({ forward: .5, turn: -.5, assisted: true }, .01), { speed: .725, turnRate: -.75 });
-  assert.deepEqual(motion.step({ forward: -1, turn: 1, assisted: true }, .01), { speed: -1.45, turnRate: 1.5 });
-  assert.deepEqual(motion.step({ assisted: true }, .01), { speed: 0, turnRate: 0 });
+test('legacy assistance cannot override manual acceleration', () => {
+  const manual = createDriveMotion();
+  const legacy = createDriveMotion();
+  assert.deepEqual(legacy.step({forward: 1, assisted: true}, .01), manual.step({forward: 1}, .01));
 });

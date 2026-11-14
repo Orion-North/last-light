@@ -31,12 +31,15 @@ export function renderUploadTerminal({ title, mode, stage, prompt, response, mea
     <div class="upload-terminal__body">
       <div class="upload-terminal__destination" aria-label="${upload?'Sending from Opportunity to Earth':mode==='silence'?'Calling Opportunity from Earth':'Remembering on Earth'}">${route}</div>
       <div class="upload-terminal__apparatus">
-        <div class="upload-terminal__half upload-terminal__half--left" aria-hidden="true"><span>LEFT</span><i></i></div>
-        <div class="upload-terminal__memory"><span class="upload-terminal__label">${mode === 'silence' ? 'ONE MORE CALL' : mode === 'archive' ? 'TO REMEMBER' : 'A MEMORY FOR EARTH'}</span><h2>${escapeHtml(title)}</h2><span class="upload-terminal__seam" aria-hidden="true"></span></div>
-        <div class="upload-terminal__half upload-terminal__half--right" aria-hidden="true"><span>RIGHT</span><i></i></div>
-        <div class="upload-terminal__signal" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
-        <span class="upload-terminal__receipt" aria-hidden="true"></span>
+        <div class="signal-map" role="img" aria-label="${mode==='archive'?'Discoveries preserved on Earth':mode==='silence'?'A call travels from Earth to the silent rover on Mars':'A signal travels from Opportunity on Mars to Earth'}">
+          <div class="signal-world signal-world--mars"><div class="planet planet--mars"><i></i></div><span>MARS<small>OPPORTUNITY</small></span></div>
+          <div class="signal-path" aria-hidden="true"><div class="signal-path__line"></div><div class="signal-path__wave"></div><i class="signal-packet"></i><i class="signal-echo"></i><span class="signal-outcome">${stage==='received'?(mode==='partial'?'INCOMPLETE FRAME':mode==='silence'?'NO RETURN SIGNAL':mode==='archive'?'PRESERVED':'RECEIPT RETURNED'):stage==='sending'?'CROSSING THE DISTANCE':'LINK STANDING BY'}</span></div>
+          <div class="signal-world signal-world--earth"><div class="planet planet--earth"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M22 12 37 8 46 18 40 29 27 34 31 45 21 39 14 26ZM35 47 48 50 54 61 47 69 44 85 37 92 35 70 29 57ZM62 9 80 15 90 32 82 40 72 33 69 43 55 37 52 25ZM62 43 75 47 79 58 69 76 60 65 55 51ZM83 69 96 73 93 86 82 83Z"/></svg></div><span>EARTH<small>${mode==='archive'?'MISSION ARCHIVE':'DEEP SPACE NETWORK'}</small></span></div>
+        </div>
+        <div class="upload-terminal__memory"><span class="upload-terminal__label">${mode === 'archive' ? 'A DISCOVERY THAT STAYS' : stage==='sending'?'SIGNAL IN TRANSIT':stage==='received'?(mode==='silence'?'THE CHANNEL STAYS QUIET':mode==='partial'?'AN UNFINISHED FRAME':'AN OBSERVATION SHARED'):mode==='silence'?'A CALL FROM HOME':'OBSERVATION READY'}</span><h2>${escapeHtml(title)}</h2></div>
+        <div class="signal-exciter" aria-hidden="true"><div class="upload-terminal__half upload-terminal__half--left"><i></i><span>L2</span></div><span class="upload-terminal__seam"></span><div class="upload-terminal__half upload-terminal__half--right"><i></i><span>R2</span></div></div>
       </div>
+      <p class="signal-scale">${mode==='archive'?'THE DISCOVERIES REMAIN':'DISTANCE & TRAVEL TIME COMPRESSED'}</p>
     </div>
     ${stage === 'ready' && meaning ? `<p class="upload-terminal__meaning">${escapeHtml(meaning)}</p>` : ''}
     ${stage === 'ready' ? `<div class="upload-terminal__guidance"><p id="squeeze-hint" class="upload-terminal__instruction">${instruction}</p><progress id="upload-progress" max="1" value="0" aria-label="${commitmentLabel}" style="--upload-progress:0"></progress></div>` : ''}

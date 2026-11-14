@@ -1,3 +1,5 @@
+import { SECTIONS as sections, phrase } from './score.js';
+
 /**
  * LAST LIGHT / "Something to show them"
  * Original adaptive chamber score, synthesized locally with Web Audio.
@@ -7,6 +9,8 @@
 export function createSound() {
   let context = null;
   let master = null;
+  let musicBus = null;
+  let cueDuckUntil = 0;
   let windGain = null;
   let windFilter = null;
   let windSource = null;
@@ -38,16 +42,6 @@ export function createSound() {
   let hidden = Boolean(doc?.hidden);
   const midi = note => 440 * Math.pow(2, (note - 69) / 12);
 
-  // Eight bars of 6/8. The breathing space belongs to the composition.
-  const sections = {
-    discovery: { eighth: 0.48, piano: 0.23, strings: 0.050, wind: 0.035, cutoff: 330, gap: 7, minor: false },
-    amber: { eighth: 0.53, piano: 0.20, strings: 0.042, wind: 0.040, cutoff: 350, gap: 8, minor: false },
-    storm: { eighth: 0.59, piano: 0.145, strings: 0.028, wind: 0.095, cutoff: 740, gap: 11, minor: true },
-    fading: { eighth: 0.67, piano: 0.105, strings: 0, wind: 0.045, cutoff: 220, gap: 15, minor: true },
-    waiting: { eighth: 0.57, piano: 0.14, strings: 0.022, wind: 0.014, cutoff: 170, gap: 12, minor: false },
-    remembrance: { eighth: 0.55, piano: 0.22, strings: 0.053, wind: 0.012, cutoff: 230, gap: 14, minor: false },
-    silence: { eighth: 0.6, piano: 0, strings: 0, wind: 0, cutoff: 180, gap: 30, minor: false },
-  };
 
   function canPlay() {
     return Boolean(context && context.state === 'running' && !muted && !paused && !hidden && !destroyed);
@@ -121,6 +115,7 @@ export function createSound() {
     if (environment === 'night') return 'fading';
     if (environment === 'storm') return 'storm';
     if (environment === 'sunset') return 'amber';
+    if (sceneIndex === 1 || sceneIndex === 2) return 'geology';
     return 'discovery';
   }
 
@@ -143,14 +138,15 @@ export function createSound() {
 
   // A small original felt-piano/harp hybrid: damped, slightly inharmonic partials.
   // Each note has its own cached waveform, with an unobtrusive felt-like attack.
-  function pianoBuffer(note) {
-    if (pianoCache.has(note)) return pianoCache.get(note);
+  function pianoBuffer(note, timbre = 'pluck') {
+    const key = `${timbre}:${note}`;
+    if (pianoCache.has(key)) return pianoCache.get(key);
     const rate = Math.min(context.sampleRate, 24000);
     const length = Math.ceil(rate * 6.5);
     const buffer = context.createBuffer(1, length, rate);
     const samples = buffer.getChannelData(0);
     const frequency = midi(note);
-    const harmonics = [1, 0.32, 0.13, 0.055, 0.018];
+    const harmonics = timbre === 'reed' ? [1, .08, .23, .025, .07] : [1, .32, .13, .055, .018];
     let noise = 43 + note;
     for (let i = 0; i < length; i += 1) {
       const t = i / rate;
@@ -163,9 +159,15 @@ export function createSound() {
       }
       noise = (noise * 1664525 + 1013904223) >>> 0;
       const felt = (noise / 4294967296 - 0.5) * 0.045 * Math.exp(-t * 130);
-      samples[i] = Math.tanh((value * attack + felt) * 0.8) * 0.7;
+      if (timbre === 'glass') {
+        value = Math.sin(2 * Math.PI * frequency * t) * Math.exp(-t * 1.3)
+          + .32 * Math.sin(2 * Math.PI * frequency * 2.756 * t) * Math.exp(-t * 2.7)
+          + .12 * Math.sin(2 * Math.PI * frequency * 5.404 * t) * Math.exp(-t * 4);
+      }
+      const onset = timbre === 'reed' ? (1 - Math.exp(-t * 9)) : attack;
+      samples[i] = Math.tanh((value * onset + (timbre === 'pluck' ? felt : 0)) * .8) * .7;
     }
-    pianoCache.set(note, buffer);
+    pianoCache.set(key, buffer);
     return buffer;
   }
 
@@ -182,18 +184,18 @@ export function createSound() {
     return voice;
   }
 
-  function pluck(note, when, volume, duration = 5.8) {
+  function pluck(note, when, volume, duration = 5.8, timbre = 'pluck') {
     const source = context.createBufferSource();
     const gain = context.createGain();
-    source.buffer = pianoBuffer(note);
+    source.buffer = pianoBuffer(note, timbre);
     gain.gain.setValueAtTime(volume, when);
     gain.gain.setValueAtTime(volume, when + Math.max(0.02, duration - 0.18));
     gain.gain.linearRampToValueAtTime(0, when + duration);
     const pan = context.createStereoPanner?.();
     if (pan) {
       pan.pan.value = note < 50 ? 0 : -0.14 + ((note % 5) * 0.06);
-      source.connect(gain).connect(pan).connect(master);
-    } else source.connect(gain).connect(master);
+      source.connect(gain).connect(pan).connect(musicBus);
+    } else source.connect(gain).connect(musicBus);
     registerVoice([source], [source, gain, ...(pan ? [pan] : [])]);
     source.start(when);
     source.stop(when + duration + 0.02);
@@ -212,8 +214,8 @@ export function createSound() {
     const pan = context.createStereoPanner?.();
     if (pan) {
       pan.pan.value = note % 2 ? 0.32 : -0.32;
-      filter.connect(envelope).connect(pan).connect(master);
-    } else filter.connect(envelope).connect(master);
+      filter.connect(envelope).connect(pan).connect(musicBus);
+    } else filter.connect(envelope).connect(musicBus);
     const oscillators = [0].map(detune => {
       const oscillator = context.createOscillator();
       oscillator.type = 'triangle';
@@ -229,61 +231,11 @@ export function createSound() {
   }
 
   function composePhrase(start) {
-    const config = sections[section];
-    const beat = config.eighth;
-    const add = (instrument, note, eighth, volume, duration) => {
-      queue.push({ instrument, note, when: start + eighth * beat, volume, duration });
-    };
-    // The "home" motif: D4–A4–E4–F#4–D4, then an answering phrase.
-    // It is authored here, not derived from the scores cited as design references.
-    const third = config.minor ? 65 : 66;
-    const melody = [[62, 0], [69, 3], [64, 5], [third, 8], [62, 12]];
-    const answer = [[69, 24], [third, 27], [64, 30], [59, 34], [62, 38]];
-    // Four authored returns, not one endlessly restarted eight-bar loop.
-    // The second is a solo statement; the fourth lets the answer lead.
-    const variation = phraseNumber % 4;
-    const returns = [
-      [...melody, ...answer],
-      melody,
-      [...melody, [71, 24], [69, 28], [64, 33], [third, 38]],
-      [[69, 5], [third, 9], [64, 14], [59, 20], [62, 28]],
-    ];
-    const fragment = section === 'storm' ? melody.slice(0, 4)
-      : section === 'fading' ? [[62, 0], [64, 8]]
-        : section === 'waiting' ? [[62, 0], [69, 4], [64, 9], [62, 16]]
-          : returns[variation];
-    for (let i = 0; i < fragment.length; i += 1) {
-      const [note, eighth] = fragment[i];
-      // Slightly varied dynamics; all pitches and timing stay composed, not random.
-      add('pluck', note, eighth, config.piano * (variation === 1 ? 0.83 : 1) * [1, 0.76, 0.84, 0.73, 0.90][i % 5], 6.1);
+    const composed = phrase(section, phraseNumber++);
+    for (const event of composed.events) {
+      queue.push({ ...event, when: start + event.at * sections[section].eighth });
     }
-    const chords = config.minor
-      ? [[38, 53, 57, 64], [34, 53, 57, 62], [31, 50, 57, 65], [33, 50, 57, 64]]
-      : [[38, 54, 57, 64], [35, 54, 57, 62], [31, 54, 57, 62], [33, 50, 57, 64]];
-    // The upper melody has room. Harmony enters softly below it and stays sparse.
-    if (section !== 'fading') {
-      const chordCount = variation === 1 ? 0 : section === 'waiting' || section === 'storm' ? 1 : 3;
-      for (let i = 0; i < chordCount; i += 1) {
-        const chord = chords[(i + (phraseNumber % 2 ? 1 : 0)) % chords.length];
-        const at = i * 15;
-        add('pluck', chord[0], at + 0.16, config.piano * 0.50, 6.2);
-        if (section === 'discovery' || section === 'amber' || section === 'remembrance') {
-          add('pluck', chord[2], at + 3.2, config.piano * 0.28, 4.8);
-        }
-        if (config.strings && i === 0 && variation % 2 === 0) {
-          // One breath-like harmonic, rather than an imitation orchestral bed.
-          add('string', chord[1] + 12, at + 0.6, config.strings * 0.42, 5.6);
-        }
-      }
-    }
-    // The final return opens the harmony rather than triumphantly overpowering it.
-    if (section === 'remembrance' && phraseNumber === 0) {
-      add('pluck', 74, 42, config.piano * 0.55, 6.1);
-      add('string', 59, 36, config.strings * 0.35, 10);
-    }
-    queue.sort((a, b) => a.when - b.when);
-    nextPhrase = start + 48 * beat + config.gap + [0, 6, 3, 10][variation];
-    phraseNumber += 1;
+    nextPhrase = start + composed.seconds;
   }
 
   function tick() {
@@ -291,6 +243,7 @@ export function createSound() {
     if (!canPlay() || section === 'silence') return;
     const now = context.currentTime;
     updateActivity();
+    smooth(musicBus.gain, now < cueDuckUntil || activity.contactActive && now - activityTime < .8 ? .43 : 1, .16);
     // A throttled/background tab never catches up by firing a burst of old notes.
     if (nextPhrase < now - 0.5) {
       queue = [];
@@ -300,7 +253,7 @@ export function createSound() {
     while (queue.length && queue[0].when <= now + 0.35) {
       const event = queue.shift();
       if (event.when < now - 0.08) continue;
-      if (event.instrument === 'pluck') pluck(event.note, Math.max(now, event.when), event.volume, event.duration);
+      if (event.instrument !== 'string') pluck(event.note, Math.max(now, event.when), event.volume, event.duration, event.instrument);
       else stringNote(event.note, Math.max(now, event.when), event.volume, event.duration);
     }
     timer = setTimeout(tick, 80);
@@ -319,6 +272,9 @@ export function createSound() {
   function buildGraph() {
     master = context.createGain();
     master.gain.value = 0;
+    musicBus = context.createGain();
+    musicBus.gain.value = 1;
+    musicBus.connect(master);
     const compressor = context.createDynamicsCompressor();
     compressor.threshold.value = -18;
     compressor.knee.value = 18;
@@ -398,6 +354,8 @@ export function createSound() {
 
   function cue(kind) {
     if (!canPlay() || section === 'silence') return;
+    // Earth-side archive actions are never a successful rover reply.
+    if (kind === 'received' && sceneIndex >= 8) return;
     if (kind === 'end') {
       if (endPlayed) return;
       endPlayed = true;
@@ -407,6 +365,10 @@ export function createSound() {
     const now = context.currentTime;
     if (now - (lastCueTimes.get(kind) ?? -Infinity) < 0.18) return;
     lastCueTimes.set(kind, now);
+    if (['charged', 'transmit', 'received', 'observe'].includes(kind)) {
+      cueDuckUntil = now + (kind === 'received' ? 1.8 : .85);
+      smooth(musicBus.gain, .43, .035);
+    }
     const third = sections[section].minor ? 65 : 66;
     const patterns = {
       observe: [[74, 0, 0.7, 0.027]],
