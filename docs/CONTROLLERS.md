@@ -112,3 +112,39 @@ optional desktop edition can reuse the game and add a native USB audio/HID layer
 for independently authored left/right haptic waveforms and tighter trigger timing.
 A desktop wrapper alone does not provide this. No desktop packaging, native
 bridge, device audio routing, or desktop dependency has been implemented.
+
+## v0.4 controller-first draft
+
+Left stick drives only during travel. It navigates choices and pause menus with
+neutral-release gating across screens; D-pad remains available. Right stick
+moves the view during geological investigation; a readable steady view records
+the feature. Triangle resets the current inspection instead of abandoning it.
+Disconnect pauses the journey and cancels pending interactions. Prompt families
+have an override for browsers that hide controller identity.
+
+For simultaneous local browser QA and physical controller playtesting on another
+URL, `?controller=off` suppresses controller input/output in the QA tab. This is
+not a claim that physical iPad controller behavior has been tested.
+
+## Optional USB touch coordinates and menu scrolling
+
+The existing explicit original-DualSense USB connection also listens for touch
+reports. It does not request device access automatically. `onTouch({x,y,active})`
+reports normalized coordinates from -1 to 1, with positive Y downward. First
+active contact wins. Pause, blur, hidden pages, disconnect, destroy, and reports
+stale for over 250 ms release the active contact. Unsupported devices and report
+formats are ignored. Right-stick and screen controls remain the required fallback;
+the optional USB route requires `navigator.hid`, and is unavailable on iPad Safari.
+
+The format is verified against Sony's Linux driver: USB report 1 carries a 63-byte
+payload; two packed contacts begin at payload offset 32. Contact bit 7 indicates
+release, and the coordinate ranges are 1920 by 1080. This is protocol verification,
+not a physical-device test. See the
+[Sony-authored Linux driver](https://github.com/torvalds/linux/blob/master/drivers/hid/hid-playstation.c)
+and Chrome's [WebHID input-report documentation](https://developer.chrome.com/docs/capabilities/hid#receive_input_reports).
+
+Menu mode additionally emits `onScroll(deltaY)` from right-stick Y, including
+paused menus. Delta is in pixels, capped at 21 per frame and 420 per second of
+bounded frame time. The main UI chooses the scrollable dialog/panel; camera and
+driving remain neutral. USB touch does not emit a send action: the main UI owns
+aiming, confirmation, and fixed historical receipt outcomes.

@@ -1,13 +1,16 @@
+import { createSky } from './sky.js';
+import { createDriveMotion } from '../engine/drive-motion.js';
 import { sampleSurface } from '../input/surface.js';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 
 /** A real, navigable Martian diorama. NASA's rover is loaded from a local GLB. */
 export function createLandscape(canvas) {
   const noop = () => {};
   const empty = { setScene: noop, setReducedMotion: noop, setPaused: noop,
-    setMode: noop, setDrive: noop, focusRover: noop, inspect: noop,
+    setMode: noop, setDrive: noop, stopDrive: noop, setInvestigation: noop, setContact: noop, setContactInput: noop, nudgeContact: noop, sendContact: noop, cancelContactPulse: noop, focusRover: noop, inspect: noop,
     setWaypoint: noop, setObservationTarget: noop, travelToWaypoint: noop, reset: noop, destroy: noop };
   const status = (state, message) => canvas?.dispatchEvent(new CustomEvent('world-status', {
     detail: { state, message }, bubbles: true,
@@ -47,6 +50,23 @@ export function createLandscape(canvas) {
   let eventTime = 0;
   let heading = -0.45;
   let drive = { forward: 0, turn: 0 };
+  const motion = createDriveMotion();
+  let wasMoving = false;
+  let roverFrame = null;
+  let investigation = false;
+  let contactActive = false;
+  let contactFraming = false;
+  let contactInput = { x: 0, y: 0 };
+  let contactYaw = 0, contactPitch = 0, contactTargetYaw = 0;
+  const contactTargetPitch = .67;
+  let contactSampleTime = 0;
+  let contactOrigin = new THREE.Vector3();
+  let contactDirection = new THREE.Vector3();
+  let contactCamera = null;
+  let contactPulse = null;
+  let sampleTime = 0;
+  let samplePosition = new THREE.Vector3();
+  let sampleDirection = new THREE.Vector3();
   let distance = 0;
   let look = {x:0,y:0};
   let lastTrackPosition = new THREE.Vector3();
@@ -103,8 +123,8 @@ export function createLandscape(canvas) {
   terrainGeometry.rotateX(-Math.PI / 2);
   const position = terrainGeometry.attributes.position;
   const colors = new Float32Array(position.count * 3);
-  const soilA = new THREE.Color('#7c4c32');
-  const soilB = new THREE.Color('#bb8658');
+  const soilA = new THREE.Color('#b09b82');
+  const soilB = new THREE.Color('#e0cbb0');
   const soilColor = new THREE.Color();
   for (let i = 0; i < position.count; i += 1) {
     const x = position.getX(i);
@@ -119,34 +139,30 @@ export function createLandscape(canvas) {
   terrainGeometry.computeVertexNormals();
   const surfaceTexture = own(makeSoilTexture(random));
   const terrainMaterial = own(new THREE.MeshStandardMaterial({ vertexColors: true,
-    map: surfaceTexture, roughness: 1, metalness: 0, bumpMap: surfaceTexture, bumpScale: 0.055 }));
+    map: surfaceTexture, roughness: 1, metalness: 0, envMapIntensity: .18,
+    bumpMap: surfaceTexture, bumpScale: 0.055 }));
+  setDrySurface(terrainMaterial, .9);
+  setTerrainVariation(terrainMaterial);
   const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
   terrain.receiveShadow = true;
   scene.add(terrain);
 
   // Shared geometry and instancing keep the rock field cheap enough for phones.
-  const rockGeometry = own(new THREE.IcosahedronGeometry(1, 3));
-  const rockVertices = rockGeometry.attributes.position;
-  for (let i = 0; i < rockVertices.count; i += 1) {
-    const x = rockVertices.getX(i), y = rockVertices.getY(i), z = rockVertices.getZ(i);
-    const erosion = 0.86 + noise(x * 4 + 20, z * 4 + y * 3) * 0.27;
-    rockVertices.setXYZ(i, x * erosion, y * erosion, z * erosion);
-  }
-  // PolyhedronGeometry is non-indexed: computeVertexNormals would give every
-  // triangle a separate normal. Preserve smooth erosion rather than faceted rocks.
-  const rockNormals = rockGeometry.attributes.normal;
-  for (let i = 0; i < rockVertices.count; i += 1) {
-    const normal = new THREE.Vector3().fromBufferAttribute(rockVertices, i).normalize();
-    rockNormals.setXYZ(i, normal.x, normal.y, normal.z);
-  }
-  const rockMaterial = own(new THREE.MeshStandardMaterial({ color: '#94705a', roughness: 0.95,
+  const rockGeometries = [0, 1, 2].map(variant => own(makeRockGeometry(variant)));
+  const rockGeometry = rockGeometries[0];
+  const rockMaterial = own(new THREE.MeshStandardMaterial({ color: '#d9c3aa', roughness: .98, metalness: 0, envMapIntensity: .35,
     map: surfaceTexture, bumpMap: surfaceTexture, bumpScale: 0.045 }));
-  const rocks = new THREE.InstancedMesh(rockGeometry, rockMaterial, 480);
-  rocks.castShadow = true;
-  rocks.receiveShadow = true;
+  setDrySurface(rockMaterial, .85);
+  const rockCount = 480;
+  const rockField = rockGeometries.map(geometry => {
+    const field = new THREE.InstancedMesh(geometry, rockMaterial, rockCount / 3);
+    field.castShadow = field.receiveShadow = true;
+    scene.add(field);
+    return field;
+  });
   const dummy = new THREE.Object3D();
   const collisions = [];
-  for (let i = 0; i < rocks.count; i += 1) {
+  for (let i = 0; i < rockCount; i += 1) {
     const angle = random() * Math.PI * 2;
     const radius = 4.5 + Math.pow(random(), 0.8) * 94;
     const x = Math.cos(angle) * radius, z = Math.sin(angle) * radius;
@@ -156,13 +172,19 @@ export function createLandscape(canvas) {
     dummy.position.set(x, heightAt(x, z) + size * flatness * 0.42, z);
     dummy.rotation.set(random() * 0.35, random() * Math.PI, random() * 0.22);
     dummy.scale.set(size * (1 + random()), size * flatness, size * (0.75 + random()));
+    // Low rubble recedes from the two investigation approaches, exposing a
+    // readable physical apron instead of burying the landmark in random stones.
+    if (Math.hypot(x - 7, z + 7) < 2.4 || Math.hypot(x + 5, z + 10) < 2.4) {
+      dummy.scale.multiplyScalar(.4);
+    }
     dummy.updateMatrix();
-    rocks.setMatrixAt(i, dummy.matrix);
-    rocks.setColorAt(i, new THREE.Color().setHSL(0.065 + random() * 0.035,
-      0.17 + random() * 0.19, 0.30 + random() * 0.15));
+    const field = rockField[i % rockField.length];
+    const instance = Math.floor(i / rockField.length);
+    field.setMatrixAt(instance, dummy.matrix);
+    field.setColorAt(instance, new THREE.Color().setHSL(0.065 + random() * 0.035,
+      0.09 + random() * 0.12, 0.64 + random() * 0.16));
     if (radius < 23 && size > 0.4) collisions.push({ x, z, radius: size * 1.05 });
   }
-  scene.add(rocks);
   const pebbleGeometry = own(new THREE.IcosahedronGeometry(1, 0));
   const pebbles = new THREE.InstancedMesh(pebbleGeometry, rockMaterial, 1100);
   pebbles.receiveShadow = true;
@@ -172,6 +194,7 @@ export function createLandscape(canvas) {
     dummy.position.set(x, heightAt(x, z) + size * 0.25, z);
     dummy.rotation.set(random(), random() * 6.28, random());
     dummy.scale.set(size * 1.4, size * 0.45, size);
+    if (Math.hypot(x - 7, z + 7) < 2.2 || Math.hypot(x + 5, z + 10) < 2.2) dummy.scale.multiplyScalar(.45);
     dummy.updateMatrix();
     pebbles.setMatrixAt(i, dummy.matrix);
   }
@@ -183,9 +206,14 @@ export function createLandscape(canvas) {
   const outcropTexture = own(surfaceTexture.clone());
   outcropTexture.repeat.set(2.8, 2.8);
   outcropTexture.needsUpdate = true;
-  const strataMaterials = ['#a68b70', '#978069', '#ae9478', '#9e876e'].map(color =>
-    own(new THREE.MeshStandardMaterial({ color, roughness: 1,
+  const strataMaterials = ['#c0b5a1', '#b0a58f', '#c7bca8', '#b8ad97'].map(color =>
+    own(new THREE.MeshStandardMaterial({ color, roughness: 1, metalness: 0, envMapIntensity: .35,
       map: outcropTexture, bumpMap: outcropTexture, bumpScale: .07 })));
+  strataMaterials.forEach(material => {
+    setDrySurface(material, .9);
+    setSedimentSurface(material);
+    material.userData.normalStrength = .14;
+  });
   // Clockwise weathered silhouette: broad low shoulders, chipped rising crown.
   const outcropOutline = [[-1.5, .06], [-1.29, .88], [-.97, 1.23],
     [-.48, 1.34], [.22, 1.31], [.83, 1.18], [1.31, .79],
@@ -255,10 +283,16 @@ export function createLandscape(canvas) {
       lastChance.add(layer);
     }
   }
+  const outcropBack = new THREE.Mesh(rockGeometries[1], strataMaterials[1]);
+  outcropBack.position.set(-.08, .45, -.35);
+  outcropBack.scale.set(1.35, .65, .57);
+  outcropBack.castShadow = outcropBack.receiveShadow = true;
+  lastChance.add(outcropBack);
   scene.add(lastChance);
   collisions.push({ x: 7, z: -8.9, radius: 1.5 });
   observationSites.push({ x: 7, z: -7,
     target: lastChance.position.clone().add(new THREE.Vector3(0, .67, .5)),
+    normal: new THREE.Vector3(0, 0, 1), kind: 'layers',
     offset: new THREE.Vector3(.65, 1.25, 4.1), min: 2.3, max: 6.5 });
 
   const berryBowl = new THREE.Group();
@@ -301,7 +335,40 @@ export function createLandscape(canvas) {
   collisions.push({ x: -5, z: -11.8, radius: 1.3 });
   observationSites.push({ x: -5, z: -10,
     target: berryBowl.position.clone().add(new THREE.Vector3(0, .2, 0)),
+    normal: new THREE.Vector3(0, 1, 0), kind: 'grains',
     offset: new THREE.Vector3(.35, 2.6, 2.8), min: 2.1, max: 5.8 });
+
+  function loadSurfaceMaps(paths, materials, repeat, normalStrength) {
+    const textureLoader = new THREE.TextureLoader();
+    const anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+    for (const [property, path] of Object.entries(paths)) {
+      const texture = own(textureLoader.load(new URL(`../../public/${path}`, import.meta.url).href,
+        loaded => {
+          if (disposed) { loaded.dispose(); return; }
+          for (const material of materials) {
+            material[property] = loaded;
+            if (property === 'normalMap') {
+              material.normalScale.setScalar(material.userData.normalStrength ?? normalStrength);
+              material.bumpMap = null;
+            }
+            material.needsUpdate = true;
+          }
+          render();
+        }, undefined, () => {
+          // Procedural surfaces remain valid if an optional material fails.
+          if (!disposed) console.warn(`Surface map unavailable: ${path}`);
+        }));
+      texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.setScalar(repeat);
+      texture.anisotropy = anisotropy;
+      texture.colorSpace = property === 'map' ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+    }
+  }
+
+  loadSurfaceMaps({ map: 'textures/ground/albedo.jpg', normalMap: 'textures/ground/normal.jpg',
+    roughnessMap: 'textures/ground/roughness.jpg' }, [terrainMaterial], 80, .45);
+  loadSurfaceMaps({ map: 'textures/rock/albedo.jpg', normalMap: 'textures/rock/normal.jpg',
+    roughnessMap: 'textures/rock/roughness.jpg' }, [rockMaterial, ...strataMaterials], 1.1, .7);
 
   const sun = new THREE.DirectionalLight('#ffd4a3', 3.2);
   sun.position.set(-28, 7, -58);
@@ -321,35 +388,15 @@ export function createLandscape(canvas) {
   scene.add(sun, sun.target);
   const hemisphere = new THREE.HemisphereLight('#d7b9a3', '#39261e', 2.2);
   scene.add(hemisphere);
-  const fill = new THREE.DirectionalLight('#a4b5cf', 0.65);
+  const fill = new THREE.DirectionalLight('#c1c7cb', 0.8);
   fill.position.set(15, 10, 25);
   scene.add(fill);
 
-  const skyUniforms = {
-    top: { value: new THREE.Color('#776558') },
-    horizon: { value: new THREE.Color('#dca97d') },
-    lower: { value: new THREE.Color('#976748') },
-    sunDirection: { value: sun.position.clone().normalize() },
-    sunColor: { value: new THREE.Color('#ffe4b4') },
-    sunStrength: { value: 1 },
-  };
-  const skyGeometry = own(new THREE.SphereGeometry(300, 32, 16));
-  const skyMaterial = own(new THREE.ShaderMaterial({
-    uniforms: skyUniforms, side: THREE.BackSide, depthWrite: false,
-    vertexShader: 'varying vec3 vPosition; void main(){vPosition=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
-    fragmentShader: `varying vec3 vPosition; uniform vec3 top; uniform vec3 horizon;
-      uniform vec3 lower; uniform vec3 sunDirection; uniform vec3 sunColor; uniform float sunStrength;
-      void main(){ vec3 direction=normalize(vPosition); float elevation=direction.y;
-        vec3 sky=mix(horizon,top,pow(clamp(elevation,0.0,1.0),0.48));
-        sky=mix(sky,lower,clamp(-elevation*5.0,0.0,1.0));
-        float alignment=max(dot(direction,sunDirection),0.0);
-        sky+=sunColor*(pow(alignment,750.0)*1.3+pow(alignment,18.0)*0.27)*sunStrength;
-        gl_FragColor=vec4(sky,1.0);
-        #include <tonemapping_fragment>
-        #include <colorspace_fragment>
-      }`,
-  }));
-  const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+  const { mesh: sky, uniforms: skyUniforms } = createSky(THREE, {
+    own, sunDirection: sun.position.clone().normalize(),
+  });
+  const skyGeometry = sky.geometry;
+  const skyMaterial = sky.material;
   scene.add(sky);
   // Environment reflections make real metallic hardware readable without fake glows.
   const environmentScene = new THREE.Scene();
@@ -357,7 +404,7 @@ export function createLandscape(canvas) {
   const pmrem = new THREE.PMREMGenerator(renderer);
   const environmentMap = own(pmrem.fromScene(environmentScene, 0.02, 0.1, 500));
   scene.environment = environmentMap.texture;
-  scene.environmentIntensity = 0.48;
+  scene.environmentIntensity = 0.6;
   pmrem.dispose();
 
   const dustCount = 900;
@@ -481,7 +528,188 @@ export function createLandscape(canvas) {
   marker.visible = false;
   scene.add(marker);
 
+  // An original link-orientation visualization, not a literal Earth position or
+  // a simulated Deep Space Network antenna. It leaves the NASA model intact.
+  const contactVisual = new THREE.Group();
+  contactVisual.visible = false;
+  scene.add(contactVisual);
+  const beamGeometry = own(new THREE.BufferGeometry());
+  beamGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+  const beamMaterial = own(new THREE.LineBasicMaterial({ color: '#f2d7a5',
+    transparent: true, opacity: .78, depthWrite: false, toneMapped: false }));
+  contactVisual.add(new THREE.Line(beamGeometry, beamMaterial));
+  const aimMaterial = own(new THREE.MeshBasicMaterial({ color: '#ffe1a9',
+    transparent: true, opacity: .9, depthWrite: false, toneMapped: false }));
+  const beamTip = new THREE.Mesh(own(new THREE.SphereGeometry(.055, 10, 8)), aimMaterial);
+  contactVisual.add(beamTip);
+  const guide = new THREE.Group();
+  const guideMaterial = own(new THREE.MeshBasicMaterial({ color: '#f7e7c9',
+    transparent: true, opacity: .9, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
+  const guideOutline = own(new THREE.MeshBasicMaterial({color:'#17232a',transparent:true,opacity:.65,depthWrite:false,side:THREE.DoubleSide,toneMapped:false}));
+  const outerGuide = new THREE.Mesh(own(new THREE.RingGeometry(.79,.83,64)),guideOutline);
+  outerGuide.position.z=.006;guide.add(outerGuide);
+  guide.add(new THREE.Mesh(own(new THREE.RingGeometry(.8, .82, 64)), guideMaterial));
+  guide.add(new THREE.Mesh(own(new THREE.RingGeometry(.37, .39, 48)), guideMaterial));
+  const guideCenter = new THREE.Mesh(own(new THREE.SphereGeometry(.035, 8, 6)), guideMaterial);
+  guide.add(guideCenter);
+  contactVisual.add(guide);
+  const antennaCue = new THREE.Mesh(own(new THREE.RingGeometry(.09, .115, 32)), aimMaterial);
+  contactVisual.add(antennaCue);
+
+  const packetMaterial = own(new THREE.MeshBasicMaterial({ color: '#ffe1a9',
+    transparent: true, opacity: .95, depthWrite: false, toneMapped: false }));
+  const packet = new THREE.Mesh(beamTip.geometry, packetMaterial);
+  packet.scale.setScalar(2.5);
+  packet.visible = false;
+  scene.add(packet);
+
+  function cancelContactPulse() {
+    contactPulse = null;
+    packet.visible = false;
+    if (!contactActive) contactVisual.visible = false;
+    guide.visible = true;
+    beamTip.visible = true;
+    controls.enabled = !paused && !contactActive;
+  }
+
+  function sendContact(nextMode = 'reply') {
+    if (disposed || paused || !contactFraming) return;
+    cancelContactPulse();
+    stopDrive();
+    contactActive = false;
+    contactInput = { x: 0, y: 0 };
+    contactPulse = { mode: ['reply', 'partial', 'silence'].includes(nextMode) ? nextMode : 'reply',
+      started: elapsed, start: contactOrigin.clone(), end: beamTip.position.clone() };
+    controls.enabled = false;
+    contactVisual.visible = true;
+    guide.visible = false;
+    beamTip.visible = false;
+    beamMaterial.opacity = .2;
+    packet.visible = true;
+    packetMaterial.color.set('#ffe1a9');
+    updateContactPulse();
+    render();
+  }
+
+  function updateContactPulse() {
+    if (!contactPulse) return;
+    const time = elapsed - contactPulse.started;
+    if (time >= 1.2) { cancelContactPulse(); return; }
+    const returning = contactPulse.mode === 'reply' && time >= .65;
+    let travel = returning ? 1 - THREE.MathUtils.clamp((time - .65) / .5, 0, 1)
+      : THREE.MathUtils.clamp(time / .6, 0, 1);
+    if (contactPulse.mode === 'partial') travel *= .78;
+    packet.position.copy(contactPulse.start).lerp(contactPulse.end, reduced ? 0 : travel);
+    packetMaterial.color.set(returning ? '#c7e1de' : '#ffe1a9');
+    const fade = returning ? 1 - THREE.MathUtils.smoothstep(time, 1.08, 1.2)
+      : contactPulse.mode === 'reply' ? 1 : 1 - THREE.MathUtils.smoothstep(time, .5, 1.05);
+    packetMaterial.opacity = .95 * fade;
+    beamMaterial.opacity = .14 * Math.max(.15, fade);
+  }
+
+  function contactFrame() {
+    const horizontal = new THREE.Vector3(Math.sin(contactTargetYaw), 0, Math.cos(contactTargetYaw));
+    const side = new THREE.Vector3(horizontal.z, 0, -horizontal.x);
+    const halfFov = THREE.MathUtils.degToRad(camera.fov * .5);
+    const range = Math.max(11.6, 4.8 / (2 * Math.tan(halfFov) * Math.max(.25, camera.aspect) * .82));
+    const target = contactOrigin.clone().addScaledVector(contactDirection, 2.5);
+    return { target, position: target.clone().addScaledVector(horizontal, -range)
+      .addScaledVector(side, range * -.75).add(new THREE.Vector3(0, range * .17, 0)) };
+  }
+
+  function setContact(active, options = {}) {
+    cancelContactPulse();
+    if (!active) {
+      contactActive = false;
+      contactInput = { x: 0, y: 0 };
+      contactVisual.visible = false;
+      controls.enabled = !paused;
+      render();
+      return;
+    }
+    if (disposed) return;
+    stopDrive();
+    investigation = false;
+    inspecting = false;
+    roverFrame = null;
+    look = { x: 0, y: 0 };
+    contactActive = contactFraming = true;
+    controls.enabled = false;
+    controls.minDistance = 3.3;
+    controls.maxDistance = 32;
+    controls.minPolarAngle = .18;
+    controls.maxPolarAngle = Math.PI * .475;
+    vehicle.updateMatrixWorld(true);
+    contactOrigin.copy(vehicle.localToWorld(new THREE.Vector3(-.43, 1.03, -.12)));
+    contactTargetYaw = heading + .38;
+    contactDirection.set(Math.sin(contactTargetYaw) * Math.cos(contactTargetPitch),
+      Math.sin(contactTargetPitch), Math.cos(contactTargetYaw) * Math.cos(contactTargetPitch));
+    contactYaw = contactTargetYaw - .4;
+    contactPitch = contactTargetPitch - .15;
+    contactInput = { x: 0, y: 0 };
+    contactSampleTime = elapsed - .1;
+    guide.position.copy(contactOrigin).addScaledVector(contactDirection, 7);
+    guide.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), contactDirection);
+    antennaCue.position.copy(contactOrigin);
+    antennaCue.quaternion.copy(guide.quaternion);
+    guideMaterial.color.set(options.mode === 'silence' ? '#cdd5db' : '#f7e7c9');
+    contactVisual.visible = true;
+    contactCamera = contactFrame();
+    if (reduced) {
+      camera.position.copy(contactCamera.position);
+      controls.target.copy(contactCamera.target);
+      cameraTween = null;
+      controls.update();
+    } else cameraTween = contactCamera;
+    updateContact(0);
+    render();
+  }
+
+  function setContactInput(value = {}) {
+    const axis = number => Number.isFinite(Number(number)) ? THREE.MathUtils.clamp(Number(number), -1, 1) : 0;
+    contactInput = contactActive ? { x: axis(value?.x), y: axis(value?.y) } : { x: 0, y: 0 };
+  }
+
+  function nudgeContact(value = {}) {
+    if (!contactActive || paused || disposed) return;
+    const angle = number => Number.isFinite(Number(number))
+      ? THREE.MathUtils.clamp(Number(number), -.25, .25) : 0;
+    // Pointer deltas are angular displacement, never a held velocity. Clear a
+    // previous stick sample so a stationary finger cannot inherit stale motion.
+    contactInput = { x: 0, y: 0 };
+    contactYaw = THREE.MathUtils.clamp(contactYaw - angle(value?.x), contactTargetYaw - .7, contactTargetYaw + .7);
+    contactPitch = THREE.MathUtils.clamp(contactPitch - angle(value?.y), .18, 1.15);
+    contactSampleTime = elapsed - .1;
+    updateContact(0);
+    render();
+  }
+
+  function updateContact(delta) {
+    if (!contactActive) return;
+    contactYaw = THREE.MathUtils.clamp(contactYaw - contactInput.x * delta * .65,
+      contactTargetYaw - .7, contactTargetYaw + .7);
+    contactPitch = THREE.MathUtils.clamp(contactPitch - contactInput.y * delta * .5, .18, 1.15);
+    const aim = new THREE.Vector3(Math.sin(contactYaw) * Math.cos(contactPitch),
+      Math.sin(contactPitch), Math.cos(contactYaw) * Math.cos(contactPitch));
+    const tip = contactOrigin.clone().addScaledVector(aim, 7);
+    const positions = beamGeometry.attributes.position;
+    positions.setXYZ(0, contactOrigin.x, contactOrigin.y, contactOrigin.z);
+    positions.setXYZ(1, tip.x, tip.y, tip.z);
+    positions.needsUpdate = true;
+    beamGeometry.computeBoundingSphere();
+    beamTip.position.copy(tip);
+    const angle = Math.acos(THREE.MathUtils.clamp(aim.dot(contactDirection), -1, 1));
+    const quality = 1 - THREE.MathUtils.smoothstep(angle, .1, .33);
+    beamMaterial.opacity = .52 + quality * .33;
+    if (!reduced) guideMaterial.opacity = .88 + Math.sin(elapsed * 1.7) * .035;
+    if (elapsed - contactSampleTime >= .095) {
+      contactSampleTime = elapsed;
+      canvas.dispatchEvent(new CustomEvent('contact-sample', { bubbles: true, detail: { quality } }));
+    }
+  }
+
   function setObservationTarget(value) {
+    if (!value || !observationTarget || value.x !== observationTarget.x || value.z !== observationTarget.z) investigation = false;
     observationTarget = value && Number.isFinite(value.x) && Number.isFinite(value.z)
       ? { x: value.x, z: value.z, label: value.label } : null;
     if (inspecting) {
@@ -514,7 +742,7 @@ export function createLandscape(canvas) {
     if (remaining > 1.7) return;
     waypoint.reached = true;
     marker.visible = false;
-    route = null;
+    stopDrive();
     canvas.dispatchEvent(new CustomEvent('waypoint-reached', { bubbles: true,
       detail: { x: waypoint.x, z: waypoint.z, label: waypoint.label, distance } }));
   }
@@ -570,15 +798,16 @@ export function createLandscape(canvas) {
       cursor = previousNode.get(cursor);
       if (!cursor) break;
     }
-    if (inspecting) focusRover(true);
-    cameraTween = null;
+    motion.reset();
+    if (inspecting) returnFromInspection();
+    else cameraTween = null;
     return true;
   }
 
   function setScene(next, state = {}) {
     environment = Object.hasOwn(palettes, next) ? next : 'dawn';
     canDrive = !(state.power === 0 || state.signal === 0);
-    if (!canDrive) { route = null; drive = { forward: 0, turn: 0 }; }
+    if (!canDrive) stopDrive();
     planetState = palettes[environment];
     if (reduced) applyPalette(1);
     render();
@@ -589,6 +818,9 @@ export function createLandscape(canvas) {
       skyUniforms[key].value.lerp(new THREE.Color(planetState[key]), blend);
     }
     skyUniforms.sunStrength.value = THREE.MathUtils.lerp(skyUniforms.sunStrength.value, planetState.sun, blend);
+    // Static PMREM retains a stable light direction; fade its energy with the sky.
+    scene.environmentIntensity = THREE.MathUtils.lerp(scene.environmentIntensity,
+      environment === 'night' ? .08 : environment === 'storm' ? .18 : environment === 'earth' ? .12 : .48, blend);
     scene.fog.color.lerp(new THREE.Color(planetState.fog), blend);
     scene.fog.density = THREE.MathUtils.lerp(scene.fog.density, planetState.density, blend);
     sun.color.lerp(new THREE.Color(planetState.light), blend);
@@ -627,7 +859,12 @@ export function createLandscape(canvas) {
   }
   function focusRover(immediate = false) {
     if (disposed) return;
+    cancelContactPulse();
+    if (contactActive) setContact(false);
+    contactFraming = false;
+    contactCamera = null;
     inspecting = false;
+    roverFrame = null;
     controls.minDistance = 3.3;
     controls.maxDistance = 28;
     controls.minPolarAngle = .32;
@@ -643,6 +880,14 @@ export function createLandscape(canvas) {
   }
   function inspect(immediate = false) {
     if (disposed) return;
+    cancelContactPulse();
+    if (contactActive) setContact(false);
+    contactFraming = false;
+    contactCamera = null;
+    if (!inspecting) roverFrame = {
+      position: camera.position.clone().sub(vehicle.position),
+      target: controls.target.clone().sub(vehicle.position),
+    };
     inspecting = true;
     const site = observationSites.find(site => observationTarget
       && Math.hypot(site.x - observationTarget.x, site.z - observationTarget.z) < .5);
@@ -657,6 +902,100 @@ export function createLandscape(canvas) {
       cameraTween = null;
       controls.update();
       render();
+    }
+  }
+
+  function returnFromInspection() {
+    if (!inspecting) return;
+    const previousFrame = roverFrame;
+    inspecting = false;
+    roverFrame = null;
+    controls.minDistance = 3.3;
+    controls.maxDistance = 28;
+    controls.minPolarAngle = .32;
+    controls.maxPolarAngle = Math.PI * .475;
+    const desired = previousFrame ? {
+      position: vehicle.position.clone().add(previousFrame.position),
+      target: vehicle.position.clone().add(previousFrame.target),
+    } : desiredFrame(false);
+    if (reduced) {
+      camera.position.copy(desired.position);
+      controls.target.copy(desired.target);
+      cameraTween = null;
+      controls.update();
+    } else cameraTween = { ...desired, follow: true };
+  }
+
+  function setInvestigation(active) {
+    const site = observationSites.find(site => observationTarget
+      && Math.hypot(site.x - observationTarget.x, site.z - observationTarget.z) < .5);
+    investigation = Boolean(active && site);
+    sampleTime = elapsed;
+    if (!investigation) return;
+    stopDrive();
+    if (!inspecting) inspect();
+    const desired = desiredFrame(true);
+    const fittedDistance = desired.position.distanceTo(desired.target);
+    // Begin beside the exposed face (or low beside the grain-bearing surface).
+    // Orbiting then reveals real geometry; there is no concealed image/reticle.
+    const oblique = site.kind === 'layers' ? new THREE.Vector3(3.8, 1.1, 1.1)
+      : new THREE.Vector3(.7, 1.1, 3.8);
+    desired.position.copy(desired.target).add(oblique.setLength(fittedDistance));
+    if (reduced) {
+      camera.position.copy(desired.position);
+      controls.target.copy(desired.target);
+      cameraTween = null;
+      controls.update();
+      render();
+    } else cameraTween = desired;
+    samplePosition.copy(camera.position);
+    camera.getWorldDirection(sampleDirection);
+  }
+
+  function sampleInspection() {
+    if (!investigation || elapsed - sampleTime < .1) return;
+    const site = observationSites.find(site => observationTarget
+      && Math.hypot(site.x - observationTarget.x, site.z - observationTarget.z) < .5);
+    if (!site) { investigation = false; return; }
+    const interval = Math.max(.001, elapsed - sampleTime);
+    sampleTime = elapsed;
+    const view = camera.position.clone().sub(site.target);
+    const actualDistance = view.length();
+    const face = view.normalize().dot(site.normal);
+    const facing = THREE.MathUtils.smoothstep(face, site.kind === 'layers' ? .48 : .38,
+      site.kind === 'layers' ? .82 : .72);
+    const desired = desiredFrame(true);
+    const ratio = actualDistance / desired.position.distanceTo(desired.target);
+    const proximity = THREE.MathUtils.smoothstep(ratio, .42, .68)
+      * (1 - THREE.MathUtils.smoothstep(ratio, 1.25, 1.65));
+    const direction = camera.getWorldDirection(new THREE.Vector3());
+    const angularSpeed = direction.angleTo(sampleDirection) / interval;
+    const relativeSpeed = camera.position.distanceTo(samplePosition) / Math.max(actualDistance, .1) / interval;
+    const steady = !cameraTween && angularSpeed < .16 && relativeSpeed < .12;
+    const quality = THREE.MathUtils.clamp(facing * proximity, 0, 1);
+    const hint = ratio > 1.3 ? 'Move closer' : ratio < .65 ? 'Pull back a little'
+      : facing < .75 ? (site.kind === 'layers' ? 'Turn toward the layered face' : 'Look down at the grains')
+        : 'Hold this view';
+    samplePosition.copy(camera.position);
+    sampleDirection.copy(direction);
+    canvas.dispatchEvent(new CustomEvent('inspection-sample', { bubbles: true,
+      detail: { quality, steady, hint } }));
+  }
+
+  function stopDrive() {
+    const notifyStop = wasMoving;
+    drive = { forward: 0, turn: 0 };
+    contactInput = { x: 0, y: 0 };
+    route = null;
+    motion.reset();
+    wasMoving = false;
+    if (notifyStop && !disposed) {
+      const detail = { ...sampleSurface(surfaceHeight, { x: vehicle.position.x,
+        z: vehicle.position.z, heading, speed: 0, blocked: false }),
+        x: vehicle.position.x, z: vehicle.position.z, distance, blocked: false,
+        remaining: waypoint ? Math.hypot(vehicle.position.x - waypoint.x, vehicle.position.z - waypoint.z) : 0 };
+      canvas.dispatchEvent(new CustomEvent('world-drive', { bubbles: true, detail }));
+      canvas.dispatchEvent(new CustomEvent('rover-move', { bubbles: true, detail }));
     }
   }
 
@@ -678,7 +1017,7 @@ export function createLandscape(canvas) {
   }
 
   function moveRover(delta) {
-    if (mode !== 'game' || !modelReady || modelFailed || !canDrive) return;
+    if (mode !== 'game' || !modelReady || modelFailed || !canDrive || investigation || contactActive || contactPulse) return;
     let forward = THREE.MathUtils.clamp(drive.forward, -1, 1);
     let turn = THREE.MathUtils.clamp(drive.turn, -1, 1);
     if (forward || turn) route = null;
@@ -696,11 +1035,14 @@ export function createLandscape(canvas) {
         forward = Math.abs(difference) < .9 ? Math.max(.2, 1 - Math.abs(difference)) : 0;
       } else route = null;
     }
-    if (!forward && !turn) return;
-    if (inspecting) focusRover(true);
-    cameraTween = null;
-    heading += turn * delta * (assisted ? 1.5 : .85);
-    const step = forward * delta * (assisted ? 1.2 : .85);
+    const velocity = motion.step({ forward, turn, assisted }, delta);
+    const moving = Boolean(velocity.speed || velocity.turnRate);
+    if (!moving && !wasMoving) return;
+    wasMoving = moving;
+    if (inspecting && moving) returnFromInspection();
+    if (cameraTween && !cameraTween.follow) cameraTween = null;
+    heading += velocity.turnRate * delta;
+    const step = velocity.speed * delta;
     const dx = Math.sin(heading) * step;
     const dz = Math.cos(heading) * step;
     const nx = vehicle.position.x + dx, nz = vehicle.position.z + dz;
@@ -715,13 +1057,18 @@ export function createLandscape(canvas) {
       const shift = vehicle.position.clone().sub(old);
       camera.position.add(shift);
       controls.target.add(shift);
+      if (cameraTween?.follow) {
+        cameraTween.position.add(shift);
+        cameraTween.target.add(shift);
+      }
       distance += Math.abs(step);
       if (!reduced) addTracks();
     }
+    if (blocked && step) motion.reset();
     groundRover();
-    if (elapsed - eventTime > .08) {
+    if (!moving || elapsed - eventTime > .08) {
       eventTime = elapsed;
-      const texture=sampleSurface(surfaceHeight,{x:vehicle.position.x,z:vehicle.position.z,heading,speed:Math.abs(step)/Math.max(delta,.001),blocked});
+      const texture=sampleSurface(surfaceHeight,{x:vehicle.position.x,z:vehicle.position.z,heading,speed:blocked ? 0 : Math.abs(velocity.speed),blocked});
       const detail = { ...texture, x: vehicle.position.x, z: vehicle.position.z, distance, blocked,
         remaining: waypoint ? Math.hypot(vehicle.position.x - waypoint.x, vehicle.position.z - waypoint.z) : 0 };
       canvas.dispatchEvent(new CustomEvent('world-drive', { bubbles: true, detail }));
@@ -775,6 +1122,8 @@ export function createLandscape(canvas) {
     previous = now;
     if (!paused && !document.hidden) {
       elapsed += delta;
+      updateContactPulse();
+      updateContact(delta);
       moveRover(delta);
       if (!reduced) {
         const speed = environment === 'storm' ? 6.0 : .35;
@@ -791,7 +1140,7 @@ export function createLandscape(canvas) {
         controls.target.lerp(cameraTween.target, amount);
         if (camera.position.distanceTo(cameraTween.position) < .015) cameraTween = null;
       }
-      if(look.x || look.y) {
+      if(!contactActive && !contactPulse && (look.x || look.y)) {
         cameraTween=null;
         const offset=camera.position.clone().sub(controls.target);
         const orbit=new THREE.Spherical().setFromVector3(offset);
@@ -801,6 +1150,7 @@ export function createLandscape(canvas) {
       }
       controls.update();
       render();
+      sampleInspection();
     }
     frame = requestAnimationFrame(animate);
   }
@@ -814,12 +1164,21 @@ export function createLandscape(canvas) {
     camera.updateProjectionMatrix();
     renderer.setSize(width, height, false);
     if (inspecting && Math.abs(camera.aspect / previousAspect - 1) > .08) inspect(true);
+    if (contactFraming && Math.abs(camera.aspect / previousAspect - 1) > .08) {
+      contactCamera = contactFrame();
+      camera.position.copy(contactCamera.position);
+      controls.target.copy(contactCamera.target);
+      cameraTween = null;
+      controls.update();
+    }
     render();
   }
-  function blur() { drive = { forward: 0, turn: 0 }; }
+  function blur() { stopDrive(); contactInput = { x: 0, y: 0 }; }
   function contextLost(event) {
     event.preventDefault();
     paused = true;
+    cancelContactPulse();
+    stopDrive();
     status('error', 'The 3D view was interrupted. Reload to restore the rover.');
   }
   window.addEventListener('resize', resize, { passive: true });
@@ -839,11 +1198,17 @@ export function createLandscape(canvas) {
       const nextMode = ['title', 'game', 'ending'].includes(value) ? value : 'title';
       if (nextMode === mode) return;
       mode = nextMode;
-      drive = { forward: 0, turn: 0 };
-      route = null;
+      stopDrive();
       marker.visible = mode === 'game' && Boolean(waypoint && !waypoint.reached);
       focusRover();
     },
+    stopDrive,
+    setInvestigation,
+    setContact,
+    setContactInput,
+    nudgeContact,
+    sendContact,
+    cancelContactPulse,
     setDrive(value = {}) {
       if (value.forward || value.turn) route = null;
       drive = {
@@ -868,8 +1233,8 @@ export function createLandscape(canvas) {
     },
     setPaused(value) {
       paused = Boolean(value);
-      controls.enabled = !paused;
-      if (paused) {blur();look={x:0,y:0};}
+      controls.enabled = !paused && !contactActive && !contactPulse;
+      if (paused) {cancelContactPulse();blur();look={x:0,y:0};}
       previous = 0;
     },
     focusRover,
@@ -881,8 +1246,11 @@ export function createLandscape(canvas) {
       route = null;
       waypoint = null;
       observationTarget = null;
+      investigation = false;
+      setContact(false);
+      contactFraming = false;
       marker.visible = false;
-      drive = { forward: 0, turn: 0 };
+      stopDrive();
       distance = 0;
       eventTime = 0;
       heading = -.45;
@@ -897,6 +1265,7 @@ export function createLandscape(canvas) {
     },
     destroy() {
       if (disposed) return;
+      cancelContactPulse();
       disposed = true;
       if (frame) cancelAnimationFrame(frame);
       resizeObserver?.disconnect();
@@ -906,7 +1275,7 @@ export function createLandscape(canvas) {
       controls.dispose();
       vehicle.traverse((object) => { if (object.isMesh) disposeModel(object); });
       for (const resource of resources) resource.dispose?.();
-      rocks.dispose();
+      for (const field of rockField) field.dispose();
       pebbles.dispose();
       grains.dispose();
       tracks.dispose();
@@ -914,6 +1283,82 @@ export function createLandscape(canvas) {
       renderer.dispose();
     },
   };
+}
+
+// Scanned roughness files can contain nearly black values: multiplying those
+// by roughness=1 still produces a mirror. Dust retains high microsurface
+// roughness everywhere while preserving subtle scanned variation above a floor.
+function setDrySurface(material, floor) {
+  material.onBeforeCompile = shader => {
+    shader.fragmentShader = shader.fragmentShader.replace('#include <roughnessmap_fragment>',
+      `#include <roughnessmap_fragment>\nroughnessFactor = ${floor.toFixed(3)} + ${(1 - floor).toFixed(3)} * clamp(roughnessFactor, 0.0, 1.0);`);
+  };
+  material.customProgramCacheKey = () => `dry-mineral-${floor.toFixed(3)}`;
+}
+
+function setTerrainVariation(material) {
+  const dryCompile = material.onBeforeCompile;
+  material.onBeforeCompile = shader => {
+    dryCompile(shader);
+    shader.vertexShader = 'varying vec3 vSurfacePosition;\n' + shader.vertexShader;
+    shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>',
+      '#include <begin_vertex>\nvSurfacePosition = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    shader.fragmentShader = 'varying vec3 vSurfacePosition;\n' + shader.fragmentShader;
+    shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
+      #ifdef USE_MAP
+        vec2 terrainUv = vMapUv + .065 * vec2(sin(vSurfacePosition.z * .37), sin(vSurfacePosition.x * .29));
+        vec2 rotatedUv = mat2(.71, -.71, .71, .71) * terrainUv * .61 + vec2(.37, .63);
+        vec3 fineSoil = texture2D(map, terrainUv).rgb;
+        vec3 broadSoil = texture2D(map, rotatedUv).rgb;
+        float surfacePatch = .5 + .5 * sin(vSurfacePosition.x * .19 + sin(vSurfacePosition.z * .14) * 2.0);
+        vec3 soil = mix(fineSoil, broadSoil, .18 + .25 * surfacePatch);
+        float detail = 1.0 - smoothstep(12.0, 55.0, length(vViewPosition));
+        float macro = .94 + .09 * sin(vSurfacePosition.x * .11 + vSurfacePosition.z * .07)
+          + .045 * sin(vSurfacePosition.z * .23 - vSurfacePosition.x * .04);
+        soil = mix(vec3(.38, .32, .25) * macro, soil, .78 * detail);
+        diffuseColor.rgb *= soil;
+      #endif`);
+    shader.fragmentShader = shader.fragmentShader.replace('#include <normal_fragment_maps>',
+      THREE.ShaderChunk.normal_fragment_maps.replace('mapN.xy *= normalScale;',
+        'mapN.xy *= normalScale * mix(.12, 1.0, 1.0 - smoothstep(10.0, 45.0, length(vViewPosition)));'));
+  };
+  material.customProgramCacheKey = () => 'dry-terrain-macro-v1';
+}
+
+function setSedimentSurface(material) {
+  const dryCompile = material.onBeforeCompile;
+  material.onBeforeCompile = shader => {
+    dryCompile(shader);
+    shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
+      #ifdef USE_MAP
+        vec3 sedimentSample = texture2D(map, vMapUv).rgb;
+        float mineralGrain = dot(sedimentSample, vec3(.2126, .7152, .0722));
+        // Generic scanned fractures must not masquerade as the authored strata.
+        diffuseColor.rgb *= vec3(.82, .80, .75) * (.85 + .25 * mineralGrain);
+      #endif`);
+  };
+  material.customProgramCacheKey = () => 'dry-light-sediment-v1';
+}
+
+function makeRockGeometry(variant) {
+  const source = new THREE.IcosahedronGeometry(1, 3);
+  const vertices = source.attributes.position;
+  for (let i = 0; i < vertices.count; i += 1) {
+    const x = vertices.getX(i), y = vertices.getY(i), z = vertices.getZ(i);
+    const erosion = .91 + fbm(x * 2.9 + variant * 11, z * 3.1 + y * 2.5) * .23;
+    // Broad fractured planes break the uniform potato silhouette; fine relief
+    // comes from scanned normals, rather than adding thousands more triangles.
+    const px = THREE.MathUtils.clamp(x, -.83 + variant * .025, .88 - variant * .035);
+    const py = THREE.MathUtils.clamp(y, -.78, .84 + variant * .025);
+    const pz = THREE.MathUtils.clamp(z, -.87, .82);
+    vertices.setXYZ(i, px * erosion + .055 * Math.sin(y * 5 + variant),
+      py * erosion + .035 * Math.sin(x * 7 + z * 4), pz * erosion);
+  }
+  source.deleteAttribute('normal');
+  const geometry = mergeVertices(source, .0001);
+  geometry.computeVertexNormals();
+  source.dispose();
+  return geometry;
 }
 
 function seededRandom(seed) {

@@ -10,6 +10,13 @@ export function createSound() {
   let windGain = null;
   let windFilter = null;
   let windSource = null;
+  let motorSource = null;
+  let gritSource = null;
+  let motorGain = null;
+  let gritGain = null;
+  let motorFilter = null;
+  let activity = { moving: false, speed: 0, roughness: 0, investigating: false, contactActive: false, contactQuality: 0 };
+  let activityTime = -Infinity;
   let muted = false;
   let paused = false;
   let destroyed = false;
@@ -22,7 +29,7 @@ export function createSound() {
   let nextPhrase = 0;
   let phraseNumber = 0;
   let queue = [];
-  let lastCueTime = -Infinity;
+  const lastCueTimes = new Map();
   let endPlayed = false;
   const activeVoices = new Set();
   const pianoCache = new Map();
@@ -51,8 +58,23 @@ export function createSound() {
     param.setTargetAtTime(value, context.currentTime, seconds);
   }
 
+  function updateActivity() {
+    if (!context || !motorGain) return;
+    const fresh = context.currentTime - activityTime < 0.8;
+    const audible = canPlay() && section !== 'silence' && fresh;
+    const contact = audible && activity.contactActive;
+    const driving = audible && activity.moving && !activity.investigating && !contact;
+    const speed = driving ? activity.speed : 0;
+    // Quiet physical contact, never an engine roar: Opportunity has electric motors.
+    smooth(motorGain.gain, contact ? 0.014 : speed * 0.019, 0.09);
+    smooth(gritGain.gain, contact ? (1 - activity.contactQuality) * 0.022 : speed * (0.008 + activity.roughness * 0.027), 0.08);
+    smooth(motorSource.frequency, contact ? 180 + activity.contactQuality * 100 : 42 + speed * 38, 0.13);
+    smooth(motorFilter.frequency, contact ? 580 : 170 + speed * 110, 0.15);
+  }
+
   function updateVolume() {
     smooth(master?.gain, canPlay() ? 0.52 : 0, canPlay() ? 0.16 : 0.006);
+    updateActivity();
   }
 
   function disconnectVoice(voice) {
@@ -100,6 +122,7 @@ export function createSound() {
     section = next;
     if (!context) return;
     const config = sections[section];
+    updateActivity();
     smooth(windGain?.gain, config.wind, section === 'silence' ? 0.06 : 1.4);
     smooth(windFilter?.frequency, config.cutoff, 1.5);
     if (changed) {
@@ -123,7 +146,7 @@ export function createSound() {
     let noise = 43 + note;
     for (let i = 0; i < length; i += 1) {
       const t = i / rate;
-      const attack = 1 - Math.exp(-t * 175);
+      const attack = 1 - Math.exp(-t * 110);
       let value = 0;
       for (let h = 1; h <= harmonics.length; h += 1) {
         const partial = frequency * h * (1 + 0.00011 * h * h);
@@ -172,7 +195,7 @@ export function createSound() {
     const envelope = context.createGain();
     const filter = context.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.value = 1100;
+    filter.frequency.value = 680;
     filter.Q.value = 0.4;
     envelope.gain.setValueAtTime(0, when);
     envelope.gain.linearRampToValueAtTime(volume, when + 1.4);
@@ -183,7 +206,7 @@ export function createSound() {
       pan.pan.value = note % 2 ? 0.32 : -0.32;
       filter.connect(envelope).connect(pan).connect(master);
     } else filter.connect(envelope).connect(master);
-    const oscillators = [-0.002, 0.002].map(detune => {
+    const oscillators = [0].map(detune => {
       const oscillator = context.createOscillator();
       oscillator.type = 'triangle';
       oscillator.frequency.value = midi(note) * (1 + detune);
@@ -208,30 +231,40 @@ export function createSound() {
     const third = config.minor ? 65 : 66;
     const melody = [[62, 0], [69, 3], [64, 5], [third, 8], [62, 12]];
     const answer = [[69, 24], [third, 27], [64, 30], [59, 34], [62, 38]];
+    // Four authored returns, not one endlessly restarted eight-bar loop.
+    // The second is a solo statement; the fourth lets the answer lead.
+    const variation = phraseNumber % 4;
+    const returns = [
+      [...melody, ...answer],
+      melody,
+      [...melody, [71, 24], [69, 28], [64, 33], [third, 38]],
+      [[69, 5], [third, 9], [64, 14], [59, 20], [62, 28]],
+    ];
     const fragment = section === 'storm' ? melody.slice(0, 4)
       : section === 'fading' ? [[62, 0], [64, 8]]
         : section === 'waiting' ? [[62, 0], [69, 4], [64, 9], [62, 16]]
-          : [...melody, ...answer];
+          : returns[variation];
     for (let i = 0; i < fragment.length; i += 1) {
       const [note, eighth] = fragment[i];
       // Slightly varied dynamics; all pitches and timing stay composed, not random.
-      add('pluck', note, eighth, config.piano * [1, 0.76, 0.84, 0.73, 0.90][i % 5], 6.1);
+      add('pluck', note, eighth, config.piano * (variation === 1 ? 0.83 : 1) * [1, 0.76, 0.84, 0.73, 0.90][i % 5], 6.1);
     }
     const chords = config.minor
       ? [[38, 53, 57, 64], [34, 53, 57, 62], [31, 50, 57, 65], [33, 50, 57, 64]]
       : [[38, 54, 57, 64], [35, 54, 57, 62], [31, 54, 57, 62], [33, 50, 57, 64]];
     // The upper melody has room. Harmony enters softly below it and stays sparse.
     if (section !== 'fading') {
-      const chordCount = section === 'waiting' || section === 'storm' ? 2 : 4;
+      const chordCount = variation === 1 ? 0 : section === 'waiting' || section === 'storm' ? 1 : 3;
       for (let i = 0; i < chordCount; i += 1) {
         const chord = chords[(i + (phraseNumber % 2 ? 1 : 0)) % chords.length];
-        const at = i * 12;
+        const at = i * 15;
         add('pluck', chord[0], at + 0.16, config.piano * 0.50, 6.2);
         if (section === 'discovery' || section === 'amber' || section === 'remembrance') {
           add('pluck', chord[2], at + 3.2, config.piano * 0.28, 4.8);
         }
-        if (config.strings) {
-          for (const note of chord.slice(1, 3)) add('string', note, at + 0.6, config.strings * 0.5, 12 * beat + 1.5);
+        if (config.strings && i === 0 && variation % 2 === 0) {
+          // One breath-like harmonic, rather than an imitation orchestral bed.
+          add('string', chord[1] + 12, at + 0.6, config.strings * 0.42, 5.6);
         }
       }
     }
@@ -241,7 +274,7 @@ export function createSound() {
       add('string', 59, 36, config.strings * 0.35, 10);
     }
     queue.sort((a, b) => a.when - b.when);
-    nextPhrase = start + 48 * beat + config.gap;
+    nextPhrase = start + 48 * beat + config.gap + [0, 6, 3, 10][variation];
     phraseNumber += 1;
   }
 
@@ -249,6 +282,7 @@ export function createSound() {
     timer = null;
     if (!canPlay() || section === 'silence') return;
     const now = context.currentTime;
+    updateActivity();
     // A throttled/background tab never catches up by firing a burst of old notes.
     if (nextPhrase < now - 0.5) {
       queue = [];
@@ -308,6 +342,26 @@ export function createSound() {
     windGain.gain.value = 0;
     windSource.connect(windFilter).connect(windGain).connect(master);
     windSource.start();
+    // Two persistent sources, independent of update frequency; no per-frame voices.
+    motorSource = context.createOscillator();
+    motorSource.type = 'triangle';
+    motorFilter = context.createBiquadFilter();
+    motorFilter.type = 'lowpass';
+    motorGain = context.createGain();
+    motorGain.gain.value = 0;
+    motorSource.connect(motorFilter).connect(motorGain).connect(master);
+    motorSource.start();
+    gritSource = context.createBufferSource();
+    gritSource.buffer = buffer;
+    gritSource.loop = true;
+    const gritFilter = context.createBiquadFilter();
+    gritFilter.type = 'bandpass';
+    gritFilter.frequency.value = 830;
+    gritFilter.Q.value = 0.7;
+    gritGain = context.createGain();
+    gritGain.gain.value = 0;
+    gritSource.connect(gritFilter).connect(gritGain).connect(master);
+    gritSource.start();
     applySection();
   }
 
@@ -343,21 +397,22 @@ export function createSound() {
       if (section === 'remembrance') return;
     }
     const now = context.currentTime;
-    if (now - lastCueTime < 0.12) return;
-    lastCueTime = now;
+    if (now - (lastCueTimes.get(kind) ?? -Infinity) < 0.18) return;
+    lastCueTimes.set(kind, now);
     const third = sections[section].minor ? 65 : 66;
     const patterns = {
       observe: [[74, 0, 0.7, 0.027]],
+      investigate: [[50, 0, 0.12, 0.018], [57, 0.11, 0.2, 0.014]],
       choose: [[third, 0, 1.0, 0.035], [69, 0.13, 1.2, 0.018]],
       transmit: [[74, 0, 0.16, 0.027], [69, 0.24, 0.22, 0.021], [74, 0.54, 0.45, 0.017]],
-      received: [[third, 0, 1.0, 0.025], [62, 0.3, 1.4, 0.020]],
+      received: [[57, 0, 0.7, 0.033], [62, 0.22, 1.5, 0.028], [third, 0.46, 1.2, 0.019]],
       end: [[62, 0, 4.5, 0.040], [69, 0.65, 4, 0.023], [74, 1.4, 4, 0.015]],
     };
     for (const [note, delay, duration, volume] of patterns[kind] || []) {
       const oscillator = context.createOscillator();
       const gain = context.createGain();
       const when = now + delay;
-      oscillator.type = 'sine';
+      oscillator.type = kind === 'investigate' ? 'triangle' : 'sine';
       oscillator.frequency.value = midi(note);
       gain.gain.setValueAtTime(0, when);
       gain.gain.linearRampToValueAtTime(volume, when + Math.min(0.05, duration / 4));
@@ -398,6 +453,16 @@ export function createSound() {
       applySection();
     },
     cue,
+    setActivity(value = {}) {
+      const unit = number => Number.isFinite(number) ? Math.max(0, Math.min(1, number)) : 0;
+      activity = {
+        moving: Boolean(value.moving), speed: unit(value.speed), roughness: unit(value.roughness),
+        investigating: Boolean(value.investigating), contactActive: Boolean(value.contactActive),
+        contactQuality: unit(value.contactQuality),
+      };
+      activityTime = context?.currentTime ?? -Infinity;
+      updateActivity();
+    },
     pause() { paused = true; hush(); },
     async resume() {
       paused = false;
@@ -409,7 +474,9 @@ export function createSound() {
       destroyed = true;
       hush();
       doc?.removeEventListener('visibilitychange', onVisibility);
-      try { windSource?.stop(); windSource?.disconnect(); } catch { /* Already stopped. */ }
+      for (const source of [windSource, motorSource, gritSource]) {
+        try { source?.stop(); source?.disconnect(); } catch { /* Already stopped. */ }
+      }
       pianoCache.clear();
       if (context && context.state !== 'closed') context.close().catch(() => {});
     },

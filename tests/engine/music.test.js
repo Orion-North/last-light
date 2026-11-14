@@ -8,6 +8,7 @@ function musicHarness() {
   let nextTimerId = 0;
   const timers = new Map();
   const sources = [];
+  const nodes = [];
   const contexts = [];
   const listeners = new Map();
   const keys = ['setTimeout', 'clearTimeout', 'AudioContext', 'document'];
@@ -25,7 +26,7 @@ function musicHarness() {
   }
 
   function node(kind) {
-    return {
+    const result = {
       kind, connections: [],
       gain: parameter(), pan: parameter(), frequency: parameter(), Q: parameter(),
       threshold: parameter(), knee: parameter(), ratio: parameter(),
@@ -35,6 +36,8 @@ function musicHarness() {
       start(when = now) { this.started = when; },
       stop(when = now) { this.stopped = when; },
     };
+    nodes.push(result);
+    return result;
   }
 
   class AudioContextMock {
@@ -106,8 +109,8 @@ function musicHarness() {
   }
 
   return {
-    sources, timers, contexts, listeners, advance,
-    notes: () => sources.filter(source => !source.loop && source.started !== undefined),
+    sources, nodes, timers, contexts, listeners, advance,
+    notes: () => sources.filter(source => !source.loop && source.started !== undefined && source.stopped !== undefined),
     assertCanceled() {
       assert.equal(timers.size, 0, 'no scheduler runs while sound is inactive');
       assert.ok(this.notes().every(source => source.stopped <= now), 'active and future notes are canceled');
@@ -217,5 +220,86 @@ test('both narrative silences remove music and ambience, then remembrance restor
     h.advance(40);
     assert.equal(h.notes().length, beforeDestroy);
     assert.equal(await sound.start(), false);
+  });
+});
+
+
+test('activity uses a fixed graph, stops on stale input, and investigation suppresses driving', async () => {
+  await withMusic(async (sound, h) => {
+    await sound.start();
+    const motor = h.sources.find(source => source.kind === 'oscillator' && source.stopped === undefined);
+    const motorGain = motor.connections[0].connections[0];
+    const before = h.sources.length;
+    for (let i = 0; i < 100; i += 1) sound.setActivity({ moving: true, speed: 0.8, roughness: 0.7 });
+    assert.equal(h.sources.length, before, 'terrain updates never allocate sources');
+    assert.ok(motorGain.gain.target > 0);
+    sound.setActivity({ moving: true, speed: 1, investigating: true });
+    assert.equal(motorGain.gain.target, 0);
+    sound.setActivity({ moving: true, speed: 1 });
+    h.advance(1);
+    assert.equal(motorGain.gain.target, 0, 'lost input cannot leave a running motor');
+    sound.setActivity({ moving: true, speed: 1 });
+    sound.pause();
+    assert.equal(motorGain.gain.target, 0);
+  });
+});
+
+test('interaction cues distinguish investigation, transmission, and an Earth reply', async () => {
+  await withMusic(async (sound, h) => {
+    await sound.start();
+    const pitches = kind => {
+      const before = h.sources.length;
+      sound.cue(kind);
+      return h.sources.slice(before).map(source => source.frequency.value);
+    };
+    assert.equal(pitches('investigate').length, 2);
+    const sent = pitches('transmit');
+    const reply = pitches('received');
+    assert.equal(sent.length, 3);
+    assert.equal(reply.length, 3, 'a distinct cue is not suppressed by another cue type');
+    assert.ok(Math.max(...reply) < Math.max(...sent), 'Earth reply is a warmer lower-register answer');
+    assert.deepEqual(pitches('received'), [], 'duplicate feedback is bounded');
+  });
+});
+
+test('long exploration alternates orchestration and includes audible breathing room', async () => {
+  await withMusic(async (sound, h) => {
+    await sound.start();
+    h.advance(30);
+    const before = h.notes().length;
+    h.advance(7);
+    const solo = h.notes().slice(before);
+    assert.ok(solo.length > 0);
+    assert.ok(solo.every(source => source.kind === 'buffer'), 'second statement leaves the sustained layer out');
+    h.advance(9);
+    const resting = h.notes().length;
+    h.advance(15);
+    assert.equal(h.notes().length, resting, 'long composed rest avoids a constant loop');
+    h.advance(8);
+    assert.ok(h.notes().length > resting, 'next variation returns after the rest');
+  });
+});
+
+
+test('contact alignment reuses the motor graph and cleans up on silence and destroy', async () => {
+  await withMusic(async (sound, h) => {
+    await sound.start();
+    const motor = h.sources.find(source => source.kind === 'oscillator' && source.stopped === undefined);
+    const gain = motor.connections[0].connections[0];
+    const grit = h.sources.filter(source => source.loop)[1];
+    const gritGain = grit.connections[0].connections[0];
+    const count = h.sources.length;
+    sound.setActivity({ contactActive: true, contactQuality: 0 });
+    assert.equal(motor.frequency.target, 180);
+    assert.ok(gritGain.gain.target > 0);
+    sound.setActivity({ contactActive: true, contactQuality: 4 });
+    assert.equal(motor.frequency.target, 280, 'quality clamps before pitch mapping');
+    assert.equal(gritGain.gain.target, 0, 'clear alignment removes radio grit');
+    assert.equal(h.sources.length, count);
+    sound.setNarrative(7, 'received');
+    assert.equal(gain.gain.target, 0);
+    h.assertAmbienceSilent();
+    sound.destroy();
+    assert.ok(h.sources.every(source => source.stopped <= h.contexts[0].currentTime), 'persistent activity sources also stop on teardown');
   });
 });

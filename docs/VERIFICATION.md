@@ -93,3 +93,35 @@ Earth's recovery effort, and the personalized ending.
   Tablet-size browser checks are recorded in the release handoff when complete.
 - No claim of physical iPad Safari FPS, battery/thermal behavior, physical haptic
   quality, or subjective emotional success. Those require the user's playtest.
+
+## v0.4 draft — controller and world pass
+
+- Automated: all ten engine test files passed, including new motion, investigation,
+  controller glyphs, 20 controller behaviors (USB touch decode/cleanup and menu
+  scrolling), and seven music cases. Syntax/content/entry checks passed.
+- Isolated browser: both geological investigations reached the clear-view state
+  using arrow-key camera controls and completed after holding steady; source
+  interpretation appeared afterward. Scanned maps/sky rendered. Visual review
+  identified wet-looking roughness and obvious distant repetition; corrected both.
+- Browser found GLSL reserved identifier `patch`; renamed to `surfacePatch` and
+  reloaded to verify terrain rendered again. Historical browser logs retain that
+  earlier error; it is not a clean-log claim for the whole session.
+- Multiple independent Sol reviews found and checked fixes for menu-mode driving,
+  accidental Autodrive, held-stick context jumps, disconnect cancellation,
+  investigation reset/assistance, touch-drag drift and focused-action dispatch.
+- Not established: real iPad frame rate/memory, physical USB touch feel or haptic
+  quality, subjective soundtrack balance, or emotional impact. Procedural sky,
+  large teaching grains and visible radio guidance are artistic reconstructions.
+- CONTACT browser checks: keyboard alignment reached quality1, Send unlocked,
+  Enter began transmission, and pause/resume reset alignment without sending.
+  Restored saved transmit phase entered the same physical aiming interaction.
+  Later source review changed pointer motion to displacement, avoiding drift;
+  physical USB coordinates remain tested against synthetic byte fixtures only.
+- Final combined browser pass: normal-motion opening and uplink alignment completed
+  muted; outbound packet appeared in-world, then Earth receipt arrived. Reduced
+  motion had been checked in the earlier investigation/contact pass. No new
+  captured warning/error appeared after the shader fix and reload. Final draft
+  screenshot is saved outside the repo as `last-light-v04-draft.jpg`.
+- Asset budget: public assets total18,943,571bytes, including5,075,233bytes of new
+  scanned maps. Six1K maps use about32MiB decoded RGBA+mips before overhead;
+  this is a budget estimate, not an iPad GPU measurement.

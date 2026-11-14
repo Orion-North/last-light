@@ -123,3 +123,10 @@ soundtrack. [ART.md](ART.md) records the generated fallback poster and its promp
 lists workspace `AGENTS.md` and `GEMINI.md` among rule locations. The repository
 uses a small `GEMINI.md` pointer and a manual onboarding fallback; no external
 agent tool was run during setup.
+
+## v0.4 sky reference
+
+- NASA, [What Do Sunrises and Sunsets Look Like on Mars?](https://science.nasa.gov/solar-system/planets/mars/what-does-a-sunrise-sunset-look-like-on-mars/), checked 2026-11-14. Supports warm dusty daytime color and localized blue near the low Sun. The shader is an artistic approximation, not atmospheric simulation or NASA imagery.
+- The drawn radio beam/target is a play aid for an imagined link-orientation action.
+  Radio is not visible light and the target does not calculate Earth's real position.
+  Alignment cannot alter Opportunity's historical loss of contact.

@@ -1,0 +1,28 @@
+{
+  "asset": "rock_boulder_cracked",
+  "source": "https://polyhaven.com/a/rock_boulder_cracked",
+  "license": "CC0-1.0",
+  "licenseUrl": "https://polyhaven.com/license",
+  "verified": "2026-11-14",
+  "modifications": "None; original official 1K JPEG files",
+  "maps": [
+    {
+      "path": "public/textures/rock/albedo.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rock_boulder_cracked/rock_boulder_cracked_diff_1k.jpg",
+      "size": 998110,
+      "md5": "2eee29ef1257ce79569e4be0b76cd1ad"
+    },
+    {
+      "path": "public/textures/rock/normal.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rock_boulder_cracked/rock_boulder_cracked_nor_gl_1k.jpg",
+      "size": 1079683,
+      "md5": "1185717651f6fa2db0face12425d0a74"
+    },
+    {
+      "path": "public/textures/rock/roughness.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rock_boulder_cracked/rock_boulder_cracked_rough_1k.jpg",
+      "size": 379850,
+      "md5": "8610432e3011c02abb70433f050cf651"
+    }
+  ]
+}

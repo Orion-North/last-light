@@ -68,7 +68,7 @@ export const scenes = [
     approachTitle: 'Small grains. A question.',
     subtitle: 'What are these round grains doing in the rock?',
     objective: 'Inspect the grains and clear patch',
-    discovery: 'Round grains contain hematite. Comparing them with the brushed rock supported formation involving water.',
+    discovery: 'Spectrometers found hematite in the round grains; comparison with brushed rock supported formation involving water.',
     response: 'Earth, imagined: Beautiful work. There is more here to understand.',
     sol: 'SOL 48 · 2004', title: 'They call them blueberries.',
     text: 'Small round grains gather in the rock. Your people give them a name from home.\n\nYou have never seen a berry. You know the brush at the end of your arm, the patience of a careful movement, the way dust lifts from a surface.\n\nThere is work to do. There is always someone ready to understand what you find.',

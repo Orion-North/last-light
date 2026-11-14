@@ -1,0 +1,28 @@
+{
+  "asset": "rocks_ground_05",
+  "source": "https://polyhaven.com/a/rocks_ground_05",
+  "license": "CC0-1.0",
+  "licenseUrl": "https://polyhaven.com/license",
+  "verified": "2026-11-14",
+  "modifications": "None; original official 1K JPEG files",
+  "maps": [
+    {
+      "path": "public/textures/ground/albedo.jpg",
+      "size": 756710,
+      "md5": "76bd7cba49ee86cdd1ad0b95f864a69a",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rocks_ground_05/rocks_ground_05_diff_1k.jpg"
+    },
+    {
+      "path": "public/textures/ground/normal.jpg",
+      "size": 1387386,
+      "md5": "5ccd47dac2eafdbdebdab02222adf750",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rocks_ground_05/rocks_ground_05_nor_gl_1k.jpg"
+    },
+    {
+      "path": "public/textures/ground/roughness.jpg",
+      "size": 473494,
+      "md5": "91bb42110da4bb05089dfb3e167dc849",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rocks_ground_05/rocks_ground_05_rough_1k.jpg"
+    }
+  ]
+}

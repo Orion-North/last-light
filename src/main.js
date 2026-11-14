@@ -4,8 +4,11 @@ import { createSound } from './audio/sound.js';
 import { createLandscape } from './ui/landscape.js';
 import { restoreSession, serializeSession } from './session.js';
 import { createController } from './input/controller.js';
+import { currentObjective, inputMode } from './ui/objectives.js';
+import { createInvestigation } from './engine/investigation.js';
 import { createInteractionWait } from './engine/interaction-wait.js';
 import { discoveredScenes, transmissionProfile, missionConditions, endingMemories } from './ui/experience.js';
+import { controllerFamily, controllerGlyph, controllerHint, controllerButtonName, validPromptStyle } from './ui/controller-prompts.js';
 
 const $ = (selector) => document.querySelector(selector);
 const app = $('#app');
@@ -14,16 +17,18 @@ const escape = (value) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '
 const paragraphs = (text) => String(text).split('\n\n').map(p => `<p>${escape(p)}</p>`).join('');
 const arrow = '<span aria-hidden="true">↗</span>';
 const storageKey = 'last-light-journey-v1';
+const padPreviewMuted = new URLSearchParams(location.search).get('controller') === 'off';
 let state = createState();
 let saved = null;
 let settings = { haptics: true, sound: false, motion: matchMedia('(prefers-reduced-motion: reduce)').matches,
-  touch: matchMedia('(any-pointer: coarse)').matches };
+  touch: matchMedia('(any-pointer: coarse)').matches, prompts: 'auto' };
 try {
   saved = restoreSession(localStorage.getItem(storageKey), scenes);
   const storedSettings = JSON.parse(localStorage.getItem('last-light-settings'));
   if (storedSettings && typeof storedSettings.motion === 'boolean') settings.motion = storedSettings.motion;
   if (storedSettings && typeof storedSettings.haptics === 'boolean') settings.haptics = storedSettings.haptics;
   if (storedSettings && typeof storedSettings.touch === 'boolean') settings.touch = storedSettings.touch;
+  if (storedSettings && validPromptStyle(storedSettings.prompts)) settings.prompts = storedSettings.prompts;
 } catch { /* Private browsing can still play. */ }
 let screen = 'title';
 let view;
@@ -31,6 +36,9 @@ let controller;
 let padInput = { throttle: 0, steer: 0 };
 let scanning = false;
 let scanTimer = 0;
+let investigating = false;
+let investigationSampleAt = 0;
+const investigation = createInvestigation();
 let lastDistance = 0;
 let worldReady = false;
 let graphicsError = false;
@@ -39,8 +47,16 @@ let lastScene = null;
 let reached = false;
 let exploring = false;
 let transmitting = false;
+let contacting = false;
+let contactQuality = 0;
+let touchContact = null;
+let contactPointer = null;
 let restoreSendFocus = false;
 let inputDevice = settings.touch ? 'touch' : 'keyboard';
+let controllerConnected = false;
+let controllerId = '';
+let touchSurfaceAvailable = false;
+let inputContext = '';
 const transmissionWait = createInteractionWait();
 const sound = createSound();
 sound.setMuted(true);
@@ -82,6 +98,7 @@ function setWorld(environment, mode) {
 
 function renderTitle() {
   cancelTransmission();
+  stopContact();
   restoreSendFocus = false;
   screen = 'title';
   setExploring(false);
@@ -96,6 +113,7 @@ function renderTitle() {
     <p class="session-note">A SHORT, SELF-PACED 3D EXPERIENCE · HEADPHONES ENCOURAGED<br>SOUND STARTS WITH YOUR JOURNEY · MUTE ANYTIME<br>History is fixed. What you carry home is yours.</p>
     <div class="title-bottom"><div class="coordinates">MERIDIANI PLANUM<strong>02° SOUTH / 354° EAST</strong></div><div class="mission-mark">AN IMAGINED INNER LIFE<strong>A VERY REAL EXPLORER</strong></div></div>
   </section>`;
+  refreshControllerPrompts();
 }
 
 function telemetry(scene) {
@@ -107,15 +125,52 @@ function contactMark(mode, waiting = false) {
   return `<div class="contact-mark ${waiting ? 'waiting' : ''} ${mode}" aria-hidden="true"><span>●</span><i></i><span>${answered ? '●' : '○'}</span></div>`;
 }
 
+function syncInputMode() {
+  const mode = inputMode({screen, phase:state.phase, modal:!!document.querySelector('dialog[open]'), investigating:investigating || contacting, travelling:!reached});
+  controller?.setInputMode?.(mode);
+  const context = `${screen}:${state.sceneIndex}:${state.phase}:${document.querySelector('dialog[open]')?.id || ''}:${investigating}`;
+  if(context!==inputContext) {inputContext=context;controller?.rearmMenu?.();}
+  if(mode !== 'drive') view?.stopDrive?.();
+}
+
 function updateInputHint() {
   const moving = screen === 'game' && state.phase === 'observe' && !reached;
+  if(contacting) {
+    const family=controllerFamily(controllerId,settings.prompts);
+    $('#input-hint').innerHTML = controllerConnected ? `${touchSurfaceAvailable?'Slide touchpad / ':''}${controllerGlyph('look',family)} Aim link · ${controllerGlyph('primary',family)} Send` : 'Arrow keys / drag to aim · Enter / tap to send';
+    return;
+  }
+  if(investigating) {
+    $('#input-hint').innerHTML = controllerConnected ? `${controllerGlyph('look',controllerFamily(controllerId,settings.prompts))} Move view · Release to record` : 'Arrow keys / drag to move view · Stop to record';
+    return;
+  }
   const hints = {
     touch: moving ? 'Hold arrows to drive · Drag to look' : 'Tap to interact · Drag to look',
     keyboard: moving ? 'WASD / arrows drive · Drag to look' : 'Tab to select · Enter to interact · J journal',
     dualsense: moving ? 'L drive · R look · × interact' : 'D-pad select · × interact · □ journal',
     gamepad: moving ? 'Left stick drive · Right stick look' : 'D-pad select · Bottom button interact',
   };
-  $('#input-hint').textContent = hints[inputDevice];
+  if (controllerConnected || settings.prompts !== 'auto') {
+    $('#input-hint').innerHTML = controllerHint(controllerFamily(controllerId,settings.prompts),moving);
+  } else $('#input-hint').textContent = hints[inputDevice];
+}
+
+function refreshControllerPrompts() {
+  const family = controllerFamily(controllerId,settings.prompts);
+  const show = controllerConnected || settings.prompts !== 'auto';
+  const decorate = (button, action) => {
+    button.querySelector(':scope > .controller-glyph')?.remove();
+    button.classList.toggle('with-controller-glyph',show);
+    if (show) button.insertAdjacentHTML('afterbegin',controllerGlyph(action,family));
+  };
+  app.querySelectorAll('[data-action]').forEach(button=>decorate(button,button.dataset.action==='journal'?'journal':'primary'));
+  decorate($('#settings-toggle'),'pause');
+  decorate($('#camera-reset'),'camera');
+  document.querySelectorAll('dialog [data-close]').forEach(button=>decorate(button,'back'));
+  const guide = [['move','Drive'],['forward','Forward'],['reverse','Reverse'],['look','Look'],['primary','Interact'],['select','Select'],['journal','Journal'],['camera','Camera'],['back','Back'],['pause','Pause']];
+  $('#controller-guide').innerHTML = guide.map(([action,label])=>`<span class="controller-hint" aria-label="${controllerButtonName(action,family)}: ${label.toLowerCase()}">${controllerGlyph(action,family)}<span>${label}</span></span>`).join('');
+  updateInputHint();
+  syncInputMode();
 }
 
 function renderGame({ focus = false } = {}) {
@@ -135,10 +190,15 @@ function renderGame({ focus = false } = {}) {
   const choice = scene.choices.find(c=>c.id===state.selected);
   const goal = goals[state.sceneIndex];
   const contact = transmissionProfile(scene);
+  if(state.phase==='transmit' && !transmitting && scene.signal>0 && !graphicsError && !state.paused) {
+    if(!contacting) {contacting=true;contactQuality=0;touchContact=null;view?.setContact?.(true,{mode:contact.mode});announce('Aim the link toward the ring, then send your memory.');}
+  } else stopContact();
   $('#waypoint-hud').hidden=!goal || reached || state.phase!=='observe';
   $('#waypoint-hud').textContent=goal ? `◇ ${goal.label}` : '';
   let content = '';
-  if (state.phase === 'observe') {
+  if (investigating) {
+    content = `<p id="investigation-hint" class="discovery-line">Move around the rock to reveal the feature</p><progress id="investigation-progress" max="1" value="0" aria-label="Observation recorded"></progress><p class="pace-note">Find a clear view, then release the stick.</p><button class="quiet-button" data-action="assist-observation">Assist observation</button>`;
+  } else if (state.phase === 'observe') {
     content = `<p class="inner-voice">${escape(scene.subtitle || scene.thought)}</p>`;
     if (goal && !reached) content += `<div class="objective-line"><span id="objective-distance">${graphicsError ? '3D unavailable on this device' : 'Follow the amber beacon'}</span><button class="quiet-button" data-action="${graphicsError?'text-only':'assist'}" ${!worldReady&&!graphicsError?'disabled':''}>${graphicsError?'Continue story':'Autodrive'}</button></div>`;
     else content += `<button class="primary-button" data-action="observe" ${scanning?'disabled':''}>${scanning?'Looking closely…':escape(scene.objective || scene.actionLabel)} <span aria-hidden="true">◇</span></button>`;
@@ -146,17 +206,18 @@ function renderGame({ focus = false } = {}) {
   } else if (state.phase === 'choose') {
     content = `<p class="discovery-line">${escape(scene.discovery)}</p><div class="choices compact-choices">${scene.choices.map(c=>`<button class="choice" data-action="choose" data-choice="${escape(c.id)}"><span class="choice-label">${escape(c.shortLabel || c.label)}</span><span class="choice-detail">Choose a memory ◇</span></button>`).join('')}</div>`;
   } else if (state.phase === 'transmit') {
-    content = `<p class="inner-voice">${escape(choice.shortReply || choice.reply)}</p>${transmitting ? `${contactMark(contact.mode,true)}<p class="contact-status" role="status">${contact.waiting}</p>` : `<button class="primary-button" data-action="transmit">${contact.action} ${arrow}</button>`}`;
+    content = `<p class="inner-voice">${escape(choice.shortReply || choice.reply)}</p>${transmitting ? `${contactMark(contact.mode,true)}<p class="contact-status" role="status">${contact.waiting}</p>` : `${contacting ? '<div class="uplink-instrument"><p id="contact-hint">Aim the light toward the distant ring</p><progress id="contact-progress" max="1" value="0" aria-label="Link alignment"></progress><small>Move the light into the ring, then send.</small></div>' : ''}<button class="primary-button" data-action="transmit" ${contacting?'disabled':''}>${contact.action} ${arrow}</button>`}`;
   } else {
     content = `${contactMark(contact.mode)}<p class="transmission-label">${contact.result}</p><p class="transmission-text" tabindex="-1">${escape(scene.response || scene.transmission)}</p><button class="quiet-button continue-button" data-action="next">${scenes[state.sceneIndex+1]?.end ? 'Carry these memories' : scene.signal ? 'Keep going' : 'When you’re ready'} ${arrow}</button>`;
   }
-  app.innerHTML = `<section class="play-screen"><header class="play-heading"><p class="eyebrow">${escape(scene.sol)}</p><h1 tabindex="-1">${escape(state.phase==='observe' ? scene.approachTitle || scene.title : scene.title)}</h1></header>${telemetry(scene)}<article class="interaction-dock" aria-label="Current interaction" aria-busy="${scanning || transmitting}">${content}<div class="dock-footer"><span>${scene.act===1?'WONDER':scene.act===2?'THE STORM':'REMEMBRANCE'}</span><button class="quiet-button" data-action="journal">Journal</button></div></article></section>`;
+  app.innerHTML = `<section class="play-screen"><header class="play-heading"><p class="eyebrow">${escape(scene.sol)}</p><h1 tabindex="-1">${escape(state.phase==='observe' ? scene.approachTitle || scene.title : scene.title)}</h1></header>${telemetry(scene)}<aside class="mission-objective" aria-label="Current objective"><span>${state.phase==='observe'?'EXPLORE':state.phase==='choose'?'REMEMBER':state.phase==='transmit'?'CONNECT':'CONTINUE'}</span><strong>${escape(currentObjective({scene,phase:state.phase,goal,reached,investigating,transmitting}))}</strong></aside><article class="interaction-dock" aria-label="Current interaction" aria-busy="${scanning || transmitting}">${content}<div class="dock-footer"><span>${scene.act===1?'WONDER':scene.act===2?'THE STORM':'REMEMBRANCE'}</span><button class="quiet-button" data-action="journal">Journal</button></div></article></section>`;
   setExploring(exploring);
   $('#world-controls').hidden = false;
-  document.querySelectorAll('[data-drive]').forEach(b=>b.disabled = scene.signal === 0 || scanning || transmitting);
-  updateInputHint();
+  $('.drive-pad').hidden = state.phase!=='observe' || reached;
+  document.querySelectorAll('[data-drive]').forEach(b=>b.disabled = scene.signal === 0 || state.phase!=='observe' || reached || scanning || transmitting);
+  refreshControllerPrompts();
   controller?.setTerrain({moving:false,blocked:false,power:scene.power/100});
-  if (focus) focusContent(state.phase==='received' ? '.transmission-text' : state.phase==='transmit' ? '[data-action="transmit"]' : 'h1');
+  if (focus) focusContent(state.phase==='choose' ? '.choice' : state.phase==='received' ? '[data-action="next"]' : state.phase==='transmit' ? '[data-action="transmit"]' : '[data-action="observe"]');
 }
 
 function openJournal() {
@@ -177,12 +238,20 @@ function renderEnding() {
   controller?.setTerrain({moving:false,blocked:false,power:0});
   const scene = scenes.at(-1);
   app.innerHTML = `<section class="ending-screen brief-ending"><p class="eyebrow">OPPORTUNITY · 2004–2018</p><h1 class="ending-title" tabindex="-1">You were here.</h1><p class="inner-voice">${escape(scene.subtitle)}</p><div class="mission-numbers"><div><strong>90</strong><span>SOLS PLANNED</span></div><div><strong>5,111</strong><span>SOLS TO LAST CONTACT</span></div><div><strong>${state.memories.length}</strong><span>MEMORIES WITH YOU</span></div></div><ul class="memory-echoes" aria-label="Moments you chose">${endingMemories(state.memories).map(m=>`<li>${escape(m.title)}</li>`).join('')}</ul><p class="ending-fact">Opportunity revealed evidence of ancient water on Mars. NASA declared the mission complete on February 13, 2019.</p><div class="ending-actions"><button class="primary-button" data-action="journal">Open your memories ◇</button><button class="secondary-button" data-action="download">Keep them ↓</button><button class="quiet-button" data-action="restart">Begin again</button></div></section>`;
+  refreshControllerPrompts();
   focusContent();
 }
 
 function scan() {
   if (scanning || state.paused || !reached || state.phase !== 'observe') return;
-  if (scenes[state.sceneIndex].signal === 0 || settings.motion || graphicsError) return act({type:'OBSERVE'});
+  if (scenes[state.sceneIndex].signal === 0 || graphicsError) return act({type:'OBSERVE'});
+  view?.stopDrive?.();
+  if ([1,2].includes(state.sceneIndex)) {
+    investigating = true;scanning = true;investigation.reset();investigationSampleAt=performance.now();
+    view?.inspect?.();view?.setInvestigation?.(true);sound.setActivity?.({moving:false,investigating:true});sound.cue('investigate');renderGame();
+    announce('Move the view around the rock. Hold a clear view to record the feature.');
+    return;
+  }
   scanning = true;
   drive();
   view?.inspect?.();
@@ -195,11 +264,20 @@ function scan() {
   },1000);
 }
 
+function stopContact() {
+  if(!contacting)return;
+  contacting=false;touchContact=null;contactPointer=null;view?.setContact?.(false);view?.setContactInput?.({x:0,y:0});sound.setActivity?.({contactActive:false});
+}
+
 function sendMemory() {
   if (transmitting || state.paused || state.phase !== 'transmit' || screen !== 'game') return;
+  if(contacting && contactQuality<.75) {announce('Aim the light toward the distant ring, then send.');return;}
+  stopContact();
   const contact = transmissionProfile(scenes[state.sceneIndex]);
+  if(scenes[state.sceneIndex].signal>0) view?.sendContact?.(contact.mode);
   if (!contact.delay) return act({type:'TRANSMIT'});
   transmitting = true;
+  view?.stopDrive?.();
   drive();
   if (contact.mode !== 'silence') { sound.cue('transmit'); controller?.feedback('transmit'); }
   renderGame();
@@ -221,6 +299,7 @@ function cancelTransmission() {
   }
 }
 function cancelScan() {
+  view?.setInvestigation?.(false);investigating=false;investigation.reset();sound.setActivity?.({moving:false,investigating:false});
   clearTimeout(scanTimer);
   const wasScanning=scanning;
   scanning=false;document.body.classList.remove('scanning');
@@ -234,7 +313,7 @@ function act(action) {
   if (old === state) return;
   const cue = { OBSERVE:'observe', CHOOSE:'choose' }[action.type];
   if (cue) { sound.cue(cue); controller?.feedback(cue); }
-  if (action.type === 'OBSERVE') { view?.inspect?.(); view?.setWaypoint?.(null); }
+  if (action.type === 'OBSERVE') { view?.inspect?.(); view?.setWaypoint?.(null); announce(scenes[state.sceneIndex].discovery); }
   if (state.complete) sound.cue('end');
   save();
   renderGame({focus:true});
@@ -249,6 +328,7 @@ function act(action) {
 function pause() {
   cancelScan();
   cancelTransmission();
+  stopContact();
   pressed.clear();padInput={throttle:0,steer:0};
   controller?.setPaused(true);
   state = transition(state,{type:'PAUSE'},scenes);
@@ -260,8 +340,10 @@ function resume() {
   view?.setPaused(false); controller?.setPaused(false); if (settings.sound) sound.resume();
   if (restoreSendFocus && screen === 'game' && state.phase === 'transmit') focusContent('[data-action="transmit"]');
   restoreSendFocus = false;
+  if(screen==='game' && state.phase==='transmit')renderGame();
+  syncInputMode();
 }
-function openModal(id) { pause(); $(id).showModal(); }
+function openModal(id) { pause(); $(id).showModal(); syncInputMode(); }
 document.querySelectorAll('dialog').forEach(dialog=>{
   dialog.addEventListener('close', resume);
   dialog.querySelectorAll('[data-close]').forEach(button=>button.addEventListener('click',()=>dialog.close()));
@@ -294,10 +376,12 @@ function applyMotion() {
   $('#motion-setting').checked = settings.motion;
   $('#touch-setting').checked = settings.touch;
   view?.setReducedMotion(settings.motion);
-  try { localStorage.setItem('last-light-settings',JSON.stringify({motion:settings.motion,haptics:settings.haptics,touch:settings.touch})); } catch { /* Optional. */ }
+  try { localStorage.setItem('last-light-settings',JSON.stringify({motion:settings.motion,haptics:settings.haptics,touch:settings.touch,prompts:settings.prompts})); } catch { /* Optional. */ }
 }
 
-$('#credits-content').innerHTML = `<p>${escape(credits)}</p><h3>Built to remember</h3><p>Original story and procedural sound. The interactive terrain is an artistic reconstruction, not a surveyed map. Rover model: NASA/JPL-Caltech. Rendering: Three.js (MIT). Generated poster art is used only if 3D graphics are unavailable.</p><p>This independent project is not affiliated with or endorsed by NASA. Inspiration: the scale of Journey, the curiosity of Outer Wilds, and the grounded science fiction of The Invincible.</p><h3>Primary mission sources</h3><ul class="sources-list">${sources.map(s=>`<li><a href="${escape(s.url)}" target="_blank" rel="noreferrer">${escape(s.title)} ↗</a>${s.credit ? `<small>${escape(s.credit)}</small>`:''}</li>`).join('')}<li><a href="https://science.nasa.gov/resource/spirit-and-opportunity-rover-3d-model/" target="_blank" rel="noreferrer">NASA/JPL-Caltech rover model ↗</a></li><li><a href="./vendor/three/LICENSE" target="_blank">Three.js MIT license ↗</a></li></ul>`;
+app.addEventListener('focusin',()=>{document.body.classList.toggle('controller-menu-focus',controllerConnected);});
+
+$('#credits-content').innerHTML = `<p>${escape(credits)}</p><h3>Built to remember</h3><p>Original story and procedural sound. The interactive terrain is an artistic reconstruction, not a surveyed map. Rover model: NASA/JPL-Caltech. Ground and rock surfaces use CC0 terrestrial scans by Rob Tuytel, Dario Barresi and Dimitrios Savva / Poly Haven, artistically adapted for Mars. Rendering: Three.js (MIT). Generated poster art is used only if 3D graphics are unavailable.</p><p>This independent project is not affiliated with or endorsed by NASA. Inspiration: the scale of Journey, the curiosity of Outer Wilds, and the grounded science fiction of The Invincible.</p><h3>Primary mission sources</h3><ul class="sources-list">${sources.map(s=>`<li><a href="${escape(s.url)}" target="_blank" rel="noreferrer">${escape(s.title)} ↗</a>${s.credit ? `<small>${escape(s.credit)}</small>`:''}</li>`).join('')}<li><a href="https://science.nasa.gov/resource/spirit-and-opportunity-rover-3d-model/" target="_blank" rel="noreferrer">NASA/JPL-Caltech rover model ↗</a></li><li><a href="./vendor/three/LICENSE" target="_blank">Three.js MIT license ↗</a></li></ul>`;
 $('#sound-toggle').addEventListener('click',()=>{soundPreferenceSet=true;toggleSound(!settings.sound);});
 $('#sound-setting').addEventListener('change',event=>{soundPreferenceSet=true;toggleSound(event.target.checked);});
 $('#motion-setting').addEventListener('change',event=>{settings.motion=event.target.checked;applyMotion();});
@@ -305,6 +389,10 @@ $('#touch-setting').addEventListener('change',event=>{
   settings.touch=event.target.checked;
   if (inputDevice==='touch' || inputDevice==='keyboard') inputDevice=settings.touch?'touch':'keyboard';
   applyMotion();updateInputHint();
+});
+document.querySelectorAll('[name="prompt-style"]').forEach(radio=>{
+  radio.checked=radio.value===settings.prompts;
+  radio.addEventListener('change',()=>{settings.prompts=radio.value;applyMotion();refreshControllerPrompts();});
 });
 $('#settings-toggle').addEventListener('click',()=>openModal('#settings-modal'));
 $('#credits-button').addEventListener('click',()=>{$('#settings-modal').close();openModal('#credits-modal');});
@@ -315,7 +403,7 @@ $('#confirm-restart').addEventListener('click',()=>{
 });
 $('.brand').addEventListener('click',event=>{event.preventDefault();cancelScan();renderTitle();window.scrollTo(0,0);});
 $('#explore-toggle').addEventListener('click',()=>setExploring(!exploring));
-$('#camera-reset').addEventListener('click',()=>view?.focusRover?.());
+$('#camera-reset').addEventListener('click',()=>{if(contacting)view?.setContact?.(true,{mode:transmissionProfile(scenes[state.sceneIndex]).mode});else if(investigating)view?.setInvestigation?.(true);else view?.focusRover?.();});
 
 app.addEventListener('click',event=>{
   const button=event.target.closest('[data-action]');
@@ -323,6 +411,7 @@ app.addEventListener('click',event=>{
   switch(button.dataset.action) {
     case 'begin': if(!soundPreferenceSet)toggleSound(true); state=saved || createState(); state={...state,paused:false}; lastScene=null; renderGame({focus:true}); save(); break;
     case 'observe': scan(); break;
+    case 'assist-observation': cancelScan();act({type:'OBSERVE'});break;
     case 'choose': act({type:'CHOOSE',choiceId:button.dataset.choice}); break;
     case 'transmit': sendMemory(); break;
     case 'next': act({type:'NEXT'}); break;
@@ -346,7 +435,7 @@ app.addEventListener('click',event=>{
 
 const pressed = new Set();
 function drive() {
-  if (screen !== 'game' || state.paused || scanning || transmitting || scenes[state.sceneIndex].signal === 0) return view?.setDrive?.({forward:0,turn:0});
+  if (screen !== 'game' || state.paused || state.phase!=='observe' || reached || scanning || transmitting || scenes[state.sceneIndex].signal === 0) return view?.setDrive?.({forward:0,turn:0});
   const forward=(pressed.has('w')||pressed.has('arrowup')?1:0)-(pressed.has('s')||pressed.has('arrowdown')?1:0);
   const turn=(pressed.has('a')||pressed.has('arrowleft')?1:0)-(pressed.has('d')||pressed.has('arrowright')?1:0);
   view?.setDrive?.({forward:Math.max(-1,Math.min(1,forward+padInput.throttle)),turn:Math.max(-1,Math.min(1,turn-padInput.steer))});
@@ -356,9 +445,12 @@ window.addEventListener('keydown',event=>{
   if (event.key.toLowerCase()==='j' && !document.querySelector('dialog[open]') && screen!=='title') {event.preventDefault();openJournal();return;}
   if (['INPUT','TEXTAREA','SELECT'].includes(event.target.tagName) || document.querySelector('dialog[open]')) return;
   const key=event.key.toLowerCase();
+  if(contacting && key==='enter' && !event.target.closest('button,a,input,summary')) {event.preventDefault();sendMemory();return;}
+  if((investigating || contacting) && ['arrowup','arrowdown','arrowleft','arrowright'].includes(key)) {event.preventDefault();pressed.add(key);inspectionLook();return;}
   if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(key) && screen==='game') {event.preventDefault();pressed.add(key);drive();}
 });
-window.addEventListener('keyup',event=>{pressed.delete(event.key.toLowerCase());drive();});
+function inspectionLook() {const value={x:(pressed.has('arrowright')?1:0)-(pressed.has('arrowleft')?1:0),y:(pressed.has('arrowdown')?1:0)-(pressed.has('arrowup')?1:0)};if(contacting)view?.setContactInput?.(value);else if(investigating)view?.setLook?.(value);}
+window.addEventListener('keyup',event=>{pressed.delete(event.key.toLowerCase());if(investigating || contacting)inspectionLook();else drive();});
 window.addEventListener('blur',()=>{pressed.clear();drive();});
 document.querySelectorAll('[data-drive]').forEach(button=>{
   const key={forward:'w',back:'s',left:'a',right:'d'}[button.dataset.drive];
@@ -378,13 +470,33 @@ canvas.addEventListener('world-status',event=>{
   if(status==='error') { $('.world').dataset.fallback='true'; announce(message); }
   if(screen==='game' && state.phase==='observe') renderGame();
 });
+canvas.addEventListener('pointerdown',event=>{if(contacting) {contactPointer={x:event.clientX,y:event.clientY};canvas.setPointerCapture(event.pointerId);}});
+canvas.addEventListener('pointermove',event=>{if(contacting && contactPointer) {view?.nudgeContact?.({x:(event.clientX-contactPointer.x)*.004,y:(event.clientY-contactPointer.y)*.004});contactPointer={x:event.clientX,y:event.clientY};}});
+for(const type of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(type,()=>{contactPointer=null;if(contacting)view?.setContactInput?.({x:0,y:0});});
+canvas.addEventListener('contact-sample',event=>{
+  if(!contacting || state.paused)return;
+  contactQuality=event.detail.quality;
+  const progress=$('#contact-progress');if(progress)progress.value=contactQuality;
+  const hint=$('#contact-hint');if(hint)hint.textContent=contactQuality>=.75?'Link aligned. Send your memory.':'Aim the light toward the distant ring';
+  const send=app.querySelector('[data-action="transmit"]');if(send)send.disabled=contactQuality<.75;
+  sound.setActivity?.({contactActive:true,contactQuality});
+});
+canvas.addEventListener('inspection-sample',event=>{
+  if(!investigating || state.paused) return;
+  const now=performance.now();
+  const result=investigation.sample(event.detail,(now-investigationSampleAt)/1000);investigationSampleAt=now;
+  const progress=$('#investigation-progress');if(progress)progress.value=result.progress;
+  const hint=$('#investigation-hint');if(hint)hint.textContent=event.detail.hint;
+  if(result.complete) {cancelScan();act({type:'OBSERVE'});}
+});
 canvas.addEventListener('waypoint-reached',()=>{
   if(screen!=='game'||!goals[state.sceneIndex]||reached) return;
   reached=true; setExploring(false); renderGame({focus:true});
-  announce('Observation reached. Scan to discover it.');sound.cue('observe');controller?.feedback('arrival');
+  announce('Destination reached. Press Interact to investigate.');sound.cue('observe');controller?.feedback('arrival');
 });
 canvas.addEventListener('rover-move',event=>{
   const moving=event.detail.distance>lastDistance+.001; lastDistance=event.detail.distance;
+  sound.setActivity?.({moving:moving||!!event.detail.blocked,speed:event.detail.speed,roughness:event.detail.roughness});
   controller?.setTerrain({moving:moving||!!event.detail.blocked,blocked:!!event.detail.blocked,power:scenes[state.sceneIndex].power/100,speed:event.detail.speed,roughness:event.detail.roughness,slip:event.detail.slip});
   const el=$('#objective-distance');
   if(el && Number.isFinite(event.detail.remaining)) el.textContent=`${event.detail.remaining.toFixed(1)} m to the observation`;
@@ -399,7 +511,7 @@ function controllerAction(action) {
   if(action==='pause') { if(dialog) dialog.close(); else openModal('#settings-modal'); return; }
   if(action==='back') { if(dialog) dialog.close(); else if(exploring) setExploring(false); else openModal('#settings-modal'); return; }
   if(action==='journal') { if(dialog?.id==='journal-modal') dialog.close(); else if(!dialog && screen!=='title') openJournal(); return; }
-  if(action==='camera' && !dialog) {view?.focusRover?.();return;}
+  if(action==='camera' && !dialog) {if(contacting)view?.setContact?.(true,{mode:transmissionProfile(scenes[state.sceneIndex]).mode});else if(investigating)view?.setInvestigation?.(true);else view?.focusRover?.();return;}
   const targets=menuTargets();
   if(action.startsWith('nav')) {
     if(exploring) setExploring(false);
@@ -409,32 +521,66 @@ function controllerAction(action) {
     targets[next]?.focus({preventScroll:false}); return;
   }
   if(action==='primary') {
-    if (!dialog && (transmitting || scanning)) return;
+    if(contacting && !dialog) {
+      const chosen=targets.includes(document.activeElement)?document.activeElement:null;
+      if(chosen && chosen.dataset.action!=='transmit') chosen.click();else sendMemory();
+      return;
+    }
+    if(!dialog && screen==='game' && state.phase==='observe' && !reached && !targets.includes(document.activeElement)) {announce(`Drive to ${goals[state.sceneIndex]?.label || 'the beacon'}. Autodrive is available by selecting it.`);return;}
+    if (!dialog && (transmitting || scanning)) {
+      if(investigating && document.activeElement?.dataset.action==='assist-observation') document.activeElement.click();
+      return;
+    }
     if(exploring) {setExploring(false);return;}
     const focused=targets.includes(document.activeElement)?document.activeElement:null;
-    const fallback=dialog ? targets[0] : app.querySelector('[data-action="observe"]:not([disabled]),[data-action="next"],[data-action="transmit"],[data-action="assist"],.choice,[data-action="begin"],[data-action="journal"]');
+    const fallback=dialog ? targets[0] : app.querySelector('[data-action="observe"]:not([disabled]),[data-action="next"],[data-action="transmit"],.choice,[data-action="begin"],[data-action="journal"]');
     (focused || fallback)?.click();
   }
 }
 controller=createController({
   onInput(input) {
     padInput={throttle:input.throttle,steer:input.steer};drive();
-    view?.setLook?.({x:screen==='game'&&!state.paused?input.lookX:0,y:screen==='game'&&!state.paused?input.lookY:0});
+    if(contacting) {
+      if(!touchContact && !contactPointer && !['arrowup','arrowdown','arrowleft','arrowright'].some(key=>pressed.has(key))) view?.setContactInput?.({x:input.lookX,y:input.lookY});
+      view?.setLook?.({x:0,y:0});return;
+    }
+    if(!investigating || !['arrowup','arrowdown','arrowleft','arrowright'].some(key=>pressed.has(key))) view?.setLook?.({x:screen==='game'&&!state.paused&&state.phase==='observe'?input.lookX:0,y:screen==='game'&&!state.paused&&state.phase==='observe'?input.lookY:0});
   },
   onAction:controllerAction,
+  onScroll(deltaY) {const target=document.querySelector('dialog[open]') || app.querySelector('.brief-ending,.interaction-dock');target?.scrollBy({top:deltaY,behavior:'instant'});},
+  onTouch(point) {
+    if(!contacting || state.paused)return;
+    if(point.active) {
+      if(touchContact)view?.nudgeContact?.({x:(point.x-touchContact.x)*1.2,y:(point.y-touchContact.y)*1.2});
+      touchContact=point;
+    } else {touchContact=null;view?.setContactInput?.({x:0,y:0});}
+  },
   onStatus(status) {
+    const disconnected = controllerConnected && !status.connected;
+    controllerConnected=status.connected;
+    controllerId=status.id;
+    touchSurfaceAvailable=status.adaptiveConnected;
+    if (disconnected && !padPreviewMuted) {
+      pressed.clear();padInput={throttle:0,steer:0};view?.stopDrive?.();
+      if(screen==='game' && !document.querySelector('dialog[open]')) {openModal('#settings-modal');announce('Controller disconnected. Journey paused. Reconnect or close settings to continue with other controls.');}
+    }
     document.body.classList.toggle('controller-connected',status.connected);
-    $('#controller-status').textContent=status.connected ? `${/dualsense|054c|wireless controller/i.test(status.id)?'DualSense':'Controller'} connected · ${status.haptics?'vibration available':'vibration unavailable in this browser'}` : 'Connect a controller, then press any button.';
-    inputDevice = status.connected ? (/dualsense|054c|wireless controller/i.test(status.id) ? 'dualsense' : 'gamepad') : settings.touch ? 'touch' : 'keyboard';
-    updateInputHint();
+    const detectedFamily = controllerFamily(status.id);
+    $('#controller-status').textContent=status.connected ? `${detectedFamily==='playstation'?'PlayStation controller':detectedFamily==='xbox'?'Xbox controller':'Controller'} connected · ${status.haptics?'vibration available':'vibration unavailable in this browser'}` : 'Connect a controller, then press any button.';
+    inputDevice = status.connected ? (detectedFamily==='playstation' ? 'dualsense' : 'gamepad') : settings.touch ? 'touch' : 'keyboard';
+    refreshControllerPrompts();
     $('#adaptive-connect').disabled=!status.adaptiveSupported || status.adaptiveOpen;
     $('#adaptive-disconnect').hidden=!status.adaptiveOpen;
-    $('#adaptive-status').textContent=status.message || (status.adaptiveConnected?'USB trigger effects enabled.':status.adaptiveSupported?'Optional: original DualSense via USB. Click or tap to connect.':'Adaptive triggers unavailable here. Standard controls still work.');
+    $('#adaptive-status').textContent=status.message || (status.adaptiveConnected?'USB touchpad and trigger features connected.':status.adaptiveSupported?'Optional: original DualSense via USB. Click or tap to connect.':'USB features unavailable here. Use the right stick to aim.');
   },
 });
-controller.setHaptics(settings.haptics);
+// An isolated preview can suppress physical pad input while another tab is playtested.
+controller.setEnabled(!padPreviewMuted);
+controller.setHaptics(settings.haptics && !padPreviewMuted);
 $('#haptics-setting').checked=settings.haptics;
-$('#haptics-setting').addEventListener('change',event=>{settings.haptics=event.target.checked;controller.setHaptics(settings.haptics);applyMotion();});
+$('#haptics-setting').addEventListener('change',event=>{settings.haptics=event.target.checked;// An isolated preview can suppress physical pad input while another tab is playtested.
+controller.setEnabled(!padPreviewMuted);
+controller.setHaptics(settings.haptics && !padPreviewMuted);applyMotion();});
 $('#adaptive-connect').addEventListener('click',()=>controller.connectAdaptiveTriggers());
 $('#adaptive-disconnect').addEventListener('click',()=>controller.disconnectAdaptiveTriggers());
 window.addEventListener('blur',()=>{padInput={throttle:0,steer:0};pause();});

@@ -83,3 +83,20 @@ paragraphs; history and the complete archive are optional journal entries.
 DualSense input, terrain-sensitive browser rumble, and opt-in experimental USB
 adaptive resistance are included. Full native HD haptics and a desktop edition
 are deferred until the game is finished, per the user's instruction.
+
+## Controller-first v0.4 draft
+
+Drive to a named landmark → move the view to reveal a real rock feature → hold
+steady to record it → choose a memory → send and listen. One objective stays visible.
+Left stick drives during travel and selects in menus; right stick investigates.
+Optional observation/driving assistance keeps the journey accessible. Two geological
+investigations replace automatic scans; later remembrance remains deliberate and brief.
+Scanned dry surfaces, clearer landmark geometry, and a dust-layered Mars sky improve
+place and mood. Every implementation pass gets a separate agent review and fixes;
+playtesting must still establish enjoyment and emotion. Native desktop remains deferred.
+
+Sending is now physical play: align a schematic 3D uplink with a broad sky guide,
+then explicitly send. A visible outbound packet and reply accompany the familiar
+sound pattern. Standard controllers use the right stick; optional supported USB
+DualSense touch coordinates also steer the link. iPad retains the stick/drag path.
+The story appears in short centered captions, without a corner dialogue card.

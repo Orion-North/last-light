@@ -1,6 +1,6 @@
 # Task board
 
-Phase: **v0.3 discovery and transmission development**.
+Phase: **v0.3 published; v0.4 development on a separate branch**.
 Integrator: Codex. Claude and Antigravity are supported by shared instructions;
 Antigravity CLI critique has been verified.
 
@@ -103,7 +103,7 @@ transmission beat but challenged the scope of the proposed photography system.
 These are untested suggestions; no gameplay changes were made. See
 `ANTIGRAVITY.md` for the verified route, limits, and future handoff procedure.
 
-## EXPERIENCE-03 — discovery and contact (active)
+## EXPERIENCE-03 — discovery and contact (complete)
 
 User authorized continued development and rejected the photography system.
 Shared checkout `main`, base `3aeb99c`; preserve existing review documentation.
@@ -130,7 +130,7 @@ Acceptance: first loop works by keyboard/touch, scans show geological targets,
 discoveries unlock in the journal, qualitative conditions do not imply a timer,
 chosen memories appear at the ending, and every story path still completes.
 
-## IPAD-03 / PAGES-03 — playtest release (active)
+## IPAD-03 / PAGES-03 — playtest release (published)
 
 User requested GitHub Pages publication and identified the playtest device as
 an 11-inch iPad Air M4. GitHub Pages replaces Sites as this release's target.
@@ -141,3 +141,99 @@ an 11-inch iPad Air M4. GitHub Pages replaces Sites as this release's target.
 - Codex: GitHub repository and Pages setup, renderer performance settings if
   needed, input integration, build checks and tablet browser verification.
   Actual iPad Safari and controller feel require the user's device playtest.
+
+GitHub build and deploy passed for `4965a5a`; public playtest:
+https://orion-north.github.io/last-light/ . User is playtesting this version.
+Do not push new gameplay to `main` during this pass. Previous local development
+history is preserved on `sites-history`; `main` tracks `github/main`.
+
+## FEEL-04 — rover movement and camera (active)
+
+User requested continued development while playtesting v0.3. Work on local
+`develop/v0.4`, base `4965a5a`. No deployment or main-branch mutation.
+
+- MOTION-04 / GPT-6.1 Sol: `src/engine/drive-motion.js`,
+  `tests/engine/drive-motion.test.js`, `docs/handoffs/MOTION-04.md`.
+  Deterministic acceleration/braking and turn response, bounded delta, reverse
+  braking and explicit immediate reset for pause/disconnect.
+- CAMERA-04 / GPT-6.1 Sol: `src/ui/landscape.js`,
+  `docs/handoffs/CAMERA-04.md`. Integrate drive-motion contract and smooth the
+  return from inspection to rover-follow. Preserve orbit, reduced motion,
+  routes/collision/arrival, targets and safe terrain contact.
+- Codex: main input interruption integration, release record, review/tests.
+  Browser and physical controller feel checks follow the user's active playtest;
+  do not interrupt or navigate their live game to test this draft.
+
+## ART-04 / GLYPHS-04 — visual quality (active)
+
+User explicitly prioritized a substantial asset-quality improvement and controller
+glyphs. Keep v0.3 live while implementing these in `develop/v0.4`.
+
+- ART-04 / GPT-6.1 Sol asset lane: `public/textures/`, `public/models/rocks/`,
+  `docs/handoffs/ART-04.md`. Acquire licensed scanned ground/rock PBR assets;
+  provide exact provenance, terms, sizes, and file mapping to integration lane.
+- CAMERA-04 / GPT-6.1 Sol landscape lane also integrates ART-04 textures/model,
+  improves material/lighting quality and rock variation, keeps rendering bounded
+  for iPad, and integrates MOTION-04. Owns `src/ui/landscape.js` only plus handoff.
+- GLYPHS-04 / Codex: original SVG controller glyph module, UI integration,
+  prompt-family override, styles, relevant tests, attribution ledger.
+
+## CONTROLLER-FIRST-04 — active investigation and clarity
+
+User requested controller as primary input, more engaging clear gameplay, continuing
+parallel scrutiny, high-quality performant assets, and a believable Mars sky.
+Shared `develop/v0.4` checkout, disjoint ownership; live v0.3 stays unchanged.
+
+- PAD-04 / Sol wait03: controller input modes, left-stick menu navigation,
+  rearming across contexts, behavioral tests; independent integration review in
+  `docs/reviews/CONTROL-04.md` before and after root changes.
+- INVESTIGATE-04 / Codex: objective/input-mode helpers, main interaction routing,
+  steady-view progress, controller glyphs/focus, lifecycle and browser validation.
+- CAMERA-04 / Sol geo03: two real geometry-based investigations, observation
+  sampling contract, scanned materials/landmarks/motion and sky integration.
+- SKY-04 / Terra 6.1: `src/ui/sky.js` and handoff only; bounded Mars atmospheric
+  shader preserving renderer contract, primary NASA references. Sol reviews it.
+- CLARITY-04 / Sol story03: independent source/design/asset review after delivering
+  six licensed 1K maps (5.08 MB); review document only.
+
+Acceptance: main action never silently chooses assisted driving; sticks drive only
+in traversal and navigate choices/menus; observation responds to actual camera
+view and steadiness with explicit assistance; one concrete objective; input loss
+pauses; shader renders without errors. Device performance and emotional engagement
+remain human playtest questions, not claims established by unit tests.
+
+- SOUND-04 / GPT-6.1 Sol sound04 (user explicitly requested): owns
+  `src/audio/sound.js`, music tests, `docs/SOUNDTRACK.md`, SOUND-04 handoff.
+  Improve original motif/arrangement, silence contrast and readable interaction
+  cues; bounded Web Audio, cleanup and pause/mute tests. Root integrates optional
+  activity API only after contract agreed. No independent publication.
+
+## CONTACT-04 / TOUCH-04 — sending is play
+
+User explicitly requested an interactive Earth transmission, possible controller
+touchpad use, and moving the story out of the corner card.
+
+- CONTACT-04 / Sol geo03: landscape only + handoff; steer a visible 3D uplink
+  toward a broad sky guide, emit quality from angular separation, preserve fixed
+  historical outcomes and cleanup. Schematic link, not literal visible radio.
+- TOUCH-04 / Sol wait03: controller + tests + controller-doc append/handoff;
+  verified original DualSense USB input report decoding through existing opt-in
+  WebHID; right-stick menu scrolling. Standard right stick remains required
+  fallback on iPad Safari and other browsers without WebHID.
+- Codex: context-sensitive aim/send, keyboard/drag fallbacks, centered cinematic
+  captions and compact choices, audio activity integration, pause/reset handling,
+  integration tests and browser verification. Touchpad release never silently
+  sends on disconnect/stale-input cleanup; explicit Send commits the interaction.
+
+Final integration review applied: controller ownership/cancellation, focus dispatch,
+relative pointer displacement, active contact reset, shader compilation, terrain
+roughness/repetition, spectroscopy wording, and reflection energy in darkness.
+Both science interactions and link alignment/send passed local browser checks.
+This pass remains a local draft, with target-device/audio-feel playtesting pending.
+
+## RELEASE-04 — GitHub Pages publication
+
+User explicitly requested publication of the completed draft. Codex uploads the
+licensed textures and source through a release branch, promotes the complete
+tree to main, and verifies the Pages workflow and live game. Previous v0.3
+stability instructions applied while playtesting, before this release request.
