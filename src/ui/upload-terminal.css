@@ -84,3 +84,42 @@ body[data-upload="true"][data-screen="game"] .play-screen{background:linear-grad
 body.reduced-motion .upload-terminal *{animation:none!important;transition:none!important}
 body.reduced-motion .upload-terminal[data-stage="sending"] .signal-packet{left:50%;opacity:1}
 body.reduced-motion .upload-terminal[data-stage="received"][data-mode="reply"] .signal-echo{left:0;opacity:1}
+
+/* A learned question and answer, visible even with sound disabled. */
+.signal-dialogue{display:flex;justify-content:center;gap:38px;margin:-3px auto 19px;}
+.signal-phrase{display:flex;align-items:center;gap:7px;color:#e9c995;}
+.signal-phrase span{font:8px/1 var(--mono);letter-spacing:.16em;min-width:58px;text-align:right;margin-right:5px;}
+.signal-phrase i{display:block;width:5px;height:8px;border:1px solid currentColor;opacity:.22;transform-origin:center;}
+.signal-phrase i:nth-of-type(2){height:17px;animation-delay:.24s!important;}
+.signal-phrase i:nth-of-type(3){height:11px;animation-delay:.48s!important;}
+.signal-phrase i:nth-of-type(4){height:14px;animation-delay:.84s!important;}
+.signal-phrase--answer{color:#b6e5ff;}
+.signal-phrase--answer i:nth-of-type(1){height:17px;}
+.signal-phrase--answer i:nth-of-type(2){height:14px;}
+.signal-phrase--answer i:nth-of-type(3){height:11px;}
+.signal-phrase--answer i:nth-of-type(4){height:8px;}
+.upload-terminal[data-stage="sending"] .signal-phrase--question i,
+.upload-terminal[data-stage="received"][data-mode="reply"] .signal-phrase--answer i{animation:signal-note .55s ease-out both;}
+.upload-terminal[data-stage="received"] .signal-phrase--question i{opacity:.6;background:currentColor;}
+.upload-terminal[data-stage="received"][data-mode="reply"] .signal-phrase--answer i{background:currentColor;}
+.upload-terminal[data-mode="partial"] .signal-phrase--question i:last-child{animation:none!important;opacity:.12;background:none;}
+.upload-terminal[data-stage="received"][data-mode="silence"] .signal-phrase--answer,
+.upload-terminal[data-stage="received"][data-mode="partial"] .signal-phrase--answer{color:#adbbc5;}
+.upload-terminal[data-stage="ready"] .signal-path__wave{animation:carrier-breathe 3.6s ease-in-out infinite;}
+.upload-terminal[data-stage="ready"][data-squeeze="charged"] .signal-path__wave{animation:none;opacity:1;}
+.upload-terminal[data-stage="sending"] .signal-path__line{background:linear-gradient(90deg,#ffd59a22,#ffd59a77,transparent);background-size:50% 100%;animation:carrier-travel .85s linear 3;}
+.upload-terminal[data-stage="sending"] .signal-packet--two{animation-delay:.24s;}
+.upload-terminal[data-stage="sending"] .signal-packet--three{animation-delay:.48s;}
+.upload-terminal[data-stage="sending"][data-mode="partial"] .signal-packet--three{animation-name:signal-loss;}
+.signal-world::after{content:'';position:absolute;left:calc(50% - 48px);top:-10px;width:96px;height:96px;border:1px solid #f2cc8b;border-radius:50%;opacity:0;pointer-events:none;}
+.upload-terminal[data-stage="sending"] .signal-world--mars::after{animation:signal-radiate 1s ease-out 2;}
+.upload-terminal[data-stage="sending"][data-mode="silence"] .signal-world--mars::after{animation:none;}
+.upload-terminal[data-stage="sending"][data-mode="silence"] .signal-world--earth::after{animation:signal-radiate 1s ease-out 2;}
+.upload-terminal[data-stage="received"][data-mode="reply"] .signal-world--earth::after{border-color:#b6e5ff;animation:signal-radiate 1.4s ease-out;}
+@keyframes signal-note{0%{opacity:.2;transform:scaleY(.6)}20%{opacity:1;transform:scaleY(1.35);box-shadow:0 0 12px currentColor;background:currentColor}100%{opacity:.65;transform:scaleY(1);background:currentColor}}
+@keyframes signal-radiate{0%{opacity:.8;transform:scale(.7)}100%{opacity:0;transform:scale(1.65)}}
+@keyframes carrier-travel{from{background-position:-100% 0}to{background-position:200% 0}}
+@keyframes carrier-breathe{0%,100%{filter:brightness(.7)}50%{filter:brightness(1.5)}}
+@keyframes signal-loss{0%{left:0;opacity:0}20%{opacity:1}45%{opacity:.1}55%{opacity:.8}80%,100%{left:65%;opacity:0}}
+@media(max-height:720px){.signal-dialogue{margin-bottom:10px}.upload-terminal h2{font-size:30px}.signal-map{height:135px}}
+@media(max-width:600px){.signal-dialogue{gap:14px}.signal-phrase{gap:4px}.signal-phrase span{min-width:45px;font-size:7px}}

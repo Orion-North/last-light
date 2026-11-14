@@ -1,3 +1,4 @@
+import { createGeologyTool } from '../engine/geology-tool.js';
 import { createSky } from './sky.js';
 import { createDriveMotion } from '../engine/drive-motion.js';
 import { sampleSurface } from '../input/surface.js';
@@ -9,7 +10,7 @@ import { mergeVertices, mergeGeometries } from 'three/addons/utils/BufferGeometr
 /** A real, navigable Martian diorama. NASA's rover is loaded from a local GLB. */
 export function createLandscape(canvas) {
   const noop = () => {};
-  const empty = { setMissionAge: noop, setScene: noop, setReducedMotion: noop, setPaused: noop,
+  const empty = { setToolMode: () => false, setToolInput: noop, compareToolSamples: () => false, setMissionAge: noop, setScene: noop, setReducedMotion: noop, setPaused: noop,
     setMode: noop, setIntro: noop, previewMemory: noop, revealFirstView: noop, setRemoteView: noop, setDrive: noop, stopDrive: noop, setSurvey: noop, setInvestigation: noop, setContact: noop, setContactInput: noop, nudgeContact: noop, sendContact: noop, cancelContactPulse: noop, focusRover: noop, inspect: noop,
     setWaypoint: noop, setObservationTarget: noop, reset: noop, destroy: noop };
   const status = (state, message) => canvas?.dispatchEvent(new CustomEvent('world-status', {
@@ -56,6 +57,7 @@ export function createLandscape(canvas) {
   const motion = createDriveMotion();
   let wasMoving = false;
   let roverFrame = null;
+  let tool = null, toolPointer = null, toolSampleTime = 0;
   let investigation = false;
   let inspectionOrigin = null;
   let inspectionTravel = 0;
@@ -382,6 +384,103 @@ export function createLandscape(canvas) {
   grains.castShadow = grains.receiveShadow = true;
   berryBowl.add(grains);
   scene.add(berryBowl);
+  // A conforming grid of dusty chips makes every swept footprint visible.
+  const toolGroup = new THREE.Group(); scene.add(toolGroup); toolGroup.visible = false;
+  // Soft granular deposits, not opaque tiled paint. The cell mask still owns
+  // removal; each cell renders a feathered irregular dust footprint.
+  const powderSize = 64, powderPixels = new Uint8Array(powderSize * powderSize * 4);
+  const powderRandom = seededRandom(12024);
+  for (let y = 0; y < powderSize; y++) for (let x = 0; x < powderSize; x++) {
+    const index = (y * powderSize + x) * 4;
+    const px = (x + .5) / powderSize * 2 - 1, py = (y + .5) / powderSize * 2 - 1;
+    const angle = Math.atan2(py, px), edge = .83 + .09 * Math.sin(angle * 5) + .06 * Math.cos(angle * 9);
+    const feather = THREE.MathUtils.smoothstep(edge - Math.hypot(px, py), 0, .42);
+    const grain = powderRandom();
+    powderPixels[index] = 206 + grain * 30;
+    powderPixels[index + 1] = 177 + grain * 25;
+    powderPixels[index + 2] = 139 + grain * 20;
+    powderPixels[index + 3] = Math.round(255 * feather * (.2 + .8 * grain));
+  }
+  const powderTexture = own(new THREE.DataTexture(powderPixels, powderSize, powderSize));
+  powderTexture.colorSpace = THREE.SRGBColorSpace; powderTexture.needsUpdate = true;
+  const toolDustMaterial = own(new THREE.MeshStandardMaterial({ color: '#e6c59b', map: powderTexture,
+    roughness: 1, transparent: true, opacity: .83, depthWrite: false, alphaTest: .035,
+    polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1, side: THREE.DoubleSide }));
+  const dustChip = own(new THREE.PlaneGeometry(2 / 24 * 1.7, 2 / 24 * 1.7));
+  const toolDust = new THREE.InstancedMesh(dustChip, toolDustMaterial, 24 * 24); toolGroup.add(toolDust);
+  const toolHead = new THREE.Group(); toolGroup.add(toolHead);
+  const headMaterial = own(new THREE.MeshStandardMaterial({ color: '#d9e4e4', metalness: .55, roughness: .4 }));
+  const headRing = new THREE.Mesh(own(new THREE.TorusGeometry(.105, .014, 8, 36)), headMaterial); toolHead.add(headRing);
+  const stem = new THREE.Mesh(own(new THREE.CylinderGeometry(.022, .035, .23, 10)), headMaterial);
+  stem.rotation.x = Math.PI / 2; stem.position.z = .14; toolHead.add(stem);
+  const toolRings = [0, 1].map(() => {
+    const ring = new THREE.Mesh(own(new THREE.TorusGeometry(.16, .012, 6, 32)), own(new THREE.MeshBasicMaterial({ color: '#ffd18b', depthTest: false })));
+    ring.renderOrder = 5; toolGroup.add(ring); return ring;
+  });
+  let toolBerry = false;
+  const toolSurfaceRay = new THREE.Raycaster();
+  lastChance.updateMatrixWorld(true);
+  function layerSurface(x, y) {
+    toolSurfaceRay.set(lastChance.position.clone().add(new THREE.Vector3(x, y, 2)), new THREE.Vector3(0, 0, -1));
+    const hit = toolSurfaceRay.intersectObject(lastChance, true)[0];
+    return { z: hit ? hit.point.z - lastChance.position.z : .72,
+      normal: hit ? hit.face.normal.clone().transformDirection(hit.object.matrixWorld) : new THREE.Vector3(0, 0, 1) };
+  }
+  function toolPoint(x, y, lift = 0) {
+    return toolBerry ? new THREE.Vector3(x, bowlHeight(x, -y * .64) + .035 + lift, -y * .64)
+      : new THREE.Vector3(x, .67 - y * .48, layerSurface(x, .67 - y * .48).z + .012 + lift);
+  }
+  const layerDustPoints = Array.from({ length: 576 }, (_, index) => toolPoint(-1 + (index % 24 + .5) / 12, -1 + (Math.floor(index / 24) + .5) / 12));
+  const layerDustNormals = Array.from({ length: 576 }, (_, index) => layerSurface(-1 + (index % 24 + .5) / 12, .67 - (-1 + (Math.floor(index / 24) + .5) / 12) * .48).normal);
+  const localFront = new THREE.Vector3(0, 0, 1);
+  function updateToolVisual(state) {
+    toolHead.position.copy(toolPoint(state.cursor.x, state.cursor.y, .07));
+    toolHead.rotation.x = toolBerry ? -Math.PI / 2 : 0;
+    headRing.rotation.z += state.stage === 'brush' ? .12 : 0;
+    for (let j = 0; j < 24; j++) for (let i = 0; i < 24; i++) {
+      const index = j * 24 + i;
+      dummy.position.copy(toolBerry ? toolPoint(-1 + (i + .5) / 12, -1 + (j + .5) / 12) : layerDustPoints[index]);
+      if (toolBerry) {
+        const x = dummy.position.x, z = dummy.position.z, h = .008;
+        const normal = new THREE.Vector3(-(bowlHeight(x + h, z) - bowlHeight(x - h, z)) / (2 * h), 1,
+          -(bowlHeight(x, z + h) - bowlHeight(x, z - h)) / (2 * h)).normalize();
+        dummy.quaternion.setFromUnitVectors(localFront, normal);
+      } else dummy.quaternion.setFromUnitVectors(localFront, layerDustNormals[index]);
+      dummy.scale.set(1, toolBerry ? .64 : .48, 1).multiplyScalar(state.cleared[index] ? 0 : 1);
+      dummy.updateMatrix(); toolDust.setMatrixAt(index, dummy.matrix);
+    }
+    toolDust.instanceMatrix.needsUpdate = true;
+    toolRings.forEach((ring, i) => {
+      const target = state.targets[i]; ring.position.copy(toolPoint(target.x, target.y, .055));
+      ring.rotation.x = toolBerry ? -Math.PI / 2 : 0;
+      ring.visible = state.stage !== 'brush';
+      ring.material.color.set(state.samples.some(s => s.id === target.id) ? '#8be0bb' : '#ffd18b');
+    });
+  }
+  function emitTool(state) {
+    const { cleared, ...detail } = state;
+    canvas.dispatchEvent(new CustomEvent('tool-sample', { bubbles: true, detail }));
+  }
+  function setToolMode(sceneId) {
+    if (tool?.sceneId === sceneId) return true;
+    tool?.stop(); toolPointer = null;
+    const next = createGeologyTool(sceneId);
+    tool = next ? Object.assign(next, { sceneId }) : null;
+    toolGroup.visible = Boolean(tool);
+    controls.enabled = !tool && !survey && !remoteView && !paused && !intro && !contactActive;
+    if (!tool) return false;
+    setSurvey(false); investigation = false; stopDrive(); look = { x: 0, y: 0 };
+    toolBerry = sceneId === 'blueberries';
+    toolGroup.position.copy(toolBerry ? berryBowl.position : lastChance.position);
+    const center = toolGroup.position.clone().add(toolPoint(0, 0));
+    cameraTween = null; controls.target.copy(center);
+    camera.position.copy(center).add(toolBerry ? new THREE.Vector3(0, 2.9, 1.8) : new THREE.Vector3(0, .2, 3.2));
+    controls.update(); controls.enabled = false;
+    updateToolVisual(tool.snapshot()); emitTool(tool.snapshot()); render(); return true;
+  }
+  function setToolInput(value) { if (tool && toolPointer === null && !paused && !document.hidden) tool.setInput(value); }
+  function compareToolSamples() { const result = tool?.compare() || false; if (result) emitTool(tool.snapshot()); return result; }
+
   // Fractured shoulders and talus tie each hero to the ground. Shared geometry
   // and one instanced batch keep staging inexpensive on mobile GPUs.
   const talus = own(new THREE.InstancedMesh(rockGeometries[2], strataMaterials[1], 34));
@@ -704,7 +803,7 @@ export function createLandscape(canvas) {
       contactActive = false;
       contactInput = { x: 0, y: 0 };
       contactVisual.visible = false;
-      controls.enabled = !survey && !remoteView && !paused;
+      controls.enabled = !tool && !survey && !remoteView && !paused;
       render();
       return;
     }
@@ -1050,7 +1149,7 @@ export function createLandscape(canvas) {
       if (!survey) return;
       survey = null; surveyPointer = null;
       look = { x: 0, y: 0 };
-      controls.enabled = !survey && !remoteView && !paused && !intro && !contactActive;
+      controls.enabled = !tool && !survey && !remoteView && !paused && !intro && !contactActive;
       return;
     }
     survey = null;
@@ -1072,15 +1171,35 @@ export function createLandscape(canvas) {
     controls.target.copy(camera.position).add(new THREE.Vector3().setFromSpherical(gaze));
   }
   function surveyPointerDown(event) {
+    if (tool && !paused) {
+      tool.setInput({}); // A fresh pointer press follows a released pointer.
+      toolPointer = event.pointerId;
+      toolPointerMove(event); return;
+    }
     if (survey?.origin && !paused) surveyPointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
   }
+  function toolPointerMove(event) {
+    if (!tool || toolPointer !== event.pointerId || paused) return;
+    const rect = canvas.getBoundingClientRect();
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(new THREE.Vector2((event.clientX - rect.left) / rect.width * 2 - 1, 1 - (event.clientY - rect.top) / rect.height * 2), camera);
+    const origin = toolGroup.position.clone().add(toolPoint(0, 0));
+    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(new THREE.Vector3(0, toolBerry ? 1 : 0, toolBerry ? 0 : 1), origin);
+    const hit = ray.ray.intersectPlane(plane, new THREE.Vector3());
+    if (hit) { hit.sub(toolGroup.position); tool.setCursor(hit.x, toolBerry ? -hit.z / .64 : (.67 - hit.y) / .48); }
+    tool.setInput({ pressure: 1 });
+  }
   function surveyPointerMove(event) {
+    if (toolPointer !== null) { toolPointerMove(event); return; }
     if (!surveyPointer || surveyPointer.id !== event.pointerId) return;
     aimSurvey((event.clientX - surveyPointer.x) * .004, (event.clientY - surveyPointer.y) * .004);
     surveyPointer.x = event.clientX; surveyPointer.y = event.clientY;
     render();
   }
-  function surveyPointerEnd() { surveyPointer = null; }
+  function surveyPointerEnd(event) {
+    surveyPointer = null;
+    if (toolPointer !== null && (!event || event.pointerId === toolPointer)) { toolPointer = null; tool?.stop(); }
+  }
 
   function sampleSurvey() {
     if (!survey || paused || remoteView || cameraTween || elapsed - surveySampleTime < .1) return;
@@ -1105,6 +1224,7 @@ export function createLandscape(canvas) {
       && Math.hypot(site.x - observationTarget.x, site.z - observationTarget.z) < .5);
     const next = Boolean(active && site);
     if (!next && !investigation) return;
+    if (next && tool) return;
     investigation = next;
     inspectionOrigin = null; inspectionTravel = 0;
     sampleTime = elapsed;
@@ -1331,7 +1451,7 @@ export function createLandscape(canvas) {
     camera.lookAt(controls.target);
     // Dedicated evidence close-ups omit the foreground rover that otherwise
     // blocks the near-side rock/grains. Restored on every other world view.
-    vehicle.visible = !investigation;
+    vehicle.visible = !investigation && !tool;
     anchorShadows();
     renderer.render(scene, camera);
     sampleWaypointGuidance();
@@ -1345,7 +1465,10 @@ export function createLandscape(canvas) {
       elapsed += delta;
       updateContactPulse();
       updateContact(delta);
-      moveRover(delta);
+      if (tool) {
+        const state = tool.update(delta); updateToolVisual(state);
+        if (elapsed - toolSampleTime >= .1) { toolSampleTime = elapsed; emitTool(state); }
+      } else moveRover(delta);
       if (!reduced) {
         const speed = environment === 'storm' ? 6.0 : .35;
         for (let i = 0; i < dustCount; i += 1) {
@@ -1362,7 +1485,7 @@ export function createLandscape(canvas) {
         if (camera.position.distanceTo(cameraTween.position) < .015) cameraTween = null;
       }
       if(look.x || look.y || orbitGesture)lastManualLook=elapsed;
-      if(!remoteView && !intro && !contactActive && !contactPulse && (look.x || look.y)) {
+      if(!tool && !remoteView && !intro && !contactActive && !contactPulse && (look.x || look.y)) {
         // Finish authored survey framing before accepting relative camera input.
         if (!survey || !cameraTween && survey.origin) {
           cameraTween = null;
@@ -1392,7 +1515,7 @@ export function createLandscape(canvas) {
       controls.target.copy(returned.target);
       intro = null;
       stopDrive(); look = { x: 0, y: 0 };
-      controls.enabled = !survey && !remoteView && !intro && !paused && !contactActive && !contactPulse;
+      controls.enabled = !tool && !survey && !remoteView && !intro && !paused && !contactActive && !contactPulse;
       controls.update(); render();
       return;
     }
@@ -1424,7 +1547,11 @@ export function createLandscape(canvas) {
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
     renderer.setSize(width, height, false);
-    if ((remoteView || memoryPreview) && Math.abs(camera.aspect / previousAspect - 1) > .08) frameMemory(true);
+    if (tool) {
+      const center = toolGroup.position.clone().add(toolPoint(0, 0));
+      camera.position.copy(center).add(toolBerry ? new THREE.Vector3(0, 2.9, 1.8) : new THREE.Vector3(0, .2, 3.2));
+      controls.target.copy(center); controls.update();
+    } else if ((remoteView || memoryPreview) && Math.abs(camera.aspect / previousAspect - 1) > .08) frameMemory(true);
     else if (inspecting && Math.abs(camera.aspect / previousAspect - 1) > .08) inspect(true);
     else if (mode === 'game' && !survey && !intro && !contactFraming
       && Math.abs(camera.aspect / previousAspect - 1) > .08) focusRover(true);
@@ -1437,7 +1564,8 @@ export function createLandscape(canvas) {
     }
     render();
   }
-  function blur() { surveyPointer = null; orbitGesture = false; stopDrive(); contactInput = { x: 0, y: 0 }; }
+  function blur() { tool?.stop(); toolPointer = null; surveyPointer = null; orbitGesture = false; stopDrive(); contactInput = { x: 0, y: 0 }; }
+  function visibilityChanged() { if (document.hidden) blur(); }
   function contextLost(event) {
     event.preventDefault();
     paused = true;
@@ -1447,6 +1575,7 @@ export function createLandscape(canvas) {
   }
   window.addEventListener('resize', resize, { passive: true });
   window.addEventListener('blur', blur);
+  document.addEventListener('visibilitychange', visibilityChanged);
   canvas.addEventListener('webglcontextlost', contextLost);
   canvas.addEventListener('pointerdown', surveyPointerDown);
   window.addEventListener('pointermove', surveyPointerMove);
@@ -1461,6 +1590,7 @@ export function createLandscape(canvas) {
   frame = requestAnimationFrame(animate);
 
   return {
+    setToolMode, setToolInput, compareToolSamples,
     setMissionAge,
     previewMemory,
     revealFirstView,
@@ -1471,8 +1601,8 @@ export function createLandscape(canvas) {
       const nextMode = ['title', 'game', 'ending'].includes(value) ? value : 'title';
       if (nextMode === mode) return;
       mode = nextMode;
-      if (mode !== 'game') { setSurvey(false); remoteView = false; memoryPreview = null; }
-      controls.enabled = !survey && !remoteView && !paused && !intro && !contactActive && !contactPulse;
+      if (mode !== 'game') { setToolMode(null); setSurvey(false); remoteView = false; memoryPreview = null; }
+      controls.enabled = !tool && !survey && !remoteView && !paused && !intro && !contactActive && !contactPulse;
       stopDrive();
       marker.visible = mode === 'game' && Boolean(waypoint && !waypoint.reached);
       focusRover();
@@ -1486,14 +1616,14 @@ export function createLandscape(canvas) {
     sendContact,
     cancelContactPulse,
     setDrive(value = {}) {
-      if (intro || remoteView) return;
+      if (tool || intro || remoteView) return;
       drive = {
         forward: THREE.MathUtils.clamp(Number(value.forward) || 0, -1, 1),
         turn: THREE.MathUtils.clamp(Number(value.turn) || 0, -1, 1),
       };
     },
     setLook(value={}) {
-      if (intro || remoteView) return;
+      if (tool || intro || remoteView) return;
       look={x:THREE.MathUtils.clamp(Number(value.x)||0,-1,1),y:THREE.MathUtils.clamp(Number(value.y)||0,-1,1)};
     },
     setReducedMotion(value) {
@@ -1511,7 +1641,7 @@ export function createLandscape(canvas) {
     },
     setPaused(value) {
       paused = Boolean(value);
-      controls.enabled = !survey && !remoteView && !intro && !paused && !contactActive && !contactPulse;
+      controls.enabled = !tool && !survey && !remoteView && !intro && !paused && !contactActive && !contactPulse;
       if (paused) {cancelContactPulse();blur();look={x:0,y:0};}
       if (survey) { controls.enabled = false; survey.previous = camera.getWorldDirection(new THREE.Vector3()); }
       previous = 0;
@@ -1521,6 +1651,7 @@ export function createLandscape(canvas) {
     setWaypoint,
     setObservationTarget,
     reset() {
+      setToolMode(null);
       setSurvey(false);
       remoteView = false; memoryPreview = null;
       missionAge.value = 0;
@@ -1553,6 +1684,7 @@ export function createLandscape(canvas) {
       resizeObserver?.disconnect();
       window.removeEventListener('resize', resize);
       window.removeEventListener('blur', blur);
+      document.removeEventListener('visibilitychange', visibilityChanged);
       canvas.removeEventListener('webglcontextlost', contextLost);
       canvas.removeEventListener('pointerdown', surveyPointerDown);
       window.removeEventListener('pointermove', surveyPointerMove);

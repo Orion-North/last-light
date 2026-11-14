@@ -3,7 +3,7 @@
 A playable, real-time 3D story about NASA's Opportunity rover: discovery,
 attachment, a fading signal, and the things that remain.
 
-**Playable v0.11.** [Play on GitHub Pages](https://orion-north.github.io/last-light/). Built with parallel Codex agents. The game uses NASA's
+**Playable v0.12.** [Play on GitHub Pages](https://orion-north.github.io/last-light/). Built with parallel Codex agents. The game uses NASA's
 textured rover model, a navigable original Mars environment, an original adaptive
 score, and a complete three-act story. No account or AI API is needed by the game
 itself. A hosting provider may apply its own access gate.
@@ -43,8 +43,9 @@ Desktop browser and Windows, played with a controller, are the primary target.
 Existing keyboard/touch fallbacks remain available.
 
 - Only the first view and Earth archive ask for a text choice. Other records follow your observations. The later storm recalls your actual first horizon/ground memory.
-- Manual driving leads to two geological close-ups and five mast observations. Survey lengths vary from a valley panorama to a single sustained look into the darkened sky.
-- Sending shows Mars and Earth, a traveling signal, and a returning receipt. The final image is incomplete; recovery calls have no return pulse.
+- Manual driving leads to two hands-on geological investigations and five mast observations. Survey lengths vary from a valley panorama to a single sustained look into the darkened sky.
+- Right stick moves the brush/probe; hold R2 to work. Release between readings, hold steady over each marked patch, then press Cross to compare. Keyboard and pointer alternatives remain available.
+- Sending shows Mars and Earth, animated traveling packets, and a returning receipt. A four-note musical question receives a complementary answer early in the mission; after contact loss the familiar answer is absent. The final image is incomplete; recovery calls have no return pulse.
 - Losing contact cuts to a distant rover view and an explicit Earth handover. Recovery calls visibly run from Earth toward Opportunity.
 - Lighting follows the atmosphere; terrain contact and traveling shadows better anchor the rover and rocks. Desktop quality uses 2× pixel ratio cap, 2048 shadows and up to 8× surface anisotropy.
 
@@ -54,7 +55,7 @@ Existing keyboard/touch fallbacks remain available.
 - Release both triggers to arm, squeeze L2 + R2 together to charge, then release both to send. The carrier steadies as both triggers charge; releasing launches a signal across the illustrated link. No touchpad click or cursor aiming. A button alternative remains available.
 - Controller-first: left stick drives during travel and selects in menus; right stick looks and aims. Keyboard/touch remain supported.
 - Follow six local observation markers. Drive manually with gentle acceleration and braking, a close chase camera and rover-relative steering guidance. Autodrive has been removed.
-- Drive, reveal a geological feature or survey the sky, hold the view steady to record it, then squeeze and release both triggers to send the observation home. Geological targets are
+- Drive, sweep dust off a rock with the brush, take two separate instrument readings and compare them, or survey the sky; then squeeze and release both triggers to send the discovery home. Geological targets are
   authored 3D reconstructions with readable layers and grains. There is no
   photography system. Brief thoughts appear as centered cinematic captions; discovered science and
   memories remain available in the optional journal (J / □).

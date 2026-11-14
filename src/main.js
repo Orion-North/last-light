@@ -7,6 +7,7 @@ import { createLandscape } from './ui/landscape.js';
 import { restoreSession, serializeSession } from './session.js';
 import { createController } from './input/controller.js';
 import { currentObjective, inputMode } from './ui/objectives.js';
+import { renderGeologyPanel } from './ui/geology-panel.js';
 import { renderUploadTerminal } from './ui/upload-terminal.js';
 import { createSqueeze } from './engine/squeeze.js';
 import { createSurvey, surveyProfiles } from './engine/fieldwork.js';
@@ -47,6 +48,11 @@ let scanTimer = 0;
 let investigating = false;
 let survey = null;
 let surveyStep = 0;
+let geologyActive = false;
+let toolState = null;
+let toolPad = {x:0,y:0,pressure:0};
+let toolButtonHeld = false;
+let toolSampleCount = 0;
 let investigationSampleAt = 0;
 const investigation = createInvestigation();
 let lastDistance = 0;
@@ -110,6 +116,7 @@ function setWorld(environment, mode) {
 }
 
 function renderTitle() {
+  cancelScan();
   stopBriefing();
   cancelTransmission();
   stopContact();
@@ -207,6 +214,7 @@ function updateInputHint() {
   let hints;
   if(transmitting) hints='<span class="control-rest">Listening…</span>';
   else if(contacting) hints=pad?`<span class="controller-hint" aria-label="Both triggers: squeeze">${controllerGlyph('reverse',family)}${controllerGlyph('forward',family)}<span>Squeeze</span></span>`:row('primary','Send','Enter');
+  else if(geologyActive) hints=row('look','Move tool','↑↓←→')+row('forward',toolState?.stage==='brush'?'Brush':'Measure','Space')+(toolState?.stage==='compare'?row('primary','Compare','Enter'):'');
   else if(investigating) hints=row('look','Look','↑↓←→')+'<span class="control-rest">Hold still to record</span>';
   else if(moving) hints=row('move','Drive','WASD')+row('look','Look','Drag');
   else hints=row('move','Select','Tab')+row('primary','Confirm','Enter');
@@ -241,6 +249,7 @@ function renderGame({ focus = false } = {}) {
   // Older saves can stop at a curation menu that this revision no longer needs.
   if(state.phase==='choose') { const record=recordedChoice(scene,state);if(record){state=transition(state,{type:'CHOOSE',choiceId:record.id},scenes);save();} }
   document.body.dataset.phase=state.phase;
+  document.body.dataset.tool=String(geologyActive);
   view?.setMissionAge?.(missionTime(scene.id)?.ageYears || 0);
   if (lastScene !== scene.id) {
     reached = !goals[state.sceneIndex] || state.phase !== 'observe';
@@ -274,7 +283,9 @@ function renderGame({ focus = false } = {}) {
   $('#waypoint-hud').hidden=!goal || reached || state.phase!=='observe';
   $('#waypoint-hud').textContent=goal ? goal.label : '';
   let content = '';
-  if (investigating) {
+  if (geologyActive) {
+    content=renderGeologyPanel(toolState || {},controllerConnected);
+  } else if (investigating) {
     const profile=surveyProfiles[scene.id];
     content = survey ? `<div class="survey-instrument" aria-label="${escape(profile.title)}"><div class="survey-aim" aria-hidden="true"><span class="survey-center"></span><i id="survey-target"></i></div><div class="survey-ticks" aria-label="Observation views">${profile.steps.map((_,i)=>`<span data-survey-step="${i}">${String(i+1).padStart(2,'0')}</span>`).join('')}</div><p id="investigation-hint" class="discovery-line">${escape(profile.steps[0].hint)}</p><progress id="investigation-progress" max="1" value="0" aria-label="Observation recorded"></progress><p class="pace-note">Bring the amber bearing to the center. Hold still to record.</p></div>` : `<p id="investigation-hint" class="discovery-line">Look around the feature, then hold the view still.</p><progress id="investigation-progress" max="1" value="0" aria-label="Observation recorded"></progress><p class="pace-note">The rock stays in view as you examine its surface.</p>`;
     content += '<button class="quiet-button" data-action="assist-observation">Skip this observation</button>';
@@ -292,7 +303,7 @@ function renderGame({ focus = false } = {}) {
       response:scene.response || scene.transmission,meaning:recalled?'The first view you sent is still on Earth. The storm cannot take it back.':contact.mode==='partial'?'A sky full of dust. Send what light remains.':recordedChoice(scene,state)?scene.discovery:choice?.shortReply || '',input:controllerConnected?'controller':'pointer'});
   }
 
-  app.innerHTML = `<section class="play-screen"><header class="play-heading">${journeyRail(scene)}<p class="eyebrow">${escape(missionTime(scene.id)?.label || scene.sol)}</p><h1 tabindex="-1">${escape(state.phase==='observe' ? scene.approachTitle || scene.title : scene.title)}</h1><aside class="mission-objective" aria-label="Current objective"><span>${state.phase==='observe'?'EXPLORE':state.phase==='choose'?'REMEMBER':state.phase==='transmit'?'CONNECT':'CONTINUE'}</span><strong>${escape(currentObjective({scene,phase:state.phase,goal,reached,investigating,transmitting}))}</strong></aside></header>${telemetry(scene)}<article class="interaction-dock" aria-label="Current interaction" aria-busy="${scanning || transmitting}">${content}<div class="dock-footer"><span>${scene.act===1?'WONDER':scene.act===2?'THE STORM':'REMEMBRANCE'}</span><button class="quiet-button" data-action="journal">Journal</button></div></article></section>`;
+  app.innerHTML = `<section class="play-screen"><header class="play-heading">${journeyRail(scene)}<p class="eyebrow">${escape(missionTime(scene.id)?.label || scene.sol)}</p><h1 tabindex="-1">${escape(state.phase==='observe' ? scene.approachTitle || scene.title : scene.title)}</h1><aside class="mission-objective" aria-label="Current objective"><span>${state.phase==='observe'?'EXPLORE':state.phase==='choose'?'REMEMBER':state.phase==='transmit'?'CONNECT':'CONTINUE'}</span><strong>${escape(geologyActive?(toolState?.stage==='brush'?'Expose the surface with your brush':toolState?.stage==='compare'?'Compare the two readings':'Place the probe on each sample ring'):currentObjective({scene,phase:state.phase,goal,reached,investigating,transmitting}))}</strong></aside></header>${telemetry(scene)}<article class="interaction-dock" aria-label="Current interaction" aria-busy="${scanning || transmitting}">${content}<div class="dock-footer"><span>${scene.act===1?'WONDER':scene.act===2?'THE STORM':'REMEMBRANCE'}</span><button class="quiet-button" data-action="journal">Journal</button></div></article></section>`;
   setExploring(exploring);
   $('#world-controls').hidden = false;
   $('.drive-pad').hidden = state.phase!=='observe' || reached;
@@ -334,10 +345,9 @@ function scan() {
     view?.setSurvey?.(true);sound.setActivity?.({investigating:true});sound.cue('investigate');renderGame();announce(profile.steps[0].hint);return;
   }
   if ([1,2].includes(state.sceneIndex)) {
-    investigating = true;scanning = true;investigation.reset();investigationSampleAt=performance.now();
-    view?.inspect?.();view?.setInvestigation?.(true);sound.setActivity?.({moving:false,investigating:true});sound.cue('investigate');renderGame();
-    announce('Move the view around the rock. Hold a clear view to record the feature.');
-    return;
+    geologyActive=true;investigating=true;scanning=true;toolState=null;toolSampleCount=0;toolPad={x:0,y:0,pressure:0};toolButtonHeld=false;
+    if(!view?.setToolMode?.(scenes[state.sceneIndex].id)){geologyActive=false;investigating=false;scanning=false;return;}
+    sound.cue('investigate');renderGame();announce('Move the tool with the right stick. Hold R2 and sweep away the dust.');return;
   }
   scanning = true;
   drive();
@@ -406,7 +416,8 @@ function sendMemory() {
   drive();
   renderGame();
   // Mode changes stop old feedback; start the departure pulse after that cleanup.
-  if (contact.mode !== 'silence') { sound.cue('transmit'); controller?.feedback('transmit'); }
+  sound.beginTransmission?.(contact.mode==='silence'?'call':contact.mode==='partial'?'partial':'normal');
+  if(contact.mode!=='silence')controller?.feedback('transmit');
   announce(contact.waiting);
   transmissionWait.start(contact.delay,()=>{
     transmitting = false;
@@ -415,6 +426,7 @@ function sendMemory() {
 }
 
 function cancelTransmission() {
+  sound.cancelTransmission?.();
   transmissionWait.cancel();
   const wasTransmitting = transmitting;
   transmitting = false;
@@ -425,6 +437,8 @@ function cancelTransmission() {
   }
 }
 function cancelScan() {
+  view?.setToolMode?.(null);geologyActive=false;toolState=null;toolButtonHeld=false;toolPad={x:0,y:0,pressure:0};
+  document.body.dataset.tool='false';
   view?.setSurvey?.(false);survey=null;surveyStep=0;
   view?.setInvestigation?.(false);investigating=false;investigation.reset();sound.setActivity?.({moving:false,investigating:false});
   clearTimeout(scanTimer);
@@ -453,14 +467,16 @@ function act(action) {
   renderGame({focus:true});
   if (action.type === 'TRANSMIT') {
     const contact = transmissionProfile(scenes[state.sceneIndex]);
-    if (contact.mode === 'reply') {sound.cue('received');controller?.feedback('received');}
+    if(contact.mode!=='archive')sound.finishTransmission?.(contact.mode==='silence'?'call':contact.mode==='partial'?'partial':'normal');
+    if (contact.mode === 'reply') controller?.feedback('received');
     announce(contact.result);
   }
   if (action.type === 'NEXT') window.scrollTo({top:0,behavior:'instant'});
 }
 
 function pause() {
-  cancelScan();
+  if(!geologyActive)cancelScan();
+  toolButtonHeld=false;toolPad={x:0,y:0,pressure:0};view?.setToolInput?.({actualSample:false});
   cancelTransmission();
   stopContact();
   pressed.clear();padInput={throttle:0,steer:0};
@@ -543,7 +559,7 @@ $('#confirm-restart').addEventListener('click',()=>{
 });
 $('.brand').addEventListener('click',event=>{event.preventDefault();cancelScan();renderTitle();window.scrollTo(0,0);});
 $('#explore-toggle').addEventListener('click',()=>setExploring(!exploring));
-$('#camera-reset').addEventListener('click',()=>{if(contacting)resetUpload();else if(survey){survey=createSurvey(surveyProfiles[scenes[state.sceneIndex].id]);surveyStep=0;view?.setSurvey?.(true);}else if(investigating)view?.setInvestigation?.(true);else view?.focusRover?.();});
+$('#camera-reset').addEventListener('click',()=>{if(contacting)resetUpload();else if(geologyActive){view?.setToolInput?.({});}else if(survey){survey=createSurvey(surveyProfiles[scenes[state.sceneIndex].id]);surveyStep=0;view?.setSurvey?.(true);}else if(investigating)view?.setInvestigation?.(true);else view?.focusRover?.();});
 
 app.addEventListener('click',event=>{
   const button=event.target.closest('[data-action]');
@@ -553,6 +569,7 @@ app.addEventListener('click',event=>{
     case 'skip-intro': finishBriefing();break;
     case 'observe': scan(); break;
     case 'assist-observation': cancelScan();act({type:'OBSERVE'});break;
+    case 'compare-samples': view?.compareToolSamples?.();break;
     case 'choose': act({type:'CHOOSE',choiceId:button.dataset.choice}); break;
     case 'transmit': sendMemory(); break;
     case 'next': act({type:'NEXT'}); break;
@@ -568,6 +585,15 @@ app.addEventListener('click',event=>{
   }
 });
 
+function syncToolInput(actualSample=false) {
+  if(!geologyActive || state.paused || document.hidden)return;
+  const x=(pressed.has('arrowright')?1:0)-(pressed.has('arrowleft')?1:0);
+  const y=(pressed.has('arrowdown')?1:0)-(pressed.has('arrowup')?1:0);
+  view?.setToolInput?.({x:x || toolPad.x,y:y || toolPad.y,pressure:Math.max(toolPad.pressure,toolButtonHeld || pressed.has(' ')?1:0),actualSample:actualSample || toolButtonHeld || ['arrowleft','arrowright','arrowup','arrowdown',' '].some(key=>pressed.has(key))});
+}
+app.addEventListener('pointerdown',event=>{const button=event.target.closest('.tool-operate');if(!button || !geologyActive)return;event.preventDefault();button.setPointerCapture(event.pointerId);toolButtonHeld=true;syncToolInput(true);});
+const releaseTool=()=>{toolButtonHeld=false;syncToolInput(true);};
+app.addEventListener('pointerup',releaseTool);app.addEventListener('pointercancel',releaseTool);app.addEventListener('lostpointercapture',releaseTool);
 const pressed = new Set();
 window.addEventListener('pointermove',event=>{if(event.pointerType==='mouse' && (event.movementX || event.movementY))document.body.dataset.input='pointer';},{passive:true});
 window.addEventListener('pointerdown',()=>{document.body.dataset.input='pointer';},{passive:true});
@@ -583,11 +609,13 @@ window.addEventListener('keydown',event=>{
   if (event.key.toLowerCase()==='j' && !document.querySelector('dialog[open]') && screen==='game') {event.preventDefault();openJournal();return;}
   if (['INPUT','TEXTAREA','SELECT'].includes(event.target.tagName) || document.querySelector('dialog[open]')) return;
   const key=event.key.toLowerCase();
+  if(geologyActive && ['arrowup','arrowdown','arrowleft','arrowright',' '].includes(key)){event.preventDefault();pressed.add(key);syncToolInput(true);return;}
+  if(geologyActive && key==='enter' && toolState?.stage==='compare'){event.preventDefault();view?.compareToolSamples?.();return;}
   if(contacting && key==='enter' && !event.target.closest('button,a,input,summary')) {event.preventDefault();sendMemory();return;}
   if(investigating && ['arrowup','arrowdown','arrowleft','arrowright'].includes(key)) {event.preventDefault();pressed.add(key);inspectionLook();return;}
   if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(key) && screen==='game') {event.preventDefault();pressed.add(key);drive();}
 });
-function inspectionLook() {const value={x:(pressed.has('arrowright')?1:0)-(pressed.has('arrowleft')?1:0),y:(pressed.has('arrowdown')?1:0)-(pressed.has('arrowup')?1:0)};if(investigating)view?.setLook?.(value);}
+function inspectionLook() {if(geologyActive){syncToolInput(true);return;}const value={x:(pressed.has('arrowright')?1:0)-(pressed.has('arrowleft')?1:0),y:(pressed.has('arrowdown')?1:0)-(pressed.has('arrowup')?1:0)};if(investigating)view?.setLook?.(value);}
 window.addEventListener('keyup',event=>{pressed.delete(event.key.toLowerCase());if(investigating)inspectionLook();else drive();});
 window.addEventListener('blur',()=>{pressed.clear();drive();});
 document.querySelectorAll('[data-drive]').forEach(button=>{
@@ -607,6 +635,17 @@ canvas.addEventListener('world-status',event=>{
   $('#world-status').dataset.state=status;
   if(status==='error') { $('.world').dataset.fallback='true'; announce(message); }
   if(screen==='game' && state.phase==='observe') renderGame();
+});
+canvas.addEventListener('tool-sample',event=>{
+  if(!geologyActive || state.paused || screen!=='game')return;
+  const next=event.detail,previous=toolState;toolState=next;
+  if(next.complete){cancelScan();act({type:'OBSERVE'});return;}
+  if(next.samples.length>toolSampleCount){toolSampleCount=next.samples.length;sound.cue('observe');controller?.feedback('observe');}
+  if(previous && (next.stage!==previous.stage || next.samples.length!==previous.samples.length))renderGame();
+  const hint=$('#tool-hint');if(hint)hint.textContent=next.hint.replaceAll('R2',controllerConnected?'R2':'Space').replace('×',controllerConnected?'×':'Enter');
+  const coverage=$('#tool-coverage');if(coverage)coverage.textContent=`Brush progress · ${Math.round(next.progress*100)}%`;
+  const progress=$('#tool-progress');if(progress)progress.value=next.progress;
+  sound.setActivity?.({investigating:true,toolActive:next.operating,toolPressure:next.operating?1:0,toolMotion:next.toolMotion});
 });
 canvas.addEventListener('survey-sample',event=>{
   if(!survey || !investigating || state.paused || screen!=='game')return;
@@ -668,7 +707,7 @@ function controllerAction(action) {
   if(action==='back') { if(dialog) dialog.close(); else if(exploring) setExploring(false); else openModal('#settings-modal'); return; }
   if(briefingActive && !dialog) {if(action==='primary')finishBriefing();return;}
   if(action==='journal') { if(dialog?.id==='journal-modal') dialog.close(); else if(!dialog && screen!=='title') openJournal(); return; }
-  if(action==='camera' && !dialog) {if(contacting)resetUpload();else if(survey){survey=createSurvey(surveyProfiles[scenes[state.sceneIndex].id]);surveyStep=0;view?.setSurvey?.(true);}else if(investigating)view?.setInvestigation?.(true);else view?.focusRover?.();return;}
+  if(action==='camera' && !dialog) {if(contacting)resetUpload();else if(geologyActive){view?.setToolInput?.({});}else if(survey){survey=createSurvey(surveyProfiles[scenes[state.sceneIndex].id]);surveyStep=0;view?.setSurvey?.(true);}else if(investigating)view?.setInvestigation?.(true);else view?.focusRover?.();return;}
   const targets=menuTargets();
   if(action.startsWith('nav')) {
     if(exploring) setExploring(false);
@@ -678,6 +717,7 @@ function controllerAction(action) {
     targets[next]?.focus({preventScroll:false}); return;
   }
   if(action==='primary') {
+    if(geologyActive && !dialog && toolState?.stage==='compare'){view?.compareToolSamples?.();return;}
     if(contacting && !dialog) {
       const chosen=targets.includes(document.activeElement)?document.activeElement:null;
       if(chosen && chosen.dataset.action!=='transmit') chosen.click();else sendMemory();
@@ -698,6 +738,9 @@ controller=createController({
   onInput(input) {
     if(input.actualSample && [input.steer,input.throttle,input.lookX,input.lookY,input.leftTrigger,input.rightTrigger].some(v=>Math.abs(v)>.15))document.body.dataset.input='controller';
     padInput={throttle:input.throttle,steer:input.steer};drive();
+    if(geologyActive) {
+      toolPad={x:input.actualSample?input.lookX:0,y:input.actualSample?input.lookY:0,pressure:input.actualSample?input.rightTrigger:0};syncToolInput(input.actualSample===true);return;
+    }
     if(contacting) {
       const now=performance.now(),dt=(now-uploadInputAt)/1000;uploadInputAt=now;
       if(input.actualSample && Math.max(input.leftTrigger || 0,input.rightTrigger || 0)>.03)document.body.dataset.input='controller';

@@ -59,3 +59,9 @@ export function phrase(section, number = 0) {
   events.sort((a, b) => a.at - b.at);
   return { events, seconds: 48 * c.eighth + c.gap + [0, 6, 3, 10][v] };
 }
+
+// Foreground dialogue, in seconds: D–A–E–F♯ asks; A–F♯–E–D answers.
+// These short, identical statements teach the receipt independently of the score.
+export const SIGNAL_QUESTION = [[74, 0, .30, .065], [81, .24, .30, .050], [76, .48, .30, .056], [78, .84, .52, .050]];
+export const SIGNAL_ANSWER = [[69, 0, .32, .056], [66, .24, .32, .048], [64, .48, .34, .046], [62, .84, .65, .052]];
+export const ANSWER_WINDOW = 2.2;

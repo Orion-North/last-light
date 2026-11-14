@@ -27,7 +27,7 @@ test('last image is partial, recovery calls unanswered, archive does not simulat
   assert.equal(profile('last-call').mode, 'silence');
   assert.equal(profile('months').mode, 'archive');
   assert.equal(profile('months').delay, 0);
-  assert.ok(profile('earth-listens').delay > profile('first-morning').delay);
+  assert.equal(profile('earth-listens').delay, profile('first-morning').delay, 'the missing answer occupies the learned response beat');
   assert.equal(profile('first-morning').effort, 0);
   assert.ok(profile('last-image').effort > .9);
   assert.equal(profile('last-call').effort, 1);

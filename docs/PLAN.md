@@ -165,3 +165,13 @@ Full baseline critique: PLAY-11A completed the browser journey (assisted baselin
 route, muted); PLAY-11B/C lacked browser access and are source reviews only.
 The new build gets targeted browser checks; neither automated paths nor review
 prose establish that it is enjoyable or emotionally successful.
+
+
+## Current target — v0.12
+
+Make the geology tangible: brush actual dust from the surface, move the probe to
+two distinct zones, hold steady for qualitative readings, then compare them.
+Keep the rock visible and the readings side by side; no extra choice menu.
+Sending animates packets between Mars and Earth and teaches a four-note call and
+answer. Later calls preserve the expected answer interval but leave it silent.
+Manual travel, fixed history, optional sound and reduced-motion alternatives stay.

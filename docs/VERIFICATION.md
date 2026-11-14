@@ -306,3 +306,34 @@ Root independently verified the newer chase camera, rover-relative guidance,
 manual arrival and deliberate layer observation. No runtime warnings/errors in
 root's isolated fixture. The science remains an authored reconstruction viewed
 from different angles; it is not yet an interactive brushing/tool simulation.
+
+
+## v0.12 — brush, sample, compare and the missing musical reply
+
+- Root completed a fresh browser journey from Start anew through ending and the
+  eleven-memory archive. All six drives were manual; both geological tools used
+  actual brush sweeps, two distinct measurements and explicit comparison. All
+  five mast surveys used genuine aim/hold input. No observation or driving skips,
+  scene jumps or reloads during the journey. Brief passages used Continue.
+- Simulated DualSense input with no actuator and actual keyboard driving/aiming;
+  genuine squeeze/release checked early and at marathon, button sends elsewhere.
+  Berry pause preserved brush coverage; reduced-motion sending remained readable.
+  Ground chosen at the beginning was correctly recalled during the storm.
+  Partial image, reversed Earth calls, missing reply, archive and ending verified.
+  Browser console returned no warnings/errors. Sound enabled, but no listening or
+  physical-feedback assessment is claimed.
+- Final separate seeded checkpoint (not part of the fresh run) verified the
+  corrected release provenance: entering with R2 held did not brush; pausing with
+  R2 held preserved 36% progress and blocked further work until an actual release.
+  The normalized progress label and explicit stop-moving instruction were checked
+  on the final source. Pointer steadiness and synthetic-neutral behavior also
+  have meaningful engine regressions.
+- 120 tests across 17 engine files pass. Agent check/build: 43 JS syntax checks,
+  12 scene contracts, assets/GLB/license checks and static build pass.
+- Independent Sol source/music review plus recorded-run critique are in
+  reviews/TOOLS-12.md, reviews/PLAY-12.md and handoffs/SOUND-12.md. Review agents
+  had no browser access this pass: they did not independently play the full run.
+- Remaining design critique: strengthen physical tool/contact presentation and
+  make the final incomplete image visible beyond the signal diagram. Immediate
+  Continue can intentionally cut short an answering phrase; no forced wait added.
+  Audio mix, emotional impact and physical trigger feel require human playtesting.

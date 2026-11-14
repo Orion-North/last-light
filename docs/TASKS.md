@@ -1,6 +1,6 @@
 # Task board
 
-Phase: **v0.3 published; v0.4 development on a separate branch**.
+Phase: **v0.12 integrated and verified; publication owned by Codex**.
 Integrator: Codex. Claude and Antigravity are supported by shared instructions;
 Antigravity CLI critique has been verified.
 
@@ -471,3 +471,31 @@ manual driving and genuine inspection input (no Skip), including sequential
 Last Chance → Berry Bowl travel. Source reviews remain labeled separately.
 Root verified chase-camera first arrival and geological recording; physical
 feedback and soundtrack listening remain for human playtest.
+
+## TOOLS-12 — hands-on geology and a musical missing reply
+
+User asks for playable brushing/sample comparison, animated sending, musical
+call-and-response that loses its answer, and critical full-version playtesting.
+Shared develop/v0.12, strictly disjoint paths:
+- TOOLS-12 / Sol: src/ui/landscape.js, new src/engine/geology-tool.js,
+  tests/engine/geology-tool.test.js, own handoff. Actual 3D brushing removes dust;
+  player samples two distinct surfaces and compares readings. Coordinate API
+  with root; authored qualitative instrument signals, not fabricated telemetry.
+- SOUND-12 / Sol: src/audio/, tests/engine/music.test.js, docs/SOUNDTRACK.md,
+  own handoff. Explicit composed send/question and receive/answer motif, absent
+  response after contact loss, tool sound. Preserve silence/cancellation safety.
+- CRITIC-12 / Sol: docs/reviews/TOOLS-12.md only, scratch QA files outside repo.
+  Critique action purpose/feedback early; full revised browser playthrough after
+  integration, report actual route and any shortcuts or blockers candidly.
+- Codex: main/UI/input integration, signal animation, content wording, tests,
+  cross-review and publication. No physical controller outputs in QA and never
+  operate the user's existing public playtest tab.
+
+TOOLS-12 integrated: spatial brushing, steady two-zone readings and explicit
+comparison; animated outbound/return packets and a four-note learned question
+with a complementary answer that disappears after contact loss. Root completed
+a fresh full manual journey and separate final release-gate checkpoint. Both
+critics distinguish source/recorded-run review from unavailable independent UI
+access. Review fixes include dust-camera occlusion, unrelated pointer-up resets,
+pointer steadiness, release provenance and consistent progress/instructions.
+120 tests pass; remaining sensory/presentation questions are in VERIFICATION.

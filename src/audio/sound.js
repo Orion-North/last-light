@@ -1,4 +1,4 @@
-import { SECTIONS as sections, phrase } from './score.js';
+import { SECTIONS as sections, phrase, SIGNAL_QUESTION, SIGNAL_ANSWER, ANSWER_WINDOW } from './score.js';
 
 /**
  * LAST LIGHT / "Something to show them"
@@ -11,6 +11,8 @@ export function createSound() {
   let master = null;
   let musicBus = null;
   let cueDuckUntil = 0;
+  let transmission = null;
+  let signalHoldUntil = 0;
   let windGain = null;
   let windFilter = null;
   let windSource = null;
@@ -58,7 +60,9 @@ export function createSound() {
     const fresh = context.currentTime - activityTime < 0.8;
     const audible = canPlay() && section !== 'silence' && fresh;
     const contact = audible && activity.contactActive;
-    const driving = audible && activity.moving && !activity.investigating && !contact;
+    const tool = audible && activity.toolActive && !contact;
+    const toolEnergy = tool ? activity.toolPressure * activity.toolMotion : 0;
+    const driving = audible && !tool && activity.moving && !activity.investigating && !contact;
     const speed = driving ? activity.speed : 0;
     // Pressure raises a soft triangle's energy and register; roughness resolves as
     // the two halves meet. Charged is a finite settle, never an indefinite alarm.
@@ -68,10 +72,10 @@ export function createSound() {
     const compression = activity.contactCharge ** 3;
     const chargedTail = Math.max(0, 1 - (context.currentTime - chargedTime) / 0.7);
     const contactLevel = activity.contactCharged ? 0.025 * chargedTail : 0.020 + pressure * 0.046 + compression * 0.028;
-    smooth(motorGain.gain, contact ? contactLevel : speed * 0.019, contact ? 0.055 : 0.09);
-    smooth(gritGain.gain, contact ? (activity.contactCharged ? 0 : pressure * (1 - pressure) * 0.040) : speed * (0.008 + activity.roughness * 0.027), 0.08);
-    smooth(motorSource.frequency, contact ? (activity.contactCharged ? 220 : 110 + pressure * 110 + compression * 80) : 42 + speed * 38, 0.10);
-    smooth(motorFilter.frequency, contact ? 420 + pressure * 300 + compression * 280 : 170 + speed * 110, 0.15);
+    smooth(motorGain.gain, contact ? contactLevel : tool ? toolEnergy * .028 : speed * 0.019, contact ? 0.055 : 0.09);
+    smooth(gritGain.gain, tool ? toolEnergy * .006 : contact ? (activity.contactCharged ? 0 : pressure * (1 - pressure) * 0.040) : speed * (0.008 + activity.roughness * 0.027), 0.08);
+    smooth(motorSource.frequency, tool ? toolEnergy * .006 : contact ? (activity.contactCharged ? 220 : 110 + pressure * 110 + compression * 80) : tool ? 135 + activity.toolPressure * 65 : 42 + speed * 38, 0.10);
+    smooth(motorFilter.frequency, contact ? 420 + pressure * 300 + compression * 280 : tool ? 330 + activity.toolMotion * 210 : 170 + speed * 110, 0.15);
   }
 
   function updateVolume() {
@@ -104,6 +108,8 @@ export function createSound() {
   }
 
   function hush() {
+    transmission = null;
+    signalHoldUntil = 0;
     stopScheduler();
     updateVolume();
   }
@@ -243,11 +249,18 @@ export function createSound() {
     if (!canPlay() || section === 'silence') return;
     const now = context.currentTime;
     updateActivity();
-    smooth(musicBus.gain, now < cueDuckUntil || activity.contactActive && now - activityTime < .8 ? .43 : 1, .16);
+    smooth(musicBus.gain, now < signalHoldUntil ? 0 : now < cueDuckUntil || activity.contactActive && now - activityTime < .8 ? .43 : 1, .16);
     // A throttled/background tab never catches up by firing a burst of old notes.
     if (nextPhrase < now - 0.5) {
       queue = [];
       nextPhrase = now + 0.5;
+    }
+    if (now < signalHoldUntil) {
+      queue = [];
+      nextPhrase = signalHoldUntil + .5;
+      timer = setTimeout(tick, 80);
+      timer?.unref?.();
+      return;
     }
     if (!queue.length && nextPhrase <= now + 0.4) composePhrase(nextPhrase);
     while (queue.length && queue[0].when <= now + 0.35) {
@@ -353,9 +366,9 @@ export function createSound() {
   }
 
   function cue(kind) {
+    if (kind === 'transmit' || kind === 'call') return beginTransmission(kind === 'call' ? 'call' : 'normal');
+    if (kind === 'received') return finishTransmission('normal');
     if (!canPlay() || section === 'silence') return;
-    // Earth-side archive actions are never a successful rover reply.
-    if (kind === 'received' && sceneIndex >= 8) return;
     if (kind === 'end') {
       if (endPlayed) return;
       endPlayed = true;
@@ -365,8 +378,8 @@ export function createSound() {
     const now = context.currentTime;
     if (now - (lastCueTimes.get(kind) ?? -Infinity) < 0.18) return;
     lastCueTimes.set(kind, now);
-    if (['charged', 'transmit', 'received', 'observe'].includes(kind)) {
-      cueDuckUntil = now + (kind === 'received' ? 1.8 : .85);
+    if (['charged', 'observe'].includes(kind)) {
+      cueDuckUntil = now + .85;
       smooth(musicBus.gain, .43, .035);
     }
     const third = sections[section].minor ? 65 : 66;
@@ -377,8 +390,6 @@ export function createSound() {
       // A close, grounded latch; release lifts away quickly. Only a real Earth
       // response receives the slower, lower answering interval.
       charged: [[57, 0, 0.12, 0.065], [62, 0.07, 0.24, 0.042]],
-      transmit: [[62, 0, 0.13, 0.070], [74, 0.07, 0.20, 0.053], [81, 0.17, 0.32, 0.033]],
-      received: [[50, 0, 0.38, 0.052], [57, 0.24, 0.85, 0.045], [62, 0.49, 1.1, 0.034]],
       end: [[62, 0, 4.5, 0.040], [69, 0.65, 4, 0.023], [74, 1.4, 4, 0.015]],
     };
     for (const [note, delay, duration, volume] of patterns[kind] || []) {
@@ -395,6 +406,58 @@ export function createSound() {
       oscillator.start(when);
       oscillator.stop(when + duration + 0.04);
     }
+  }
+
+  function playSignal(pattern) {
+    const now = context.currentTime;
+    for (const [note, delay, duration, volume] of pattern) {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      const when = now + delay;
+      oscillator.type = 'sine';
+      oscillator.frequency.value = midi(note);
+      gain.gain.setValueAtTime(0, when);
+      gain.gain.linearRampToValueAtTime(volume, when + .035);
+      gain.gain.exponentialRampToValueAtTime(.0001, when + duration);
+      oscillator.connect(gain).connect(master);
+      registerVoice([oscillator], [oscillator, gain]);
+      oscillator.start(when);
+      oscillator.stop(when + duration + .04);
+    }
+  }
+
+  function beginTransmission(mode = 'normal') {
+    if (!canPlay() || transmission) return;
+    // Clear sustained accompaniment so its tail cannot fill the missing reply.
+    stopVoices();
+    transmission = mode;
+    signalHoldUntil = Infinity;
+    smooth(musicBus.gain, 0, .025);
+    const question = mode === 'partial' ? SIGNAL_QUESTION.slice(0, 3) : SIGNAL_QUESTION;
+    playSignal(question);
+  }
+
+  function cancelTransmission() {
+    if (transmission === null && (!context || signalHoldUntil <= context.currentTime)) return;
+    transmission = null;
+    signalHoldUntil = 0;
+    stopScheduler();
+    smooth(musicBus?.gain, 1, .12);
+    restartScheduler(.6);
+  }
+
+  function finishTransmission(mode = 'normal') {
+    if (!canPlay() || transmission === null) return;
+    const sent = transmission;
+    transmission = null;
+    signalHoldUntil = context.currentTime + ANSWER_WINDOW;
+    queue = [];
+    nextPhrase = signalHoldUntil + .5;
+    smooth(musicBus.gain, 0, .025);
+    if (mode === 'normal' && sent === 'normal' && sceneIndex < 8 && sceneIndex !== 7 && section !== 'silence') {
+      playSignal(SIGNAL_ANSWER);
+    }
+    restartScheduler();
   }
 
   function onVisibility() {
@@ -426,6 +489,9 @@ export function createSound() {
       applySection();
     },
     cue,
+    beginTransmission,
+    finishTransmission,
+    cancelTransmission,
     setActivity(value = {}) {
       const unit = number => Number.isFinite(number) ? Math.max(0, Math.min(1, number)) : 0;
       const charged = Boolean(value.contactActive && value.contactCharged);
@@ -434,6 +500,7 @@ export function createSound() {
       activity = {
         moving: Boolean(value.moving), speed: unit(value.speed), roughness: unit(value.roughness),
         investigating: Boolean(value.investigating), contactActive: Boolean(value.contactActive),
+        toolActive: Boolean(value.toolActive), toolPressure: unit(value.toolPressure), toolMotion: unit(value.toolMotion),
         contactQuality: unit(value.contactQuality), contactCharge: unit(value.contactCharge), contactCharged: charged,
       };
       activityTime = context?.currentTime ?? -Infinity;

@@ -30,7 +30,7 @@ test('short passages hold their beat while paused and finish only once time elap
 });
 
 // Each four-second shot must carry a single, readable purpose before play starts.
-test('opening establishes role, first action, science question and memory purpose in three short beats', () => {
+test('opening establishes role, first action, science question and communication purpose in three short beats', () => {
   assert.equal(briefingBeats.length, 3);
   for (const beat of briefingBeats) {
     assert.ok(beat.label && beat.title && beat.cue);
@@ -38,8 +38,10 @@ test('opening establishes role, first action, science question and memory purpos
     assert.ok(beat.cue.split(/\s+/).length <= 12);
   }
   assert.match(briefingBeats[0].title, /Opportunity/);
-  assert.match(briefingBeats[1].cue, /Look through your cameras\. Then examine the pale rocks/);
+  assert.match(briefingBeats[1].cue, /cameras/);
+  assert.match(briefingBeats[1].cue, /brush/);
+  assert.match(briefingBeats[1].cue, /compare/);
   assert.match(briefingBeats[1].title, /water/);
-  assert.match(briefingBeats[2].cue, /Choose a memory/);
-  assert.match(briefingBeats[2].cue, /your archive/);
+  assert.match(briefingBeats[2].cue, /Send your discoveries/);
+  assert.match(briefingBeats[2].cue, /answer coming back/);
 });

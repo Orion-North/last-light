@@ -96,3 +96,42 @@ No actual listening session, headphone/speaker balancing, audio audition export,
 physical controller check or public playtest interaction was performed for this
 pass. A human full-game listening pass remains necessary, particularly for glass
 brightness, low reed audibility and the dramatic duration of rests.
+
+## v0.12 — a learned question and the missing answer
+
+Foreground sending now has its own short authored melody, repeated unchanged in
+ordinary discoveries: D5–A5–E5–F♯5, at 0/.24/.48/.84 seconds. A real receipt replies
+A4–F♯4–E4–D4 with the same rhythm, settling home. These are original short phrases,
+separate from the preserved chamber score. The final partial send stops after E5;
+it never plays the answer. Earth recovery attempts retain the full recognizable
+question, now voiced by the human side, followed by an empty 2.2-second answer
+window. No failure beep substitutes for the missing voice.
+
+`beginTransmission(mode)` begins the question and holds accompaniment at zero;
+`finishTransmission(mode)` releases that hold after the answer window. Modes are
+`normal`, `partial`, and `call`. Only a pending ordinary send, completed normally
+before the loss-of-contact scenes, gets an answer. The runtime must call finish
+at the actual receipt/result, not automatically after a musical timer. Legacy
+`cue('transmit')`/`cue('received')` delegate to this paired protocol. Archive actions
+do not use it. Mute, pause, visibility loss and destruction cancel scheduled
+voices and the pending reply; resuming never fabricates an acknowledgment.
+
+Tool activity accepts `toolActive`, `toolPressure`, and `toolMotion` in the existing
+replacement activity object. A restrained triangle friction tone and very low
+filtered grit reuse the existing persistent motor graph, gated by pressure times
+motion. Stationary or stale tool input falls silent, and contact takes priority.
+No per-frame source allocation or added noise loop is introduced.
+
+Verification: 17 deterministic Web Audio graph/clock tests pass, including exact
+question recurrence, descending reply, Earth question during narrative silence,
+empty answer interval, partial truncation, cancellation, fixed graph tool activity
+and stale-input cleanup. This is structural verification; no listening/audition
+or hardware claim is made for this pass. Human listening remains necessary to
+judge recognition, mix balance and the emotional effect of the absent reply.
+
+`cancelTransmission()` clears a pending send or answer hold without answering,
+cancels its scheduled voices, and restarts the appropriate score after a short
+breath. Idle cancellation is harmless. Runtime navigation/title cancellation
+must call this even when the audio context itself remains active. Ordinary and
+Earth-call travel should share the same 2.4-second result time, establishing a
+fixed place where the learned answer appears or goes missing.

@@ -200,11 +200,11 @@ test('audio starts on demand once, respects mute/pause, resumes and closes', asy
     assert.equal(context.oscillators.length, ambientVoices);
     sound.setMuted(false);
     sound.cue('transmit');
-    assert.equal(context.oscillators.length, ambientVoices + 3);
+    assert.equal(context.oscillators.length, ambientVoices + 4);
     sound.pause();
     assert.equal(master.gain.targets.at(-1), 0);
     sound.cue('observe');
-    assert.equal(context.oscillators.length, ambientVoices + 3);
+    assert.equal(context.oscillators.length, ambientVoices + 4);
     assert.equal(await sound.resume(), true);
     assert.equal(master.gain.targets.at(-1), 0.52);
     assert.equal(await sound.start(), true, 'repeated start remains usable after synchronous resume');

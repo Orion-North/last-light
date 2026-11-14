@@ -259,8 +259,8 @@ test('interaction cues distinguish investigation, transmission, and an Earth rep
     assert.ok(sent.at(-1) > sent[0], 'departure rises away');
     assert.ok(Math.max(...charged) < Math.max(...sent));
     const reply = pitches('received');
-    assert.equal(sent.length, 3);
-    assert.equal(reply.length, 3, 'a distinct cue is not suppressed by another cue type');
+    assert.equal(sent.length, 4);
+    assert.equal(reply.length, 4, 'a distinct cue is not suppressed by another cue type');
     assert.ok(Math.max(...reply) < Math.max(...sent), 'Earth reply is a warmer lower-register answer');
     assert.deepEqual(pitches('received'), [], 'duplicate feedback is bounded');
   });
@@ -346,8 +346,8 @@ test('charged and departure transients are finite and canceled by pause', async 
     sound.cue('charged');
     sound.cue('transmit');
     const transients = h.sources.slice(before);
-    assert.equal(transients.length, 5);
-    assert.ok(transients.every(source => source.stopped - source.started < 0.4));
+    assert.equal(transients.length, 6);
+    assert.ok(transients.every(source => source.stopped - source.started < 0.7));
     sound.pause();
     h.assertCanceled();
     const pausedCount = h.sources.length;
@@ -442,9 +442,107 @@ test('foreground cues duck score and recover without ducking the cue bus', async
     assert.equal(bus.gain.target, 1);
     const before = h.sources.length;
     sound.cue('transmit');
-    assert.equal(bus.gain.target, .43);
+    assert.equal(bus.gain.target, 0);
     assert.notEqual(h.sources[before].connections[0].connections[0], bus, 'cue bypasses music duck');
-    h.advance(2);
+    sound.finishTransmission('normal');
+    h.advance(3);
     assert.equal(bus.gain.target, 1);
+  });
+});
+
+
+test('learned question repeats on Earth but its expected answer stays empty', async () => {
+  await withMusic(async (sound, h) => {
+    await sound.start();
+    const signal = action => {
+      const before = h.sources.length;
+      action();
+      return h.sources.slice(before).filter(s => s.kind === 'oscillator').map(s => s.frequency.value);
+    };
+    const question = signal(() => sound.beginTransmission());
+    assert.equal(question.length, 4);
+    const answer = signal(() => sound.finishTransmission());
+    assert.equal(answer.length, 4);
+    assert.ok(answer.every((n, i) => !i || n < answer[i - 1]), 'answer settles down to home');
+    h.advance(3);
+    assert.deepEqual(signal(() => sound.beginTransmission()), question, 'early sends teach an identical melody');
+    sound.finishTransmission();
+    sound.setScene('earth');
+    sound.setNarrative(10, 'received');
+    assert.deepEqual(signal(() => sound.beginTransmission('call')), question, 'silence does not erase the human call');
+    assert.deepEqual(signal(() => sound.finishTransmission('call')), []);
+    const before = h.notes().length;
+    h.advance(2.2);
+    assert.equal(h.notes().length, before, 'the answer interval contains no replacement beep or score');
+    h.assertAmbienceSilent();
+    assert.deepEqual(signal(() => sound.finishTransmission('normal')), [], 'retry/result alone never invents a reply');
+  });
+});
+
+test('partial question breaks before resolution and lifecycle cancellation cannot answer', async () => {
+  await withMusic(async (sound, h) => {
+    await sound.start();
+    const before = h.sources.length;
+    sound.beginTransmission('partial');
+    assert.equal(h.sources.length - before, 3);
+    const partial = h.notes().slice(-3);
+    sound.finishTransmission('partial');
+    assert.deepEqual(h.notes().slice(-3), partial);
+    h.advance(3);
+    sound.beginTransmission();
+    sound.pause();
+    h.assertCanceled();
+    await sound.resume();
+    const resumed = h.sources.length;
+    sound.finishTransmission();
+    assert.equal(h.sources.length, resumed, 'canceled transmission has no late receipt');
+  });
+});
+
+test('tool brushing is pressure and motion bounded on the persistent graph', async () => {
+  await withMusic(async (sound, h) => {
+    await sound.start();
+    const motor = h.sources.find(s => s.kind === 'oscillator' && s.stopped === undefined);
+    const gain = motor.connections[0].connections[0];
+    const count = h.sources.length;
+    for (let i = 0; i < 100; i++) sound.setActivity({toolActive: true, toolPressure: .8, toolMotion: .7});
+    assert.equal(h.sources.length, count);
+    assert.ok(gain.gain.target > 0 && gain.gain.target < .03);
+    sound.setActivity({toolActive: true, toolPressure: 1, toolMotion: 0});
+    assert.equal(gain.gain.target, 0, 'stationary brush cannot flood the mix');
+    sound.setActivity({toolActive: true, toolPressure: 1, toolMotion: 1});
+    h.advance(1);
+    assert.equal(gain.gain.target, 0, 'stale tool input goes quiet');
+  });
+});
+
+
+test('explicit transaction cancellation releases indefinite hold without producing a reply', async () => {
+  await withMusic(async (sound, h) => {
+    await sound.start();
+    h.advance(3);
+    sound.beginTransmission();
+    const question = h.notes().slice(-4);
+    sound.cancelTransmission();
+    assert.ok(question.every(s => s.stopped <= h.contexts[0].currentTime));
+    const count = h.sources.length;
+    sound.finishTransmission();
+    sound.cancelTransmission();
+    assert.equal(h.sources.length, count, 'cancellation is idempotent and cannot answer');
+    h.advance(3);
+    assert.ok(h.sources.length > count, 'normal score returns instead of remaining in an infinite hold');
+    const playing = h.notes().at(-1);
+    const stop = playing.stopped;
+    sound.cancelTransmission();
+    assert.equal(playing.stopped, stop, 'idle cancellation does not interrupt unrelated score');
+    sound.setScene('earth');
+    sound.setNarrative(10, 'received');
+    sound.beginTransmission('call');
+    sound.cancelTransmission();
+    h.assertCanceled();
+    h.assertAmbienceSilent();
+    const silent = h.sources.length;
+    h.advance(5);
+    assert.equal(h.sources.length, silent, 'cancellation respects authored silence');
   });
 });
