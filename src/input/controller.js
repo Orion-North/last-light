@@ -99,12 +99,12 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
         // Protocol researched from Nielk1's original factory/capture documentation.
         // Each active zone has a 3-bit strength/amplitude minus one; vibration Hz
         // lives at block byte 9. Never treat these fields as raw 0..255 forces.
-        const vibrate = !uplink.charged || clock() - chargedAt < 180;
+        const vibrate = uplink.charged && clock() - chargedAt < 180;
         const end = uplink.charged ? 1 : Math.max(pressure, uplink.charge);
-        // Level8 is the researched protocol ceiling: engage it immediately,
-        // instead of spending most of trigger travel at levels5–7. Charged
-        // holding changes to sustained force after the finite confirmation.
-        const level = vibrate ? 8 : Math.round(7 + uplink.effort);
+        // Sustained maximum supported resistance owns the squeeze from zone0.
+        // Only the finite charged confirmation switches to vibration; these
+        // standard modes replace one another rather than adding their forces.
+        const level = 8;
         let zones = 0, packed = 0;
         for (let zone = 0; zone < 10; zone++) { zones |= 1 << zone; packed |= (level - 1) << (zone * 3); }
         data[offset] = vibrate ? 0x26 : 0x21;

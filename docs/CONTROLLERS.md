@@ -273,3 +273,18 @@ continues after a result; it cannot activate a hidden send button. The central
 sequence and left glyph prompt explain the action. Controller disconnect pauses
 the game; resuming without a pad exposes the keyboard/mouse button alternative.
 Reconnect restores trigger-only sending with a fresh release gate.
+
+
+## v0.14 resistance-first sending (current)
+
+Supersedes FEEL-13's vibration-through-the-press pattern. Each trigger now uses
+standard Feedback21 at maximum supported strength8 across all ten zones, starting
+at zone0 as soon as its own pressure exceeds .03. Resistance stays active through
+charging. At full charge, a single180ms Vibration26 confirmation temporarily
+replaces resistance, then maximum Feedback21 resumes until release. These modes
+replace each other; they do not sum forces. Confirmation frequency remains
+55–85Hz depending on pressure/story effort.
+
+Input thresholds, ordinary rumble, terrain effects and all cleanup paths are
+unchanged. Maximum protocol strength is a request, not a measured physical force;
+this tuning needs the user's USB DualSense playtest.

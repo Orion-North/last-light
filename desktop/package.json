@@ -1,6 +1,6 @@
 {
   "name": "last-light-desktop",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "private": true,
   "type": "module",
   "description": "Portable Windows edition of Last Light with opt-in DualSense USB feedback.",
@@ -10,7 +10,7 @@
     "test": "node --test tests/*.test.js",
     "prepare-game": "node prepare.mjs",
     "start": "npm run prepare-game && electron stage",
-    "package:win": "npm run prepare-game && electron-packager stage LastLight --platform=win32 --arch=x64 --electron-version=45.3.2 --out=release --overwrite --asar",
+    "package:win": "npm run prepare-game && electron-packager stage LastLight --platform=win32 --arch=x64 --electron-version=45.3.2 --out=release --overwrite --asar --icon=../public/icons/last-light.ico",
     "smoke:win": "node smoke.mjs"
   },
   "devDependencies": {

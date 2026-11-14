@@ -24,7 +24,7 @@ test('controller ready states require triggers and retain a received Continue', 
 test('input instructions distinguish controller commitment from button fallback', () => {
   assert.match(render('reply', 'ready'), /data-input="pointer"/);
   assert.match(render('reply', 'ready'), /data-action="transmit"/);
-  assert.match(render('reply','ready',{input:'controller'}),/Trigger sending sequence/);
+  assert.doesNotMatch(render('reply','ready',{input:'controller'}),/squeeze-sequence|Hold to charge/);
   assert.doesNotMatch(render('reply','ready',{input:'controller'}),/data-action="transmit"/);
   assert.match(render('reply', 'ready'), /Send this memory home with the button below/);
   assert.match(render('reply', 'ready'), />Upload memory /);
@@ -33,20 +33,20 @@ test('input instructions distinguish controller commitment from button fallback'
 });
 
 test('receipts preserve partial, unanswered and archive meanings', () => {
-  for (const [mode, status, footer] of [
-    ['reply', 'REPLY RECEIVED', 'SAVED IN YOUR ARCHIVE'],
-    ['partial', 'PARTIAL IMAGE RECEIVED', 'SAVED IN YOUR ARCHIVE'],
-    ['silence', 'NO REPLY', 'CHANNEL QUIET'],
-    ['archive', 'MEMORY KEPT', 'ARCHIVED'],
+  for (const [mode, status] of [
+    ['reply', 'REPLY RECEIVED'],
+    ['partial', 'PARTIAL IMAGE RECEIVED'],
+    ['silence', 'NO REPLY'],
+    ['archive', 'MEMORY KEPT'],
   ]) {
     const html = render(mode, 'received');
     assert.ok(html.includes(status));
-    assert.ok(html.includes(footer));
+    assert.doesNotMatch(html, /SAVED IN YOUR ARCHIVE|CHANNEL QUIET · MEMORY KEPT|>ARCHIVED</);
     assert.match(html, /data-action="next"/);
     assert.doesNotMatch(html, /TRANSMISSION COMPLETE|SQUEEZE.*REPLY/);
   }
-  assert.match(render('silence', 'ready'), /<span>OPPORTUNITY · MARS<\/span>/);
-  assert.match(render('archive', 'received'), /<span>MISSION ARCHIVE<\/span>/);
+  assert.match(render('silence', 'ready'), /A call travels from Earth to the silent rover on Mars/);
+  assert.match(render('archive', 'received'), /<small>MISSION ARCHIVE<\/small>/);
 });
 
 test('memory and response text are escaped, with stable integration containers', () => {
@@ -81,19 +81,31 @@ test('one memory title belongs inside the pressure apparatus and one live instru
 test('selected meaning follows the choice and the route reverses on Earth',()=>{
   const mars=render('reply','ready',{meaning:'The ground <beneath> my wheels.'});
   assert.match(mars,/The ground &lt;beneath&gt; my wheels/);
-  assert.match(mars,/OPPORTUNITY · MARS<\/span><i[^>]*>→<\/i><span>EARTH/);
-  assert.match(render('silence','ready'),/EARTH<\/span><i[^>]*>→<\/i><span>OPPORTUNITY · MARS/);
+  assert.match(mars,/A signal travels from Opportunity on Mars to Earth/);
+  assert.match(render('silence','ready'),/A call travels from Earth to the silent rover on Mars/);
   assert.doesNotMatch(render('archive','ready'),/>→<\/i>/);
   assert.doesNotMatch(render('reply','received',{meaning:'ready only'}),/ready only/);
 });
 
-test('spatial link explains both endpoints, compressed time, and archive difference', () => {
+test('spatial link keeps endpoints and mode meaning without duplicate labels', () => {
   const send=render('reply','sending');
   assert.match(send,/signal-world--mars/);
   assert.match(send,/planet--earth/);
   assert.match(send,/A signal travels from Opportunity on Mars to Earth/);
-  assert.match(send,/DISTANCE &amp;|DISTANCE & TRAVEL TIME COMPRESSED/);
-  assert.match(render('silence','received'),/NO RETURN SIGNAL/);
-  assert.match(render('partial','received'),/INCOMPLETE FRAME/);
-  assert.match(render('archive','received'),/THE DISCOVERIES REMAIN/);
+  assert.doesNotMatch(send,/DISTANCE & TRAVEL TIME COMPRESSED|CROSSING THE DISTANCE|MEMORY IN TRANSIT|SENDING MEMORY/);
+  assert.match(render('silence','received'),/NO ANSWER/);
+  assert.match(render('partial','received'),/PARTIAL IMAGE RECEIVED/);
+  assert.match(render('archive','received'),/Discoveries preserved on Earth/);
+});
+
+
+test('ready and receipt show the memory once without explanatory filler', () => {
+  for (const stage of ['ready','sending','received']) {
+    const html=render('reply',stage,{input:'controller'});
+    assert.doesNotMatch(html,/upload-terminal__destination|upload-terminal__label|signal-outcome|signal-scale|squeeze-sequence/);
+    assert.equal((html.match(/&lt;memory&gt;/g)||[]).length,1);
+  }
+  const sending=render('reply','sending');
+  assert.equal((sending.match(/role="status"/g)||[]).length,1);
+  assert.equal((sending.match(/Use &amp; hold/g)||[]).length,1);
 });

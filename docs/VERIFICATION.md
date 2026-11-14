@@ -364,3 +364,29 @@ from different angles; it is not yet an interactive brushing/tool simulation.
   hardware measurement: maximum supported vibration amplitude from first press,
   55–85Hz frequency, finite confirmation followed by strength7–8 held feedback.
   Actual physical feel still requires the user's wired DualSense playtest.
+
+
+## v0.14 — stronger resistance, cleaner UI and new icon
+
+- Feedback21 requests maximum supported strength 8 on all ten zones from each
+  trigger's first pressure above .03, through charging and holding. A finite
+  180 ms charged vibration replaces it briefly, then maximum resistance resumes.
+  Input thresholds, ordinary rumble and terrain feedback remain unchanged.
+- 125 engine tests pass, including 34 controller and 9 terminal tests. Decoded
+  reports cover modes, strength, independent sides, finite confirmation, stale
+  telemetry and interruption cleanup. Independent Sol reviews found no blocker
+  (reviews/FEEL-14.md and reviews/TEXT-14.md).
+- Root targeted browser check used a seeded first-send checkpoint and simulated
+  pad without a physical actuator. Cross could not send; charging and releasing
+  reached sending, receipt and Continue. Manually drove to Last Chance and opened
+  tracing. Clean terminal, navigation, tool instructions and final title were
+  visually checked; no captured browser warnings/errors. This was not another
+  full ending playthrough. The v0.12 full journey remains recorded above.
+- Removed repeated HUD strips, terminal labels and tool captions while retaining
+  the current action, meaningful story lines, directions and controller prompts.
+  Simplified-instrument disclosure remains available in the journal.
+- Original rover/sunset icon is wired into browser links, the Electron window and
+  Windows packaging. PNG sizes and ICO frames checked; desktop staging and
+  permission tests pass. Native executable packaging is verified by release CI.
+- Physical resistance and sound quality still require the user's playtest; this
+  pass verifies bounded output commands, not measured force or sensory quality.

@@ -125,14 +125,12 @@ function renderTitle() {
   setExploring(false);
   setWorld('sunset', 'title');
   app.innerHTML = `<section class="title-screen">
-    <p class="eyebrow">MARS EXPLORATION ROVER · MER-B</p>
     <h1 class="title" tabindex="-1">Last<br><em>Light.</em></h1>
     <p class="title-kicker">You were built for ninety days.<br>You stayed for fourteen years.</p>
-    <p class="title-description">A small rover. An impossible distance.<br>A world worth sending home.</p>
+    <p class="title-description">A world worth sending home.</p>
     <div class="title-actions"><button class="primary-button" data-action="begin">${saved ? (saved.complete ? 'Return to your memories' : 'Continue your journey') : 'Begin the journey'} ${arrow}</button>
     ${saved ? '<button class="secondary-button" data-action="restart">Start anew</button>' : '<button class="secondary-button" data-action="about">The story behind the story</button>'}</div>
-    <p class="session-note">A SHORT, SELF-PACED 3D EXPERIENCE · HEADPHONES ENCOURAGED<br>SOUND STARTS WITH YOUR JOURNEY · MUTE ANYTIME<br>History is fixed. What you carry home is yours.</p>
-    <div class="title-bottom"><div class="coordinates">MERIDIANI PLANUM<strong>02° SOUTH / 354° EAST</strong></div><div class="mission-mark">AN IMAGINED INNER LIFE<strong>A VERY REAL EXPLORER</strong></div></div>
+    <p class="session-note">An imagined story about a real explorer.</p>
   </section>`;
   refreshControllerPrompts();
 }
@@ -187,17 +185,6 @@ function startBriefing(passage = null) {
   briefingFrame=requestAnimationFrame(frame);
 }
 
-function journeyRail(scene) {
-  if(scene.signal===0)return '<p class="journey-rail">EARTH / RECOVERY OPERATIONS</p>';
-  const steps=goals[state.sceneIndex]?['Drive','Observe','Send']:['Look','Record','Send'];
-  const active=state.phase==='transmit'||state.phase==='received'?2:state.phase==='choose'||investigating||goals[state.sceneIndex]&&reached?1:0;
-  return `<p class="journey-rail" aria-label="Journey steps">${steps.map((label,i)=>`<span ${i===active?'aria-current="step"':''}>${String(i+1).padStart(2,'0')} ${label}</span>`).join('<i aria-hidden="true">/</i>')}</p>`;
-}
-
-function telemetry(scene) {
-  return `<aside class="flight-status" aria-label="Dramatized mission conditions">${missionConditions(scene).map(text=>`<span>${text}</span>`).join('')}<span aria-label="${state.memories.length} memories">◇ ${state.memories.length}</span></aside>`;
-}
-
 function syncInputMode() {
   const mode = inputMode({screen, phase:state.phase, modal:!!document.querySelector('dialog[open]'), investigating, contacting, travelling:!reached});
   controller?.setInputMode?.(mode);
@@ -212,13 +199,13 @@ function updateInputHint() {
   const pad=controllerConnected || settings.prompts!=='auto';
   const row=(action,label,key,usePad=pad)=>`<span class="controller-hint" aria-label="${usePad?controllerButtonName(action,family):key}: ${label.toLowerCase()}">${usePad?controllerGlyph(action,family):`<kbd>${key}</kbd>`}<span>${label}</span></span>`;
   let hints;
-  if(transmitting) hints='<span class="control-rest">Listening…</span>';
-  else if(contacting) hints=controllerConnected?`<span class="controller-hint" aria-label="Both triggers: squeeze">${controllerGlyph('reverse',family)}${controllerGlyph('forward',family)}<span>Squeeze</span></span>`:row('primary',transmissionProfile(scenes[state.sceneIndex]).mode==='silence'?'Call':transmissionProfile(scenes[state.sceneIndex]).mode==='archive'?'Keep':'Send','Enter',false);
+  if(transmitting) hints='';
+  else if(contacting) hints=controllerConnected?`<span class="controller-hint" aria-label="Both triggers: squeeze">${controllerGlyph('reverse',family)}${controllerGlyph('forward',family)}<span class="sr-only">Squeeze</span></span>`:row('primary',transmissionProfile(scenes[state.sceneIndex]).mode==='silence'?'Call':transmissionProfile(scenes[state.sceneIndex]).mode==='archive'?'Keep':'Send','Enter',false);
   else if(geologyActive) hints=toolState?.stage==='compare'?row('primary','Compare','Enter'):row('look',toolState?.stage==='trace'?'Follow layer':'Move tool','↑↓←→')+row('forward',toolState?.stage==='trace'?'Trace':toolState?.stage==='brush'?'Brush':'Measure','Space');
   else if(investigating) hints=row('look','Look','↑↓←→')+'<span class="control-rest">Hold still to record</span>';
   else if(moving) hints=row('move','Drive','WASD')+row('look','Look','Drag');
-  else hints=row('move','Select','Tab')+row('primary','Confirm','Enter');
-  if(!contacting && !investigating)hints+=row('journal','Memories','J');
+  else hints=screen==='game' && state.phase!=='choose'?'':row('move','Select','Tab')+row('primary','Confirm','Enter');
+  if(!contacting && !investigating && !transmitting)hints+=row('journal','Memories','J');
   if(settings.touch&&!pad) hints=contacting?'<span class="controller-hint"><kbd>·</kbd>Tap Send</span>':investigating?'<span class="controller-hint"><kbd>↔</kbd>Drag to look</span><span class="control-rest">Hold still to record</span>':moving?'<span class="controller-hint"><kbd>↔</kbd>Drag to look</span>':'<span class="controller-hint"><kbd>·</kbd>Tap to choose</span>';
   $('#input-hint').innerHTML=hints;
 }
@@ -288,13 +275,13 @@ function renderGame({ focus = false } = {}) {
     content=renderGeologyPanel(toolState || (scene.id==='stone-ripples'?{mode:'trace',stage:'trace'}:{}),controllerConnected);
   } else if (investigating) {
     const profile=surveyProfiles[scene.id];
-    content = survey ? `<div class="survey-instrument" aria-label="${escape(profile.title)}"><div class="survey-aim" aria-hidden="true"><span class="survey-center"></span><i id="survey-target"></i></div><div class="survey-ticks" aria-label="Observation views">${profile.steps.map((_,i)=>`<span data-survey-step="${i}">${String(i+1).padStart(2,'0')}</span>`).join('')}</div><p id="investigation-hint" class="discovery-line">${escape(profile.steps[0].hint)}</p><progress id="investigation-progress" max="1" value="0" aria-label="Observation recorded"></progress><p class="pace-note">Bring the amber bearing to the center. Hold still to record.</p></div>` : `<p id="investigation-hint" class="discovery-line">Look around the feature, then hold the view still.</p><progress id="investigation-progress" max="1" value="0" aria-label="Observation recorded"></progress><p class="pace-note">The rock stays in view as you examine its surface.</p>`;
+    content = survey ? `<div class="survey-instrument" aria-label="${escape(profile.title)}"><div class="survey-aim" aria-hidden="true"><span class="survey-center"></span><i id="survey-target"></i></div><div class="survey-ticks" aria-label="Observation views">${profile.steps.map((_,i)=>`<span data-survey-step="${i}">${String(i+1).padStart(2,'0')}</span>`).join('')}</div><p id="investigation-hint" class="discovery-line">${escape(profile.steps[0].hint)}</p><progress id="investigation-progress" max="1" value="0" aria-label="Observation recorded"></progress><p class="pace-note">Bring the amber bearing to the center. Hold still to record.</p></div>` : `<p id="investigation-hint" class="discovery-line">Look around the feature, then hold the view still.</p><progress id="investigation-progress" max="1" value="0" aria-label="Observation recorded"></progress>`;
     content += '<button class="quiet-button" data-action="assist-observation">Skip this observation</button>';
   } else if (state.phase === 'observe') {
     content = `<p class="inner-voice">${escape(scene.subtitle || scene.thought)}</p>`;
     if (goal && !reached) content += `<div class="objective-line"><span id="objective-distance">${graphicsError ? '3D unavailable on this device' : 'Follow the amber beacon'}</span>${graphicsError?'<button class="quiet-button" data-action="text-only">Continue story</button>':''}</div>`;
     else content += `<button class="primary-button" data-action="observe" ${scanning?'disabled':''}>${scanning?'Looking closely…':escape(scene.actionLabel || scene.objective)} <span aria-hidden="true">◇</span></button>`;
-    if (state.sceneIndex <= 1) content += '<p class="pace-note">Take your time. Exploring does not use up power.</p>';
+
   } else if (state.phase === 'choose') {
     content = `<p class="discovery-line">${escape(scene.discovery)}</p><p class="choice-purpose">${contact.mode==='archive'?'Choose what to carry forward':scene.signal===0?'Choose what this call will remember':'Choose your message for Earth'}</p><div class="choices compact-choices">${scene.choices.map(c=>`<button class="choice" data-action="choose" data-choice="${escape(c.id)}"><span class="choice-label">${escape(c.shortLabel || c.label)}</span><span class="choice-detail">${escape(c.detail)}</span></button>`).join('')}</div>`;
   } else if (state.phase === 'transmit' || state.phase === 'received') {
@@ -304,7 +291,7 @@ function renderGame({ focus = false } = {}) {
       response:scene.response || scene.transmission,meaning:recalled?'The first view you sent is still on Earth. The storm cannot take it back.':contact.mode==='partial'?'A sky full of dust. Send what light remains.':recordedChoice(scene,state)?scene.discovery:choice?.shortReply || '',input:controllerConnected?'controller':'pointer',family:controllerFamily(controllerId,settings.prompts)});
   }
 
-  app.innerHTML = `<section class="play-screen"><header class="play-heading">${journeyRail(scene)}<p class="eyebrow">${escape(missionTime(scene.id)?.label || scene.sol)}</p><h1 tabindex="-1">${escape(state.phase==='observe' ? scene.approachTitle || scene.title : scene.title)}</h1><aside class="mission-objective" aria-label="Current objective"><span>${state.phase==='observe'?'EXPLORE':state.phase==='choose'?'REMEMBER':state.phase==='transmit'?'CONNECT':'CONTINUE'}</span><strong>${escape(geologyActive?(toolState?.stage==='trace'?'Follow the crossing layers':toolState?.stage==='brush'?'Expose the surface with your brush':toolState?.stage==='compare'?'Compare the two readings':'Place the probe on each sample ring'):currentObjective({scene,phase:state.phase,goal,reached,investigating,transmitting}))}</strong></aside></header>${telemetry(scene)}<article class="interaction-dock" aria-label="Current interaction" aria-busy="${scanning || transmitting}">${content}<div class="dock-footer"><span>${scene.act===1?'WONDER':scene.act===2?'THE STORM':'REMEMBRANCE'}</span><button class="quiet-button" data-action="journal">Journal</button></div></article></section>`;
+  app.innerHTML = `<section class="play-screen"><header class="play-heading"><p class="eyebrow">${escape(missionTime(scene.id)?.label || scene.sol)}</p><h1 tabindex="-1">${escape(state.phase==='observe' ? scene.approachTitle || scene.title : scene.title)}</h1><aside class="mission-objective" aria-label="Current objective"><span>${state.phase==='observe'?'EXPLORE':state.phase==='choose'?'REMEMBER':state.phase==='transmit'?'CONNECT':'CONTINUE'}</span><strong>${escape(geologyActive?(toolState?.stage==='trace'?'Follow the crossing layers':toolState?.stage==='brush'?'Expose the surface with your brush':toolState?.stage==='compare'?'Compare the two readings':'Place the probe on each sample ring'):currentObjective({scene,phase:state.phase,goal,reached,investigating,transmitting}))}</strong></aside></header><article class="interaction-dock" aria-label="Current interaction" aria-busy="${scanning || transmitting}">${content}<div class="dock-footer"><button class="quiet-button" data-action="journal">Journal</button></div></article></section>`;
   setExploring(exploring);
   $('#world-controls').hidden = false;
   $('.drive-pad').hidden = state.phase!=='observe' || reached;
@@ -317,7 +304,7 @@ function renderGame({ focus = false } = {}) {
 function openJournal() {
   const scene = scenes[state.sceneIndex];
   const discoveries = discoveredScenes(state, scenes);
-  $('#journal-content').innerHTML = `<p class="hint">Inner thoughts and Earth replies are fiction. Travel, conditions, and communication timing are dramatized. Exploring does not spend power.</p>${state.phase==='observe' ? `<p class="journal-locked">${escape(scene.approachTitle || scene.title)}<br>Look closely to add this discovery.</p>` : ''}<h3>Discoveries · ${discoveries.length}</h3>${discoveries.map(item=>{
+  $('#journal-content').innerHTML = `<p class="hint">Inner thoughts and Earth replies are fiction. Travel, conditions, and communication timing are dramatized. Exploring does not spend power. Tool readings are simplified comparisons, not instrument telemetry.</p><p class="hint">${missionConditions(scene).join(' · ')} · ${state.memories.length} memories</p>${state.phase==='observe' ? `<p class="journal-locked">${escape(scene.approachTitle || scene.title)}<br>Look closely to add this discovery.</p>` : ''}<h3>Discoveries · ${discoveries.length}</h3>${discoveries.map(item=>{
     const source=sources.find(s=>s.id===item.observation.sourceId);
     return `<details class="discovery-entry" ${item.id===scene.id?'open':''}><summary>${escape(item.observation.title)}</summary><p>${escape(item.discovery)}</p>${paragraphs(item.observation.text)}<p>${escape(item.observation.fact || '')}</p>${source?`<a href="${escape(source.url)}" target="_blank" rel="noreferrer">NASA source ↗</a>`:''}</details>`;
   }).join('') || '<p>Your observations will appear here after you make them.</p>'}<h3>Your memories · ${state.memories.length}</h3><div class="archive-grid">${state.memories.map(m=>`<article class="memory-card"><h4>${escape(m.title)}</h4><p>${escape(m.text)}</p></article>`).join('') || '<p>Something worth remembering is waiting out there.</p>'}</div>`;

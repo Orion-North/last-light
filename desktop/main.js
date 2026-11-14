@@ -81,6 +81,7 @@ app.whenReady().then(async () => {
   ses.on('hid-device-revoked', (_event, details) => approved.delete(details.device?.deviceId));
 
   win = new BrowserWindow({
+    icon: path.join(gameRoot, 'public', 'icons', 'icon-512.png'),
     title: 'Last Light', width: 1440, height: 900, minWidth: 760, minHeight: 560,
     backgroundColor: '#110e0d', autoHideMenuBar: true, show: !smoke,
     webPreferences: { session: ses, preload: path.join(app.getAppPath(), 'preload.cjs'), contextIsolation: true, sandbox: true,

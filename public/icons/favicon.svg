@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Last Light: a rover beneath the setting sun">
+  <defs>
+    <linearGradient id="sky" x2="0" y2="1"><stop stop-color="#201b25"/><stop offset="1" stop-color="#392822"/></linearGradient>
+    <linearGradient id="sun" x2="0" y2="1"><stop stop-color="#ffe0a0"/><stop offset="1" stop-color="#ec8050"/></linearGradient>
+    <clipPath id="tile"><rect x="8" y="8" width="496" height="496" rx="110"/></clipPath>
+  </defs>
+  <g clip-path="url(#tile)">
+    <path fill="url(#sky)" d="M0 0h512v512H0z"/>
+    <circle cx="332" cy="207" r="112" fill="url(#sun)"/>
+    <path fill="#714332" d="m0 286 86-17 88 12 96-30 109 22 133-25v264H0z"/>
+    <path fill="#201b20" d="m0 330 106-28 110 18 96-13 200 44v161H0z"/>
+    <g fill="#f8ddb0" stroke="#f8ddb0" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M219 299V202" fill="none" stroke-width="15"/>
+      <path d="M198 192h51v27h-51z" stroke-width="10"/>
+      <path d="m93 287 209-4 46 49-219 2z" stroke-width="13"/>
+      <path d="m162 334 19 28h105l29-29" fill="none" stroke-width="13"/>
+      <path d="m139 379 37-29 62 29 48-28 55 28" fill="none" stroke-width="12"/>
+    </g>
+    <g fill="#201b20" stroke="#f8ddb0" stroke-width="14">
+      <circle cx="137" cy="384" r="27"/><circle cx="240" cy="384" r="27"/><circle cx="343" cy="384" r="27"/>
+    </g>
+    <g stroke="#6e5141" stroke-width="6" fill="none">
+      <path d="m150 287 31 45m32-46 32 46m31-47 33 47M115 309h210"/>
+    </g>
+    <path fill="#201b20" d="M205 198h14v14h-14zm24 0h14v14h-14z"/>
+  </g>
+</svg>

@@ -9,9 +9,7 @@ body.controller-connected[data-upload="true"][data-screen="game"] .interaction-d
 .upload-terminal {--ink:#fff0d5;--gold:#ffd092;--pressure:min(var(--squeeze-left,0),var(--squeeze-right,0));padding:10px 30px;color:var(--ink);text-shadow:0 2px 12px #000;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;}
 .upload-terminal *,.upload-terminal *::before,.upload-terminal *::after {box-sizing:border-box;}
 .upload-terminal__body{position:relative;}
-.upload-terminal__destination{display:flex;align-items:center;justify-content:center;gap:18px;font-size:9px;letter-spacing:.2em;color:#dce8ef;}
-.upload-terminal__destination i{font-style:normal;color:var(--gold);font-size:18px;}
-.upload-terminal__apparatus{position:relative;padding-top:25px;}
+.upload-terminal__apparatus{position:relative;padding-top:8px;}
 .signal-map{display:flex;align-items:center;width:min(760px,100%);height:190px;margin:auto;position:relative;}
 .signal-world{position:relative;width:110px;flex:none;display:grid;justify-items:center;gap:14px;z-index:2;}
 .signal-world>span{font-size:12px;letter-spacing:.22em;color:#f2e4d5;}
@@ -29,9 +27,7 @@ body.controller-connected[data-upload="true"][data-screen="game"] .interaction-d
 .signal-packet::before,.signal-echo::before{content:'';position:absolute;right:3px;top:2px;width:65px;height:2px;background:linear-gradient(90deg,transparent,#ffe6b8);}
 .signal-echo{background:#d8f1ff;box-shadow:0 0 13px #b0e4ff,0 0 25px #85cfff66;}
 .signal-echo::before{right:auto;left:3px;background:linear-gradient(90deg,#d8f1ff,transparent);}
-.signal-outcome{position:absolute;left:0;right:0;top:60px;text-align:center;font-size:8px;letter-spacing:.15em;color:#b9c5cb;}
 .upload-terminal__memory{text-align:center;margin:2px auto 12px;max-width:700px;}
-.upload-terminal__label{font-size:8px;letter-spacing:.24em;color:#c9b598;}
 .upload-terminal h2{font:400 clamp(28px,3.9vw,44px)/1.1 Georgia,serif;letter-spacing:-.025em;margin:12px 0;color:#fff2db;overflow-wrap:anywhere;}
 .signal-exciter{display:flex;align-items:center;justify-content:center;height:36px;gap:12px;}
 .upload-terminal__half{display:flex;gap:10px;align-items:center;font-size:9px;color:#e4ceb0;}
@@ -43,7 +39,6 @@ body.controller-connected[data-upload="true"][data-screen="game"] .interaction-d
 .upload-terminal[data-squeeze="charged"] .upload-terminal__seam{background:#fff4d5;box-shadow:0 0 12px 2px #ffd99a;}
 .upload-terminal[data-squeeze="charged"] .signal-path__line{background:#ffe5b8;box-shadow:0 0 8px #ffce8177;}
 .upload-terminal[data-input="pointer"] .signal-exciter{visibility:hidden;height:12px;}
-.signal-scale{margin:6px 0 16px;font-size:7px;letter-spacing:.2em;color:#a9b6be;}
 .upload-terminal__meaning{max-width:600px;margin:0 auto 18px;font:15px/1.5 Georgia,serif;color:#f0e3d0;}
 .upload-terminal__guidance{margin:0 auto 12px;max-width:420px;}
 .upload-terminal__instruction{font:14px/1.4 system-ui,sans-serif;margin:0;}
@@ -51,12 +46,11 @@ body.controller-connected[data-upload="true"][data-screen="game"] .interaction-d
 .upload-terminal__guidance progress::-webkit-progress-bar{background:#ffffff20;}
 .upload-terminal__guidance progress::-webkit-progress-value{background:#ffdfa5;}
 .upload-terminal__guidance progress::-moz-progress-bar{background:#ffdfa5;}
-.upload-terminal__sending{font-size:11px;letter-spacing:.18em;margin:18px auto;}
 .upload-terminal__prompt{font-size:10px;color:#bdccd4;letter-spacing:.1em;}
 .upload-terminal__response{max-width:610px;margin:10px auto 18px;}
 .upload-terminal__response>span{font-size:10px;letter-spacing:.18em;color:#d9ecfa;}
 .upload-terminal__response p{font:16px/1.5 system-ui,sans-serif;color:#fff1dc;margin:10px 0;}
-.upload-terminal__footer{display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:48px;font-size:8px;letter-spacing:.15em;color:#cbbda6;}
+.upload-terminal__footer{display:flex;align-items:center;justify-content:center;gap:14px;min-height:48px;font-size:8px;letter-spacing:.15em;color:#cbbda6;}
 .upload-terminal__button{min-height:44px;padding:11px 17px;border:1px solid #c5b99b66;background:#14202b66;color:#fff1d6;font:13px/1.3 system-ui,sans-serif;cursor:pointer;}
 .upload-terminal__button span{padding-left:12px;}
 .upload-terminal__button:hover{background:#ead6b5;color:#14202b;}
@@ -78,8 +72,8 @@ body[data-upload="true"][data-screen="game"] .play-screen{background:linear-grad
 @keyframes signal-depart{0%{left:0;opacity:0}12%{opacity:1}85%{opacity:1}100%{left:calc(100% - 10px);opacity:0}}
 @keyframes signal-return{0%{left:100%;opacity:1}85%{opacity:1}100%{left:0;opacity:0}}
 @keyframes signal-partial{0%{left:0;opacity:0}12%,28%,44%,70%{opacity:1}32%,49%,74%{opacity:.1}100%{left:calc(100% - 10px);opacity:0}}
-@media(max-height:720px){.signal-map{height:145px}.upload-terminal__apparatus{padding-top:10px}.upload-terminal h2{font-size:33px;margin:8px 0}.signal-scale{margin-bottom:10px}.upload-terminal__meaning{margin-bottom:10px}.upload-terminal__response p{font-size:14px}.upload-terminal{padding-block:3px}.signal-exciter{height:28px}}
-@media(max-width:600px){.upload-terminal{padding-inline:5px}.signal-world{width:85px}.signal-world small{font-size:6px}.planet{width:55px;height:55px}.planet--earth{width:43px;height:43px}.signal-map{height:155px}.signal-outcome{font-size:6px}.upload-terminal h2{font-size:29px}.upload-terminal__destination{gap:8px;font-size:7px}.upload-terminal__meaning{font-size:14px}.upload-terminal__response p{font-size:14px}}
+@media(max-height:720px){.signal-map{height:145px}.upload-terminal__apparatus{padding-top:10px}.upload-terminal h2{font-size:33px;margin:8px 0}.upload-terminal__meaning{margin-bottom:10px}.upload-terminal__response p{font-size:14px}.upload-terminal{padding-block:3px}.signal-exciter{height:28px}}
+@media(max-width:600px){.upload-terminal{padding-inline:5px}.signal-world{width:85px}.signal-world small{font-size:6px}.planet{width:55px;height:55px}.planet--earth{width:43px;height:43px}.signal-map{height:155px}.upload-terminal h2{font-size:29px}.upload-terminal__meaning{font-size:14px}.upload-terminal__response p{font-size:14px}}
 @media(prefers-reduced-motion:reduce){.upload-terminal *{animation:none!important;transition:none!important}.upload-terminal[data-stage="sending"] .signal-packet{left:50%;opacity:1}.upload-terminal[data-stage="received"][data-mode="reply"] .signal-echo{left:0;opacity:1}}
 body.reduced-motion .upload-terminal *{animation:none!important;transition:none!important}
 body.reduced-motion .upload-terminal[data-stage="sending"] .signal-packet{left:50%;opacity:1}
@@ -130,14 +124,9 @@ body.reduced-motion .upload-terminal[data-stage="received"][data-mode="reply"] .
 .upload-terminal__half{gap:14px;}
 .upload-terminal__half i{width:82px;height:4px;}
 .upload-terminal__seam{width:11px;height:11px;}
-.squeeze-sequence{display:flex;justify-content:center;gap:20px;list-style:none;padding:0;margin:0 0 14px;font:10px/1.5 var(--mono);color:#acb8bf;}
-.squeeze-sequence b{font-weight:400;opacity:.55;margin-right:4px;}
-.upload-terminal[data-squeeze="ready"] [data-squeeze-step="press"],
-.upload-terminal[data-squeeze="pressing"] [data-squeeze-step="charge"],
-.upload-terminal[data-squeeze="charged"] [data-squeeze-step="release"]{color:#ffe2ab;}
 .upload-terminal[data-squeeze="charged"] .upload-terminal__instruction{color:#ffe2ab;}
 .upload-terminal[data-input="controller"][data-stage="ready"] .upload-terminal__footer{display:none;}
 .upload-terminal[data-stage="received"] .signal-exciter,.upload-terminal[data-stage="sending"] .signal-exciter{display:none;}
 .upload-terminal[data-input="controller"] .upload-terminal__guidance{max-width:560px;}
-@media(max-height:720px){.upload-terminal[data-input="controller"][data-stage="ready"] .signal-exciter{height:40px;margin-bottom:8px}.squeeze-sequence{margin-bottom:8px}.signal-exciter .controller-glyph{width:31px;height:31px}}
-@media(max-width:600px){.squeeze-sequence{gap:10px;font-size:8px}.upload-terminal__half i{width:55px}}
+@media(max-height:720px){.upload-terminal[data-input="controller"][data-stage="ready"] .signal-exciter{height:40px;margin-bottom:8px}.signal-exciter .controller-glyph{width:31px;height:31px}}
+@media(max-width:600px){.upload-terminal__half i{width:55px}}

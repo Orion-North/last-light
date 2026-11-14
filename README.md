@@ -3,7 +3,7 @@
 A playable, real-time 3D story about NASA's Opportunity rover: discovery,
 attachment, a fading signal, and the things that remain.
 
-**Playable v0.13.** [Play on GitHub Pages](https://orion-north.github.io/last-light/). Built with parallel Codex agents. The game uses NASA's
+**Playable v0.14.** [Play on GitHub Pages](https://orion-north.github.io/last-light/). Built with parallel Codex agents. The game uses NASA's
 textured rover model, a navigable original Mars environment, an original adaptive
 score, and a complete three-act story. No account or AI API is needed by the game
 itself. A hosting provider may apply its own access gate.
@@ -66,8 +66,8 @@ Existing keyboard/touch fallbacks remain available.
 - DualSense: left stick or R2/L2 drive; right stick looks; × interacts; D-pad
   selects; ○ goes back; △ resets camera; Options pauses.
 - Terrain rumble follows surface roughness, slope load, speed, and blocked wheels.
-  Optional original DualSense USB effects begin at the start of each trigger press, independently, with substantially stronger vibration and later-story weight; connect them in Settings. Hardware
-  feedback works on the user’s wired DualSense in Chrome; the stronger v0.13 tuning needs playtesting. See [controller support](docs/CONTROLLERS.md).
+  Optional original DualSense USB effects begin at the start of each trigger press, independently, with maximum supported resistance through the squeeze and a brief charged vibration; connect them in Settings. Hardware
+  feedback works on the user’s wired DualSense in Chrome; the resistance-first v0.14 tuning needs playtesting. See [controller support](docs/CONTROLLERS.md).
 - The original adaptive score has distinct geology, routine, storm, Earth-waiting and remembrance arrangements, with foreground sound ducking. Sound begins on entering the story unless you opt out; mute anytime.
 - Escape opens settings and pauses. Reduced motion, restart, and local progress
   saving are included. The ending contains your downloadable memory archive.

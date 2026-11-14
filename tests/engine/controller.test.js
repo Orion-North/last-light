@@ -389,17 +389,17 @@ test('uplink samples analog triggers with neutral axes and honest synthetic samp
   await f.driver.destroy();
 });
 
-test('uplink vibrates through full pressure and expires without terrain leakage', async () => {
+test('uplink resists through full pressure and expires without terrain leakage', async () => {
   const f = fixture(), device = usb(); f.pads([f.pad]); f.tick();
   f.hid.requestDevice = async () => [device]; await f.driver.connectAdaptiveTriggers();
   f.driver.setInputMode('uplink'); f.driver.setTerrain({ moving: true, roughness: 1 });
   await settle(); assert.equal(device.reports.at(-1).data[10], 5);
   f.driver.setUplink({ active: true, progress: 0 }); await settle();
-  assert.deepEqual(device.reports.at(-1).data.slice(10, 13), [0x26, 0xff, 3]);
+  assert.deepEqual(device.reports.at(-1).data.slice(10, 13), [0x21, 0xff, 3]);
   f.driver.setUplink({ active: true, progress: .75 }); await settle();
-  assert.deepEqual(device.reports.at(-1).data.slice(21, 24), [0x26, 0xff, 3]);
+  assert.deepEqual(device.reports.at(-1).data.slice(21, 24), [0x21, 0xff, 3]);
   f.driver.setUplink({ active: true, progress: 1 }); await settle();
-  assert.equal(device.reports.at(-1).data[10], 0x26); // full pressure before charge still vibrates
+  assert.equal(device.reports.at(-1).data[10], 0x21); // full pressure before charge still resists
   f.driver.setUplink({ active: true, progress: .5 }); f.tick(400); await settle();
   assert.equal(device.reports.at(-1).data[21], 5); assert.equal(f.pulses.length, 0);
   assert.equal(f.driver.feedback('terrain'), false); assert.equal(f.driver.feedback('blocked'), false);
@@ -416,7 +416,7 @@ test('uplink interruption resets both actuators and never revives old pressure o
     const f = fixture(), device = usb(); f.pads([f.pad]); f.tick();
     f.hid.requestDevice = async () => [device]; await f.driver.connectAdaptiveTriggers();
     f.driver.setInputMode('uplink'); f.driver.setUplink({ active: true, progress: .04, leftTrigger: .04, rightTrigger: 0 }); await settle();
-    assert.equal(device.reports.at(-1).data[21], 0x26, interruption);
+    assert.equal(device.reports.at(-1).data[21], 0x21, interruption);
     assert.equal(device.reports.at(-1).data[10], 5, interruption);
     if (interruption === 'pause') f.driver.setPaused(true);
     if (interruption === 'blur') f.win.dispatchEvent(new Event('blur'));
@@ -508,19 +508,19 @@ test('HID disconnect cancels squeeze input before pending output and close settl
 });
 
 
-test('sending uses zoned feedback and bounded final trigger vibration with a finite charged finish', async () => {
+test('sending resists immediately, briefly vibrates when charged, then restores maximum resistance', async () => {
   const f = fixture(), device = usb(); f.pads([f.pad]); f.tick();
   f.hid.requestDevice = async () => [device]; await f.driver.connectAdaptiveTriggers();
   f.driver.setInputMode('uplink'); f.driver.setUplink({ active: true, progress: 0, charge: 0 }); await settle();
   const block = () => device.reports.at(-1).data.slice(10, 21);
-  assert.deepEqual(block(), [0x26, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 75, 0]);
+  assert.deepEqual(block(), [0x21, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 0, 0]);
   f.driver.setUplink({ active: true, progress: .8, charge: .35 }); await settle();
-  assert.deepEqual(block(), [0x26, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 75, 0]);
+  assert.deepEqual(block(), [0x21, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 0, 0]);
   f.driver.setUplink({ active: true, progress: 1, charge: 1, charged: true }); await settle();
   assert.deepEqual(block(), [0x26, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 75, 0]);
   assert.deepEqual(device.reports.at(-1).data.slice(21, 32), block());
   f.tick(179); await settle(); assert.equal(block()[0], 0x26);
-  f.tick(180); await settle(); assert.deepEqual(block(), [0x21, 0xff, 3, 0xb6, 0x6d, 0xdb, 0x36, 0, 0, 0, 0]);
+  f.tick(180); await settle(); assert.deepEqual(block(), [0x21, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 0, 0]);
   f.driver.setUplink({ active: true, progress: 1, charge: 1, charged: true });
   f.tick(181); await settle(); assert.equal(block()[0], 0x21); // refresh does not restart burst
   f.driver.setUplink({ active: false }); await settle(); assert.equal(block()[0], 5);
@@ -543,13 +543,13 @@ test('ordinary charge rumble crescendos with hold charge and ends with a distinc
 });
 
 
-test('late-story effort increases end vibration and rest without retaining it for archive', async () => {
+test('late-story effort changes the confirmation frequency without reducing maximum resistance', async () => {
   const f = fixture(), device = usb(); f.pads([f.pad]); f.tick();
   f.hid.requestDevice = async () => [device]; await f.driver.connectAdaptiveTriggers();
   f.driver.setInputMode('uplink');
   const block = () => device.reports.at(-1).data.slice(10, 21);
   f.driver.setUplink({ active: true, progress: 0, effort: 1 }); await settle();
-  assert.deepEqual(block(), [0x26, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 85, 0]);
+  assert.deepEqual(block(), [0x21, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 0, 0]);
   f.driver.setUplink({ active: true, progress: 1, charge: 1, charged: true, effort: 1 }); await settle();
   assert.deepEqual(block(), [0x26, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 85, 0]);
   assert.equal(f.driver.feedback('charged'), true); assert.equal(f.pulses.at(-1)[1].strongMagnitude, .85);
@@ -564,14 +564,14 @@ test('late-story effort increases end vibration and rest without retaining it fo
 });
 
 
-test('zone-zero vibration engages each trigger independently at the first pressure sample', async () => {
+test('zone-zero maximum resistance engages each trigger independently at the first pressure sample', async () => {
   const f = fixture(), device = usb(); f.pads([f.pad]); f.tick();
   f.hid.requestDevice = async () => [device]; await f.driver.connectAdaptiveTriggers();
   f.driver.setInputMode('uplink');
   const right = () => device.reports.at(-1).data.slice(10, 21);
   const left = () => device.reports.at(-1).data.slice(21, 32);
   const off = [5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-  const early = [0x26, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 56, 0];
+  const early = [0x21, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 0, 0];
   f.driver.setUplink({ active: true, progress: 0, charge: 0, leftTrigger: .03, rightTrigger: 0 }); await settle();
   assert.deepEqual(left(), off); assert.deepEqual(right(), off);
   f.driver.setUplink({ active: true, progress: 0, charge: 0, leftTrigger: .04, rightTrigger: 0 }); await settle();
@@ -581,7 +581,7 @@ test('zone-zero vibration engages each trigger independently at the first pressu
   f.driver.setUplink({ active: true, progress: 0, leftTrigger: 0, rightTrigger: .04 }); await settle();
   assert.deepEqual(left(), off); assert.deepEqual(right(), early);
   f.driver.setUplink({ active: true, progress: 0, leftTrigger: .04, rightTrigger: .04, effort: 1 }); await settle();
-  const lateEarly = [0x26, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 66, 0];
+  const lateEarly = early;
   assert.deepEqual(left(), lateEarly); assert.deepEqual(right(), lateEarly);
   f.driver.setUplink({ active: true, progress: 1, charge: 1, charged: true, leftTrigger: 1, rightTrigger: 1, effort: 1 }); await settle();
   assert.deepEqual(left(), [0x26, 0xff, 3, 0xff, 0xff, 0xff, 0x3f, 0, 0, 85, 0]);
@@ -608,7 +608,7 @@ test('ordinary build begins before hold charge and remains bounded at extreme in
   await f.driver.destroy();
 });
 
-test('strong USB onset uses bounded maximum amplitude at all ten positions and strong held force', async () => {
+test('maximum resistance persists from light press through charge and held confirmation', async () => {
   const f = fixture(), device = usb(); f.pads([f.pad]); f.tick();
   f.hid.requestDevice = async () => [device]; await f.driver.connectAdaptiveTriggers();
   f.driver.setInputMode('uplink');
@@ -621,9 +621,9 @@ test('strong USB onset uses bounded maximum amplitude at all ten positions and s
     const data = device.reports.at(-1).data;
     for (const offset of [10, 21]) {
       const block = data.slice(offset, offset + 11);
-      assert.equal(block[0], 0x26); assert.equal(block[1] | block[2] << 8, 1023);
+      assert.equal(block[0], 0x21); assert.equal(block[1] | block[2] << 8, 1023);
       assert.deepEqual(levels(block), Array(10).fill(8));
-      assert.ok(block[9] >= 55 && block[9] <= 85);
+      assert.equal(block[9], 0);
       assert.deepEqual([block[7], block[8], block[10]], [0, 0, 0]);
     }
   }
@@ -631,7 +631,7 @@ test('strong USB onset uses bounded maximum amplitude at all ten positions and s
   f.tick(180); await settle();
   for (const offset of [10, 21]) {
     const block = device.reports.at(-1).data.slice(offset, offset + 11);
-    assert.equal(block[0], 0x21); assert.deepEqual(levels(block), Array(10).fill(7));
+    assert.equal(block[0], 0x21); assert.deepEqual(levels(block), Array(10).fill(8));
   }
   f.tick(400); await settle();
   assert.equal(device.reports.at(-1).data[10], 5); assert.equal(device.reports.at(-1).data[21], 5);

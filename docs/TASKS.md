@@ -1,6 +1,6 @@
 # Task board
 
-Phase: **v0.13 integrated and verified; publication owned by Codex**.
+Phase: **v0.14 integrated and verified; publication owned by Codex**.
 Integrator: Codex. Claude and Antigravity are supported by shared instructions;
 Antigravity CLI critique has been verified.
 
@@ -520,3 +520,25 @@ layer tracing and brush/sample tasks; clearer central action sequence; maximum
 supported immediate USB trigger vibration with stronger charged resistance.
 124 tests pass. Root targeted UI regression and independent source review passed;
 physical tuning remains for user feedback.
+
+
+## FEEL-14 — resistance throughout the squeeze
+
+User asks for much more trigger resistance. Root owns controller implementation,
+controller tests, docs/version and publication on develop/v0.14. Independent Sol
+critic owns reviews/FEEL-14.md only. Use maximum supported Feedback21 during
+press/charge/hold, retaining only a brief charged vibration. Preserve thresholds,
+independent release and lifecycle withdrawal. No physical-device output in QA.
+
+FEEL-14 complete: resistance owns the press/charge/hold, finite charged vibration
+retained. 124tests and independent audit pass; hardware feel awaits playtest.
+
+TEXT-14 / user-requested HUD cleanup: root owns main/geology UI andjourneyCSS;
+Sol critic handed review back then owns terminal.js/CSS/tests and TEXT-14handoff.
+ICON-14 / Sol tools owner: public/icons, desktop main/package iconwiring, ownhandoff.
+Root owns HTML iconlinks, assetledger, finalchecks and publication.
+
+TEXT-14 and ICON-14 complete: repeated screen text removed; essential actions and
+story retained, original rover/sunset icon wired for web and Windows. 125 engine
+tests pass, independent Sol critique found no blocker, root targeted browser
+checks cover sending, receipt, navigation, tool instructions and title.
