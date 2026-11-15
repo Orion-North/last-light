@@ -637,3 +637,13 @@ test('maximum resistance persists from light press through charge and held confi
   assert.equal(device.reports.at(-1).data[10], 5); assert.equal(device.reports.at(-1).data[21], 5);
   await f.driver.destroy();
 });
+
+
+test('uplink right stick scrolls reading text without moving the rover or mast', async () => {
+  const f=fixture();f.pads([f.pad]);f.tick();f.driver.setInputMode('uplink');
+  f.pad.axes=[1,-1,.8,1];f.tick(50);
+  assertNeutral(f.inputs.at(-1));assert.ok(f.scrolls.at(-1)>0);
+  f.pad.axes[3]=-1;f.tick(100);assert.ok(f.scrolls.at(-1)<0);
+  const count=f.scrolls.length;f.driver.setPaused(true);f.tick(150);
+  assert.equal(f.scrolls.length,count);await f.driver.destroy();
+});

@@ -206,7 +206,7 @@ export const scenes = [
     text: 'The story moves to Earth.\n\nA screen holds the last information that arrived. Outside the room, ordinary days continue. Inside, people watch the weather on another planet and work on ways to hear from a familiar machine.\n\nOpportunity does not answer. They call again.',
     thought: 'The silence on one world is a room full of people on another.',
     environment: 'earth', power: 0, signal: 0,
-    actionLabel: 'Send a recovery command from Earth',
+    actionLabel: 'Prepare a recovery call',
     observation: {
       title: 'An unanswered channel',
       text: 'There is a difference between losing contact and giving up. Engineers tried to restore communication. The rover’s response was unknown; its recovery could not be promised.\n\nThe sound you hear in this experience is an imagined score. It is not a recording from Opportunity. You can remain here for a moment, or continue whenever you are ready.',
@@ -220,7 +220,7 @@ export const scenes = [
   },
   {
     id: 'months', receiptMode: 'archive', act: 3, chapter: 'III · On the other side',
-    subtitle: 'June to February. Calls accumulate; no answer arrives. The discoveries remain.',
+    subtitle: 'Eight months. More than 1,000 recovery commands. No answer.',
     objective: 'Revisit the archive on Earth',
     discovery: 'On Earth, recovery attempts continue for eight months. More than 1,000 commands bring no answer. The discoveries remain.',
     response: 'Added to your archive on Earth. These discoveries can still reach someone new.',
@@ -250,7 +250,7 @@ export const scenes = [
     text: 'The final commands are sent.\n\nNothing you choose now will change the silence. Nothing you chose before caused it. This was a machine that worked through years it was never promised.\n\nThe archive you kept on Earth remains after the final call.',
     thought: 'You do not have to come back for the journey to have mattered.',
     environment: 'night', power: 0, signal: 0,
-    actionLabel: 'Stay for Earth’s final call',
+    actionLabel: 'Prepare Earth’s final call',
     observation: {
       title: 'No answer. Not nothing.',
       text: 'There is no secret choice that brings Opportunity back. This is not a test you failed.\n\nThere was a world to explore, and a rover that explored it far beyond its planned mission. There were people who cared for it. There are discoveries that remain. Take whichever part of that you need with you.',

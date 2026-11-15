@@ -16,7 +16,7 @@ const observations = {
   marathon: 'Forty-two kilometres. There is more ground ahead.',
   'ordinary-day': 'Sunlight on the ground beside my wheels. I’ll send that.',
   dust: 'I’ll send this sky.',
-  'last-image': 'I’ll send this view.',
+  'last-image': 'The Sun is somewhere behind this dust. I’ll send what light remains.',
 };
 
 // Mission-source interpretations, expressed as invented thoughts, not telemetry.

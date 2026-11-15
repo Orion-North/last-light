@@ -1,40 +1,94 @@
 <!doctype html><meta charset="utf-8"><title>Sending layout checks</title>
-<style>body{background:#181b20;color:white;font:14px system-ui;margin:12px}button{padding:10px;margin:6px}iframe{border:1px solid #777;display:block}pre{white-space:pre-wrap}</style>
-<button id="verify">Check responsive layouts</button><button id="preview">Preview controller sending</button><output id="status">Ready</output><pre id="results"></pre><iframe title="Sending layout"></iframe>
+<style>body{background:#181b20;color:white;font:14px system-ui;margin:12px}button,select{padding:8px;margin:6px}iframe{border:1px solid #777;display:block}pre{white-space:pre-wrap}label{white-space:nowrap}</style>
+<button id="verify">Check responsive layouts</button>
+<label>Mode <select id="mode"><option>reply</option><option>partial</option><option>silence</option><option>archive</option></select></label>
+<label>Stage <select id="stage"><option>ready</option><option>sending</option><option>received</option></select></label>
+<label>Thought <select id="thought"><option>short</option><option>long</option><option>absent</option></select></label>
+<label>Input <select id="input"><option>controller</option><option>pointer</option><option>touch</option></select></label>
+<label>Viewport <select id="viewport"><option value="1000,650">1000 × 650</option><option value="390,844">390 × 844</option><option value="844,390">844 × 390</option><option value="320,480">320 × 480</option><option value="650,360">650 × 360</option></select></label>
+<button id="preview">Preview selected state</button><output id="status">Ready</output><pre id="results"></pre><iframe title="Sending layout"></iframe>
 <script type="module">
 import {renderUploadTerminal} from '../../src/ui/upload-terminal.js';
+import {controllerScrollTarget} from '../../src/ui/scroll-target.js';
 const frame=document.querySelector('iframe'), status=document.querySelector('#status');
 const css=['style','integration','play','controller-glyphs','upload-terminal','journey','story-console'];
-const thought='<section class="story-console"><div class="story-console__meta"><span class="story-console__mark">&gt;_</span><span class="story-console__time">2004 · FIRST MORNING · SOL 01</span></div><p class="story-console__line">Soil beneath my wheels. I made it.</p></section>';
-async function show(w,h,input,stage,mode='reply',voice=true) {
+const sizes=[[1440,900],[1024,768],[1001,700],[1000,700],[944,453],[651,844],[650,360],[390,844],[844,390],[320,480]];
+const modes=['reply','partial','silence','archive'], stages=['ready','sending','received'];
+const thoughts={short:'Soil beneath my wheels. I made it.',long:'I followed these layers across the stone, then crossed them again. The little grains and the chemistry tell the same story: water changed this place long before my wheels arrived. I want to send both observations home, so someone can keep looking after the light has gone.',absent:''};
+const findings=[{label:'LAYER PATH A · LAST CHANCE',reading:'Fine, parallel layers cross the outcrop; the second traced path confirms their direction.'},{label:'LAYER PATH B · BERRY BOWL',reading:'The brushed grains and the nearby surface have different iron readings. Both observations remain available.'}];
+const chronology=['earth-listens','months','last-call'];
+async function show(w,h,input,stage,mode='reply',thought='short',sceneId='last-call') {
   frame.style.width=w+'px';frame.style.height=h+'px';
-  const terminal=renderUploadTerminal({story:voice?thought:thought.replace(/<p class="story-console__line">.*?<\/p>/,''),voice,title:'First morning',input:input==='touch'?'pointer':input,stage,mode,prompt:'Calling',response:'No reply'});
-  const loaded=new Promise(resolve=>frame.onload=resolve);
-  frame.srcdoc=`<!doctype html><html><head><base href="../../">${css.map(n=>`<link rel="stylesheet" href="src/ui/${n}.css">`).join('')}<style>body{background:#3c3026 url(public/images/mars-landscape.png) center/cover}</style></head><body data-screen="game" data-upload="true" class="${input==='controller'?'controller-connected':input==='touch'?'touch-controls':''}"><main class="play-screen"><div class="interaction-dock">${terminal}</div></main></body></html>`;
+  const story=`<section class="story-console"><div class="story-console__meta"><span class="story-console__mark">&gt;_</span><span class="story-console__time">${mode==='silence'?'2018–2019 · EARTH RECOVERY · EIGHT MONTHS':'2004 · FIRST MORNING · SOL 01'}</span></div>${thoughts[thought]?`<p class="story-console__line">${thoughts[thought]}</p>`:''}</section>`;
+  const terminal=renderUploadTerminal({sceneId:mode==='silence'?sceneId:'',findings:mode==='reply'||mode==='partial'?findings:[],story,voice:thought!=='absent',title:'Discoveries preserved in the mission archive',input:input==='touch'?'pointer':input,stage,mode,prompt:'Calling Opportunity across the silent distance.',response:'No signal is received from Opportunity.'});
+  const loaded=new Promise((resolve,reject)=>{frame.onload=resolve;frame.onerror=()=>reject(new Error('Fixture iframe failed to load'));});
+  frame.srcdoc=`<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><base href="../../">${css.map(n=>`<link rel="stylesheet" href="src/ui/${n}.css">`).join('')}<style>body{background:#3c3026 url(public/images/mars-landscape.png) center/cover}*,*::before,*::after{animation:none!important;transition:none!important}</style></head><body data-screen="game" data-upload="true" class="${input==='controller'?'controller-connected':input==='touch'?'touch-controls':''}"><main class="play-screen"><div class="interaction-dock">${terminal}</div></main></body></html>`;
   await loaded;
+  await frame.contentDocument.fonts.ready;
+  await new Promise(resolve=>frame.contentWindow.requestAnimationFrame(resolve));
   return frame.contentDocument;
 }
-document.querySelector('#preview').onclick=async()=>{await show(1000,650,'controller','ready');status.textContent='Controller preview';};
+const rect=r=>Object.fromEntries(['left','top','right','bottom','width','height'].map(k=>[k,Math.round(r[k]*10)/10]));
+document.querySelector('#preview').onclick=async()=>{const [w,h]=document.querySelector('#viewport').value.split(',').map(Number);await show(w,h,...['input','stage','mode','thought'].map(id=>document.querySelector('#'+id).value));status.textContent=`Preview ${w}×${h}`;};
 document.querySelector('#verify').onclick=async()=>{
-  const failures=[];let count=0;
-  for(const [w,h] of [[1440,900],[1024,768],[1001,700],[1000,700],[944,453],[768,1024],[651,844],[650,844],[390,844],[844,390],[1024,600]]) {
-    for(const input of ['pointer','controller','touch']) for(const stage of ['ready','sending','received']) for(const voice of [true,false]) {
-      const doc=await show(w,h,input,stage,'reply',voice);count++;
-      const dock=doc.querySelector('.interaction-dock'),r=dock.getBoundingClientRect();
-      if(r.left<0||r.right>w+.5||r.top<0||r.bottom>h+.5||dock.scrollWidth>dock.clientWidth+1) failures.push(`${w}x${h} ${input}/${stage}: dock overflow ${JSON.stringify({left:r.left,right:r.right,top:r.top,bottom:r.bottom,scroll:dock.scrollWidth,width:dock.clientWidth})}`);
-      const map=doc.querySelector('.signal-map').getBoundingClientRect();
-      const shell=doc.querySelector('.story-shell').getBoundingClientRect();
-      if(Math.abs((map.left+map.right)/2-w/2)>.5||Math.abs((map.top+map.bottom)/2-h/2)>.5) failures.push(`${w}x${h} ${input}/${stage} voice=${voice}: signal moved from viewport center`);
-      if(map.bottom>shell.top+1)failures.push(`${w}x${h} ${input}/${stage}: diagram overlaps thought`);
-      if(input==='controller'&&stage==='ready'){
-        const controls=doc.querySelector('.signal-controls').getBoundingClientRect();
-        const exciter=doc.querySelector('.signal-exciter').getBoundingClientRect();
-        if(Math.abs((exciter.left+exciter.right-map.left-map.right)/2)>2||controls.bottom>map.top+1) failures.push(`${w}x${h}: triggers detached`);
+  const failures=[];let count=0,scrollCases=0;
+  document.querySelector('#verify').disabled=true;
+  try {
+    // All twelve mode/stage combinations at each size; rotate input, thought
+    // length and recovery epoch instead of taking a redundant Cartesian product.
+    for(const [sizeIndex,[w,h]] of sizes.entries()) {
+      for(const [modeIndex,mode] of modes.entries()) for(const [stageIndex,stage] of stages.entries()) {
+        const variant=(sizeIndex+modeIndex+stageIndex)%3;
+        const input=['controller','pointer','touch'][variant], thought=['long','absent','short'][(variant+modeIndex)%3];
+        const label=`${w}×${h} ${input}/${mode}/${stage} thought=${thought}`;
+        const fail=(message,element)=>failures.push(`${label}: ${message}${element?' '+JSON.stringify(rect(element.getBoundingClientRect())):''}`);
+        const doc=await show(w,h,input,stage,mode,thought,chronology[sizeIndex%3]);count++;
+        const inside=(r)=>r.left>=-.5&&r.right<=w+.5&&r.top>=-.5&&r.bottom<=h+.5;
+        const dock=doc.querySelector('.interaction-dock'),map=doc.querySelector('.signal-map'),shell=doc.querySelector('.story-shell');
+        if(!dock||!map||!shell){fail('missing required fixture element');continue;}
+        if(!inside(dock.getBoundingClientRect())||dock.scrollWidth>dock.clientWidth+1)fail('dock exceeds viewport',dock);
+        const mr=map.getBoundingClientRect(),sr=shell.getBoundingClientRect();
+        if(Math.abs((mr.left+mr.right)/2-w/2)>.5||Math.abs((mr.top+mr.bottom)/2-h/2)>.5)fail('signal map moved from viewport center',map);
+        if(!inside(mr))fail('signal map exceeds viewport',map);
+        if(!inside(sr)||shell.scrollWidth>shell.clientWidth+1)fail(`story shell exceeds bounds (scrollWidth=${shell.scrollWidth}, clientWidth=${shell.clientWidth})`,shell);
+        if(mr.bottom>sr.top+1)fail('signal map overlaps story shell',shell);
+        const controls=doc.querySelector('.signal-controls');
+        if(input==='controller'&&stage==='ready'){
+          if(!controls)fail('controller ready state lacks trigger controls');
+          else {const cr=controls.getBoundingClientRect(),exciter=doc.querySelector('.signal-exciter');
+            if(!inside(cr)||cr.bottom>mr.top+1)fail('trigger controls clipped or overlap map',controls);
+            if(Math.abs((exciter.getBoundingClientRect().left+exciter.getBoundingClientRect().right-mr.left-mr.right)/2)>2)fail('trigger glyphs detached from map center',exciter);
+          }
+        }
+        if(mode==='reply'||mode==='partial'){
+          if(doc.querySelectorAll('.evidence-readings p').length!==2)fail('both geology findings must remain present');
+        }
+        if(mode==='silence'&&doc.querySelectorAll('.recovery-trace li').length!==3)fail('recovery chronology is missing');
+        if(thought==='absent'&&doc.querySelector('.story-console__line'))fail('absent thought rendered a voice line');
+        const button=shell.querySelector('button');
+        if((stage==='received'||stage==='ready'&&input!=='controller')&&!button)fail('expected action button missing');
+        if(shell.scrollHeight>shell.clientHeight+1){
+          scrollCases++;
+          if(!['auto','scroll'].includes(doc.defaultView.getComputedStyle(shell).overflowY))fail('overflowing story has no vertical scroll access');
+          const scrollTarget=controllerScrollTarget(doc.querySelector('main'));
+          if(scrollTarget!==shell)fail('controller targets the wrong scrolling surface');
+          scrollTarget?.scrollBy({top:shell.scrollHeight,behavior:'instant'});
+          if(shell.scrollTop<shell.scrollHeight-shell.clientHeight-1)fail('story cannot scroll to its ending');
+        }
+        if(button){
+          button.scrollIntoView({block:'nearest'});
+          const br=button.getBoundingClientRect(),current=shell.getBoundingClientRect();
+          if(!inside(br)||br.top<current.top-.5||br.bottom>current.bottom+.5)fail('action button cannot be fully reached by scrolling',button);
+        }
+        // A scrolled caption must never drag the viewport instrument with it.
+        if(Math.abs((map.getBoundingClientRect().top+map.getBoundingClientRect().bottom)/2-h/2)>.5)fail('scrolling story shifted the signal map',map);
       }
+      status.textContent=`Checked ${count}`;
     }
-    status.textContent=`Checked ${count}`;
-  }
-  document.querySelector('#results').textContent=failures.join('\n')||'Signal stays at the exact viewport center with and without thoughts in every stage; controls and thoughts remain separate.';
-  status.textContent=failures.length?`FAIL: ${failures.length}/${count}`:`PASS: ${count} responsive layouts`;
+    document.querySelector('#results').textContent=failures.join('\n')||`Map centered; trigger controls visible; geology, recovery chronology and story actions remain reachable. ${scrollCases} profiles exercised story scrolling.`;
+    status.textContent=failures.length?`FAIL: ${failures.length} assertions across ${count} profiles`:`PASS: ${count} responsive profiles`;
+    window.layoutCheckResult={profiles:count,scrollCases,failures};
+  } catch(error){status.textContent='ERROR';document.querySelector('#results').textContent=error.stack;throw error;}
+  finally {document.querySelector('#verify').disabled=false;}
 };
 </script>

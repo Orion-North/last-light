@@ -46,7 +46,8 @@ test('geology separates physical comparison from the single received interpretat
 
 test('routine receipts are wordless and final frame does not predict the loss', () => {
   for (const id of ['marathon','ordinary-day','dust','smaller-world']) assert.equal(line(id,'received'), '');
-  assert.equal(line('last-image','transmit'), 'I’ll send this view.');
+  assert.match(line('last-image','transmit'), /Sun.*dust.*send/);
+  assert.doesNotMatch(line('last-image','transmit'), /last|final|die|never|goodbye/i);
   assert.equal(line('last-image','transmit',{transmitting:true}), '');
 });
 

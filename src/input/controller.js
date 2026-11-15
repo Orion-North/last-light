@@ -187,6 +187,10 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
         const trigger = button(pad, 7) - button(pad, 6);
         onInput({ steer: inputMode !== 'drive' ? 0 : axis(pad.axes?.[0]), throttle: inputMode !== 'drive' ? 0 : Math.abs(trigger) > 0.05 ? trigger : -axis(pad.axes?.[1]),
           lookX: inputMode === 'uplink' ? 0 : axis(pad.axes?.[2]), lookY: inputMode === 'uplink' ? 0 : axis(pad.axes?.[3]), leftTrigger: button(pad, 6), rightTrigger: button(pad, 7), connected: true, actualSample: true });
+        if (inputMode === 'uplink') {
+          const scroll = axis(pad.axes?.[3]) * 420 * delta;
+          if (scroll) onScroll(scroll);
+        }
         if (inputMode === 'uplink' && uplink.active && !uplink.charged && Math.max(uplink.leftTrigger, uplink.rightTrigger) > .03 && now - uplinkAt < 400 && now - lastChargePulse >= 160) {
           if (feedback('charge')) lastChargePulse = now;
         }

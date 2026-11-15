@@ -738,3 +738,24 @@ readings/recovery dates into the independently scrolling bottom story area.
 Verified exact map-center coordinates across 198 responsive combinations, including
 present/absent thoughts and all three transmission stages. Focused upload tests,
 source/asset checks and build pass. Publishing web-only v0.18.2.
+
+## PLAY-21 — broader critical playtest and fixes
+
+Shared improve/playtest-21 with disjoint ownership. Root owns main integration,
+CSS fixes, real browser/controller playtesting, release docs and publication.
+- INPUT-21 / Sol: read-only review of controller integration, pause/reconnect,
+  scrolling/focus and save continuity. Report reproducible defects and fixes.
+- STORY-21 / Sol: read-only critical review of player goals, tools, story sequence,
+  signal meaning and ending; prioritize concrete confusion visible in current code.
+- LAYOUT-21 / Sol: tests/browser/sending-layout.html only. Expand layout checks
+  to long/absent thoughts, geology findings, recovery chronology, every send mode,
+  bottom scroll access and narrow/short screens. Report failures; no runtime edits.
+
+
+PLAY-21 complete: STORY-21 and LAYOUT-21 delivered scoped reviews/fixture changes.
+INPUT-21 could not run because of an agent usage limit; root performed the input
+review and reproduced/fixed wrong scroll target and missing pointer tool control
+on disconnect. Integrated narrative improvements, 120 browser layout profiles,
+short-screen receipt scroll, geology continuity and the consecutive late-game
+sequence through saved ending/journal. Engine/source/build checks pass. Publishing
+v0.19.0; physical feedback and a fresh uninterrupted playthrough remain unverified.

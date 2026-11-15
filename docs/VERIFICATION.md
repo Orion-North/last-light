@@ -569,3 +569,39 @@ The browser fixture now checks the map's exact horizontal and vertical center,
 not just overflow: 11 sizes × 3 input classes × 3 stages × thought present/absent
 = 198 passing cases. Upload rendering tests (14), source/assets and build pass.
 The fixture preview is retained as outputs/last-light-v18-2-centered.png.
+
+
+## v0.19.0 — controller continuity and story clarity
+
+Fixed controller scrolling to use the actual bottom reading surface after the
+centered-signal change. Right stick can scroll while preparing an uplink; pause
+still blocks input. Long receipts bring the Continue action into view, and show
+a controller reading hint when overflowing. Disconnecting during geology now
+renders the pointer tool control without losing completed measurements; reconnect
+restores controller prompts. The final-image thought names the obscured Sun and
+remaining light, Earth buttons distinguish preparing a call from transmitting it,
+and the ending displays the meaning of the selected archive memory.
+
+Verification:
+- All 24 engine test files pass, including new scroll-target and uplink input
+  tests. Final source/assets check passes (56 JS files, 12 scene contracts, NASA
+  model textures and vendor license); static build and diff whitespace check pass.
+- Expanded real-browser layout fixture passes 120 responsive profiles across ten
+  sizes, all four transmission modes, three input classes and varied narrative
+  lengths/stages. All 49 overflowing profiles use the production scroll-target
+  helper and reach their action without shifting the centered signal apparatus.
+- Real game with simulated controller: resumed a seeded one-sample checkpoint,
+  disconnected/reconnected, confirmed preserved measurement and pointer tool
+  availability, measured the second surface, compared and transmitted findings.
+  Pausing a fully charged squeeze reset commitment and required a fresh gesture.
+- At 390px game height, right stick scrolled an actual received geology story
+  from scrollTop 97 to 0 and back to 97; Continue remained reachable.
+- Played consecutively from a seeded final-image send through partial receipt,
+  Earth handoff, unanswered recovery, eight-month archive selection, final call,
+  and ending. The non-default rover-story selection appears in both ending and
+  journal; closing/reopening the saved game retains it. No console errors on this
+  fixture run. Thin ending scrollbar visually checked in the real game.
+
+Limits: seeded checkpoints cover targeted paths, not a fresh uninterrupted full
+playthrough. Controller input was simulated; physical haptics and human listening
+were not tested. Screenshot outside repository: outputs/last-light-v19-ending.jpg.

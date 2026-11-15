@@ -172,3 +172,7 @@ body[data-screen="game"][data-upload="true"] .interaction-dock {
   .upload-terminal[data-presentation="story"] .signal-controls { bottom:calc(100% + 8px);gap:2px; }
   .upload-terminal[data-presentation="story"] > .story-shell { bottom:12px;max-height:calc(50svh - 84px);padding-block:8px; }
 }
+
+.archive-choice-echo { max-width:50ch;margin:6px 0 0;font:13px/1.6 var(--sans);color:#d6c6ad;letter-spacing:0; }
+
+.brief-ending { scrollbar-width:thin;scrollbar-color:#caa77a66 transparent; }

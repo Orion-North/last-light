@@ -9,6 +9,7 @@ import { createLandscape } from './ui/landscape.js';
 import { restoreSession, serializeSession, restoreCheckpoint } from './session.js';
 import { createController } from './input/controller.js';
 import { currentObjective, inputMode } from './ui/objectives.js';
+import { controllerScrollTarget } from './ui/scroll-target.js';
 import { renderGeologyPanel } from './ui/geology-panel.js';
 import { renderUploadTerminal } from './ui/upload-terminal.js';
 import { createSqueeze } from './engine/squeeze.js';
@@ -126,7 +127,11 @@ function restoreWork() {
   }
 }
 function focusContent(selector = 'h1') {
-  requestAnimationFrame(() => app.querySelector(selector)?.focus({ preventScroll: true }));
+  requestAnimationFrame(() => {
+    const target=app.querySelector(selector);
+    const reading=target?.closest('.story-shell');
+    target?.focus({preventScroll:!(reading && reading.scrollHeight>reading.clientHeight+1)});
+  });
 }
 function setExploring(value) {
   exploring = value;
@@ -250,6 +255,7 @@ function updateInputHint() {
   else hints=screen==='game' && state.phase!=='choose'?'':row('move','Select','Tab')+row('primary','Confirm','Enter');
   if(!contacting && !investigating && !transmitting)hints+=row('journal','Memories','J');
   if(settings.touch&&!pad) hints=contacting?'<span class="controller-hint"><kbd>·</kbd>Tap Send</span>':investigating?'<span class="controller-hint"><kbd>↔</kbd>Drag to look</span><span class="control-rest">Hold still to record</span>':moving?'<span class="controller-hint"><kbd>↔</kbd>Drag to look</span>':'<span class="controller-hint"><kbd>·</kbd>Tap to choose</span>';
+  if(controllerConnected && !investigating && controllerScrollTarget(app)) hints+=row('look','Read more','Scroll');
   $('#input-hint').innerHTML=hints;
 }
 
@@ -373,7 +379,7 @@ function renderEnding() {
   view?.setWaypoint?.(null);
   controller?.setTerrain({moving:false,blocked:false,power:0});
   const scene = scenes.at(-1);
-  app.innerHTML = `<section class="ending-screen brief-ending"><p class="eyebrow">OPPORTUNITY · 2004–2018</p><h1 class="ending-title" tabindex="-1">You were here.</h1><p class="inner-voice">${escape(scene.subtitle)}</p><div class="mission-numbers"><div><strong>90</strong><span>SOLS PLANNED</span></div><div><strong>5,111</strong><span>SOLS TO LAST CONTACT</span></div><div><strong>${state.memories.length}</strong><span>MEMORIES WITH YOU</span></div></div><ul class="memory-echoes" aria-label="Moments you observed and chose">${endingMemories(state.memories).map(m=>`<li>${escape(m.title)}</li>`).join('')}</ul><p class="ending-fact">Opportunity revealed evidence of ancient water on Mars. NASA declared the mission complete on February 13, 2019.</p><div class="ending-actions"><button class="primary-button" data-action="journal">Open your memories ◇</button><button class="secondary-button" data-action="download">Keep them ↓</button><button class="quiet-button" data-action="restart">Begin again</button></div></section>`;
+  app.innerHTML = `<section class="ending-screen brief-ending"><p class="eyebrow">OPPORTUNITY · 2004–2018</p><h1 class="ending-title" tabindex="-1">You were here.</h1><p class="inner-voice">${escape(scene.subtitle)}</p><div class="mission-numbers"><div><strong>90</strong><span>SOLS PLANNED</span></div><div><strong>5,111</strong><span>SOLS TO LAST CONTACT</span></div><div><strong>${state.memories.length}</strong><span>MEMORIES WITH YOU</span></div></div><ul class="memory-echoes" aria-label="Moments you observed and chose">${endingMemories(state.memories).map(m=>`<li>${escape(m.title)}${m.sceneId==='months'?`<p class="archive-choice-echo">${escape(m.text)}</p>`:''}</li>`).join('')}</ul><p class="ending-fact">Opportunity revealed evidence of ancient water on Mars. NASA declared the mission complete on February 13, 2019.</p><div class="ending-actions"><button class="primary-button" data-action="journal">Open your memories ◇</button><button class="secondary-button" data-action="download">Keep them ↓</button><button class="quiet-button" data-action="restart">Begin again</button></div></section>`;
   refreshControllerPrompts();
   focusContent();
 }
@@ -500,7 +506,7 @@ function act(action) {
   if (cue) { sound.cue(cue); controller?.feedback(cue); }
   if (action.type === 'OBSERVE') {
     if([1,2].includes(state.sceneIndex))view?.inspect?.();
-    view?.setWaypoint?.(null);announce('Observation recorded. Ready to send.');
+    view?.setWaypoint?.(null);announce(scenes[state.sceneIndex].receiptMode==='archive'?'Archive open. Choose what to carry forward.':scenes[state.sceneIndex].signal===0?'Recovery channel ready.':'Observation recorded. Ready to send.');
     const record=recordedChoice(scenes[state.sceneIndex],state);
     if(record)state=transition(state,{type:'CHOOSE',choiceId:record.id},scenes);
   }
@@ -794,7 +800,7 @@ controller=createController({
     if(!investigating || !['arrowup','arrowdown','arrowleft','arrowright'].some(key=>pressed.has(key))) view?.setLook?.({x:screen==='game'&&!state.paused&&state.phase==='observe'?input.lookX:0,y:screen==='game'&&!state.paused&&state.phase==='observe'?input.lookY:0});
   },
   onAction:controllerAction,
-  onScroll(deltaY) {const target=document.querySelector('dialog[open]') || app.querySelector('.brief-ending,.interaction-dock');target?.scrollBy({top:deltaY,behavior:'instant'});},
+  onScroll(deltaY) {controllerScrollTarget(app,document.querySelector('dialog[open]'))?.scrollBy({top:deltaY,behavior:'instant'});},
   onStatus(status) {
     const connectionChanged=controllerConnected!==status.connected;
     const disconnected = controllerConnected && !status.connected;
@@ -810,7 +816,7 @@ controller=createController({
     $('#controller-status').textContent=status.connected ? `${detectedFamily==='playstation'?'PlayStation controller':detectedFamily==='xbox'?'Xbox controller':'Controller'} connected · ${status.haptics?'vibration available':'vibration unavailable in this browser'}` : 'Connect a controller, then press any button.';
     inputDevice = status.connected ? (detectedFamily==='playstation' ? 'dualsense' : 'gamepad') : settings.touch ? 'touch' : 'keyboard';
     refreshControllerPrompts();
-    if(connectionChanged && screen==='game' && ['transmit','received'].includes(state.phase))renderGame();
+    if(connectionChanged && screen==='game' && (geologyActive || ['transmit','received'].includes(state.phase)))renderGame();
     if(contacting)resetUpload();
     $('#adaptive-connect').disabled=!status.adaptiveSupported || status.adaptiveOpen;
     $('#adaptive-disconnect').hidden=!status.adaptiveOpen;
@@ -824,6 +830,7 @@ $('#haptics-setting').checked=settings.haptics;
 $('#haptics-setting').addEventListener('change',event=>{settings.haptics=event.target.checked;controller.setHaptics(settings.haptics && !padPreviewMuted);applySettings();});
 $('#adaptive-connect').addEventListener('click',()=>controller.connectAdaptiveTriggers());
 $('#adaptive-disconnect').addEventListener('click',()=>controller.disconnectAdaptiveTriggers());
+window.addEventListener('resize',updateInputHint);
 window.addEventListener('blur',()=>{padInput={throttle:0,steer:0};pause();});
 window.addEventListener('focus',resume);
 window.addEventListener('pagehide',()=>{storyWriter.stop();pause();controller.disconnectAdaptiveTriggers();});

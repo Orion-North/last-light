@@ -5,10 +5,9 @@ a controller is the primary target. The Windows/Electron edition and its build
 workflow are removed; earlier native-edition milestones below are historical.
 Browser Gamepad rumble and optional USB WebHID trigger effects remain supported.
 
-**v0.18 focus:** a layered, original cinematic score: connected organ/string
-harmonies, low foundation, evolving pulse and stereo depth. Preserve the familiar
-send/reply melody and the deliberate absence of an answer. See SOUNDTRACK.md and
-VERIFICATION.md for composition and tested scope.
+**v0.19 focus:** controller scrolling and disconnect recovery, readable short-screen
+receipts, clearer Earth recovery actions, and a visible consequence for the archive
+choice. The cinematic score and centered sending instrument remain intact.
 
 **Pitch:** You are Opportunity. Every day you wake, look, investigate, and send
 something home. As a dust storm erases the sunlight, familiar routines become
