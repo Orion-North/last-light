@@ -198,10 +198,9 @@ Earth's recovery effort, and the personalized ending.
 - Production page checked central objective/story hierarchy, larger discovered
   science, desktop instrument fit, 820×1180 tablet layout and button/Enter sending
   while muted with reduced motion. Viewport reset; no captured warnings/errors.
-- Windows shell policy tests and launch/package checks are recorded in
-  handoffs/WINDOWS-08.md. CI must pass the actual Windows executable smoke before
-  publishing the ZIP. USB hardware, force feel and unsigned-app behavior require
-  the user's Windows playtest. No native HD haptic audio is claimed.
+- Historical Windows shell policy and launch/package checks covered the former
+  preview. That wrapper and its workflow have since been removed; current
+  verification targets the web game. No native HD haptic audio was claimed.
 
 ## v0.9 compression, release, and trigger crescendo — November 14, 2026
 

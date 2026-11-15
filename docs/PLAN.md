@@ -1,5 +1,10 @@
 # Last Light — short project plan
 
+**Current platform scope (November 14, 2026): web only.** A desktop browser with
+a controller is the primary target. The Windows/Electron edition and its build
+workflow are removed; earlier native-edition milestones below are historical.
+Browser Gamepad rumble and optional USB WebHID trigger effects remain supported.
+
 **Pitch:** You are Opportunity. Every day you wake, look, investigate, and send
 something home. As a dust storm erases the sunlight, familiar routines become
 harder to complete. The final silence hurts because the player remembers what

@@ -1,4 +1,4 @@
-> Historical checklist: the user withdrew the iPad target on November 14, 2026. Current development targets desktop with a controller.
+> Historical checklist: the user withdrew the iPad target on November 14, 2026. Current development targets desktop browsers with a controller; native editions have been removed.
 
 # iPad Air playtest
 
@@ -34,7 +34,7 @@ need this real-device check; desktop viewport tests do not establish Safari FPS.
 
 DualSense controls may be used if iPadOS exposes the gamepad. Vibration depends
 on browser support; USB adaptive triggers and native HD haptics are not promised
-on iPad. The deferred desktop edition is unchanged.
+on iPad. The project is now web-only.
 
 Device dimensions reference: [Apple's M4 iPad Air specifications](https://support.apple.com/en-us/126471).
 The 820×1180 and 1180×820 CSS test sizes approximate its 1640×2360 display at 2×;
@@ -46,5 +46,5 @@ Choose a memory, release both triggers, then squeeze L2 + R2 together. Each side
 of the instrument should respond to its trigger; one trigger alone must not send.
 A full squeeze held briefly sends once. Pause midway and resume while held: it
 should ask you to release both again. No touchpad click is used. iPad does not
-provide this project's USB adaptive-resistance path; use the Windows preview
-with an original DualSense by USB to evaluate that separately.
+provide this project's USB adaptive-resistance path; use a compatible desktop
+Chromium browser with an original DualSense by USB to evaluate that separately.

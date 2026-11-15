@@ -105,12 +105,12 @@ Curvature supplies roughness; incline supplies a simplified wheel-load proxy in
 blocked cue. Telemetry updates during movement about every 80 ms; missing updates
 stop feedback. The audio score is not routed into the controller as haptic audio.
 
-## Windows preview and deferred native haptics
+## Web-only support
 
-The user has now requested a Windows test build. The portable Electron edition
-bundles this game and exposes the existing optional USB resistance path; see
-[Windows setup](WINDOWS.md). Native USB audio waveforms and HD haptic routing
-remain deferred. A desktop wrapper alone does not provide those capabilities.
+The Windows/Electron preview has been removed. Play in a desktop browser using
+the GitHub Pages link. Browser Gamepad rumble and optional original-DualSense
+USB WebHID trigger effects remain available in compatible browsers. Native USB
+audio waveforms and PS5 HD haptic routing are not implemented.
 
 ## v0.4 controller-first draft
 

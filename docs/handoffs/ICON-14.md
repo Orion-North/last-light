@@ -1,3 +1,6 @@
+> Historical handoff: Windows packaging and its ICO derivative have since been
+> removed. The SVG/PNG browser icons remain.
+
 # ICON-14 — Last Light application mark
 
 Owned changes: `public/icons/**`, `desktop/main.js`, the `package:win` icon option in `desktop/package.json`, this handoff. Package version is preserved.

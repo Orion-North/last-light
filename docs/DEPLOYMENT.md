@@ -2,6 +2,9 @@
 
 Repository: [Orion-North/last-light](https://github.com/Orion-North/last-light).
 
+GitHub Pages is the only release target. The Windows/Electron wrapper, portable
+ZIP distribution and Windows build workflow have been removed.
+
 GitHub Pages is the release target requested by the user. In repository Settings
 → Pages, select **GitHub Actions** as the source. The checked-in workflow runs
 syntax/content checks and the behavior tests, builds `dist/`, then deploys that

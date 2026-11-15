@@ -8,8 +8,6 @@ textured rover model, a navigable original Mars environment, an original adaptiv
 score, and a complete three-act story. No account or AI API is needed by the game
 itself. A hosting provider may apply its own access gate.
 
-[Download the Windows preview](https://github.com/Orion-North/last-light/releases/download/windows-preview/LastLight-Windows-x64.zip) · [Windows setup](docs/WINDOWS.md)
-
 ## Run locally
 
 Install Node.js 22 or newer (development used 24.22.1), then:
@@ -39,7 +37,7 @@ the detailed NASA model alone is 11.91 MB. The optional poster adds about 2 MB.
 
 ## Play
 
-Desktop browser and Windows, played with a controller, are the primary target.
+Web-only: a desktop browser with a controller is the primary target.
 Existing keyboard/touch fallbacks remain available.
 
 - Only the first view and Earth archive ask for a text choice. Other records follow your observations. The later storm recalls your actual first horizon/ground memory.

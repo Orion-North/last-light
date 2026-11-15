@@ -33,6 +33,8 @@
 
 ## Product constraints
 
+- Web-only: maintain the browser game and GitHub Pages deployment. The Windows
+  wrapper and native distribution have been removed at the user’s request.
 - Follow the short plan: a finite three-act browser experience, no runtime AI or backend.
 - Keep history sourced in `docs/SOURCES.md`; label invented thoughts, compressed
   timelines, and simplified power behavior. Never present invented dialogue as
