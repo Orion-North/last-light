@@ -10,6 +10,7 @@ import { restoreSession, serializeSession, restoreCheckpoint } from './session.j
 import { createController } from './input/controller.js';
 import { currentObjective, inputMode } from './ui/objectives.js';
 import { controllerScrollTarget } from './ui/scroll-target.js';
+import { controllerMenuTargets } from './ui/controller-navigation.js';
 import { renderGeologyPanel } from './ui/geology-panel.js';
 import { renderUploadTerminal } from './ui/upload-terminal.js';
 import { createSqueeze } from './engine/squeeze.js';
@@ -801,7 +802,7 @@ canvas.addEventListener('rover-move',event=>{
 });
 function menuTargets() {
   const root=document.querySelector('dialog[open]') || app;
-  return [...root.querySelectorAll('button:not([disabled]),input:not([disabled]),summary,a[href]')].filter(el=>!el.hidden && !el.closest('[hidden],[inert]') && el.getClientRects().length);
+  return controllerMenuTargets(root);
 }
 function controllerAction(action) {
   document.body.dataset.input='controller';

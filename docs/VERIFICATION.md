@@ -701,3 +701,7 @@ Screenshot: outputs/last-light-tight-hitboxes.jpg.
 - Visual checks: tools at 1280×720 and 960×540, centered send plus journal at 960×540, scrollable ending below header at 960×480, journal/settings at 1440×900. No overlaps in these views.
 - All 25 engine test files, 62 JS syntax checks, 12 scene contracts, static build and diff whitespace check passed. Hardware vibration and physical-controller feel are not established by the simulated Gamepad.
 - During rapid test-fixture scene replacements, aborted old GLB loads logged texture errors; one premature Start click in the fixture also failed before the ready guard was added. Completed scene checks rendered successfully.
+
+## JOURNAL-31 — collapsed-entry navigation correction
+
+UI-30 did not cover moving between multiple collapsed entries and did not fix that reported problem. Reproduced it with eight journal entries: Down stayed on the first collapsed summary. Fixed target filtering to exclude hidden contents even when the browser returns layout rectangles. In the actual renderer with simulated Gamepad, verified six sequential Down steps, seven Up steps, and held left-stick traversal with all eight entries collapsed; selection and automatic scrolling work without expanding earlier entries. New regression tests cover closed entries, expanding/re-collapsing, and nested closed ancestors. All 26 engine test files, source checks and static build pass.
