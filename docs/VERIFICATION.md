@@ -619,3 +619,24 @@ geology scene (keyboard Enter). Visually inspected the first export: rendered
 terrain and rover, no UI, no blank buffer. The second download left the game at
 the same receipt with Continue available. Corner placement inspected; no console
 errors. Source/asset checks, static build and diff whitespace check pass.
+
+
+## v0.19.2 — readable mission text and visible photo capture
+
+Main mission/action/trigger prompts are 18px; thoughts 18–22px, mission dates
+12–13px, controller hints 14px and supporting sample readings 15–16px. Retain
+transparent presentation, move the footer into flow to prevent collisions, and
+keep the signal independently centered. Photo capture now plays a 420ms dark
+shutter over the DOM and shows a temporary visible/live success or failure
+message. Export remains the clean WebGL view. A small original SVG rover replaces
+the star beside Last Light, as requested.
+
+Sol provided an independent read-only typography/layout review. Browser checks
+initially caught narrow-screen overflow from the enlarged Deep Space Network
+label; allowing wrapping fixed it. All 120 responsive profiles pass, with 71
+scrolling cases and exact signal centers retained. Real-game receipt/action
+layout and travel objective (computed 18px) visually checked. Capturing visibly
+closes/reopens the shutter, shows Photo downloaded, clears feedback, and leaves
+the receipt unchanged; Continue then progresses normally. No console errors.
+Source/assets checks and static build pass. No physical-controller or fresh full
+playthrough claim. Screenshot: outputs/last-light-readable-ui.jpg.

@@ -770,3 +770,15 @@ actual browser download and its image, then publish the web update.
 
 PHOTO-22 complete: actual mouse/keyboard downloads verified; valid PNG output,
 no game advancement, no console errors. Source/build checks pass. v0.19.1.
+
+## READ-23 — readable actions and photo feedback
+
+Root owns story-console.css, main.js, index.html, release metadata and browser QA.
+REVIEW-23 / Sol owns read-only review of typography, photo feedback and small-screen
+risks; no edits. Verify larger mission/actions, stable signal and downloaded photo
+feedback without boxes or changing gameplay.
+
+READ-23 complete: integrated Sol critique, enlarged mission/actions without
+shrinking them on short screens, fixed label wrapping, verified 120 profiles
+and actual travel/receipt views. Added dark shutter and visible photo feedback.
+User steering also replaced the header star with an original rover SVG. v0.19.2.

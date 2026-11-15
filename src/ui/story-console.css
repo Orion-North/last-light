@@ -13,34 +13,34 @@ body[data-screen="game"][data-tool="true"] .interaction-dock {
   box-shadow:none;position:relative;text-shadow:0 2px 5px #000,0 0 20px #0009; }
 .story-console { --terminal-ink:#efd0a2;color:#fff0d9; }
 .story-console__meta { display:flex;align-items:center;justify-content:space-between;gap:16px;
-  font:10px/1.5 var(--mono);letter-spacing:.07em;color:var(--terminal-ink); }
+  font:13px/1.5 var(--mono);letter-spacing:.04em;color:var(--terminal-ink); }
 .story-console__channel { display:flex;gap:9px;align-items:center;flex-shrink:0;text-transform:uppercase; }
 .story-console__channel i { width:5px;height:5px;background:currentColor;box-shadow:0 0 9px #e6c18a44; }
-.story-console__time { text-align:right;color:#b8c3c6;font-size:9px;letter-spacing:.02em; }
-.story-console__line { position:relative;margin:12px 0 0;font:400 clamp(15px,1.55vw,19px)/1.65 var(--mono);
-  text-align:left;letter-spacing:-.035em;min-height:3.3em;text-wrap:pretty; }
+.story-console__time { text-align:right;color:#d2dce0;font-size:13px;letter-spacing:.02em; }
+.story-console__line { position:relative;margin:12px 0 0;font:400 clamp(18px,1.8vw,22px)/1.55 var(--mono);
+  text-align:left;letter-spacing:-.035em;min-height:3.1em;text-wrap:pretty; }
 .story-console__reserve { visibility:hidden; }
 .story-console__typed { position:absolute;inset:0; }
 .story-console.is-writing .story-console__typed::after { content:'▍';color:var(--terminal-ink);font-size:.85em; }
 .story-actions { margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap; }
-.story-actions .primary-button,.story-shell .upload-terminal__button { min-height:40px;padding:10px 16px;font:12px/1.35 var(--sans); }
-.story-actions .objective-line { display:flex;align-items:center;justify-content:space-between;gap:20px;width:100%;margin:0;font:12px/1.45 var(--sans); }
+.story-actions :is(.primary-button,.secondary-button),.story-shell .upload-terminal__button { min-height:48px;padding:12px 18px;font:600 18px/1.4 var(--sans); }
+.story-actions .objective-line { display:flex;align-items:center;justify-content:space-between;gap:20px;width:100%;margin:0;font:18px/1.45 var(--sans); }
 .story-actions .objective-line strong { font-weight:500;color:#f1d5ae; }
-.story-actions #objective-distance { color:#c5d2d6;font:11px/1.45 var(--mono); }
-.story-shell .dock-footer { position:absolute;right:18px;bottom:17px; }
+.story-actions #objective-distance { color:#c5d2d6;font:14px/1.45 var(--mono); }
+.story-shell .dock-footer { position:static;justify-content:flex-end;margin-top:10px; }
 .story-shell .dock-footer button { font-size:10px;min-height:32px;padding:6px; }
 .story-actions .choices { width:100%;margin:0; }
 .story-actions .choice { min-height:66px!important;padding-block:12px!important; }
-.story-actions .choice-label { font:14px/1.4 var(--sans); }
-.story-actions .choice-detail { font-size:11px; }
+.story-actions .choice-label { font:18px/1.4 var(--sans); }
+.story-actions .choice-detail { font-size:15px; }
 .story-actions .geology-tool-panel,.story-actions .survey-instrument { width:100%; }
-.story-actions .tool-instruction,.story-actions .discovery-line { text-align:left;font:15px/1.5 var(--sans);margin:0 0 10px; }
+.story-actions .tool-instruction,.story-actions .discovery-line { text-align:left;font:18px/1.5 var(--sans);margin:0 0 10px; }
 .story-actions .tool-actions { margin-top:10px; }
 .story-actions .sample-comparison { margin:6px 0; }
-.story-actions .sample-reading strong { font-size:14px; }
+.story-actions .sample-reading strong { font-size:16px; }
 .play-screen > .survey-aim { position:fixed;z-index:4;left:calc(50% - 80px);top:34svh;bottom:auto;margin:0;pointer-events:none; }
 .story-actions .survey-ticks { justify-content:flex-start; }
-.story-actions .pace-note { text-align:left;font:11px/1.5 var(--sans); }
+.story-actions .pace-note { text-align:left;font:14px/1.5 var(--sans); }
 .story-actions .quiet-button[data-action="assist-observation"] { font-size:10px; }
 .story-shell .geology-tool-panel { text-align:left; }
 .story-shell .tool-readout { justify-content:flex-start; }
@@ -53,8 +53,8 @@ body[data-screen="game"][data-tool="true"] .interaction-dock {
 .upload-terminal[data-presentation="story"] .signal-world { width:96px;gap:9px; }
 .upload-terminal[data-presentation="story"] .planet { width:48px;height:48px; }
 .upload-terminal[data-presentation="story"] .planet--earth { width:40px;height:40px; }
-.upload-terminal[data-presentation="story"] .signal-world>span { font-size:10px; }
-.upload-terminal[data-presentation="story"] .signal-world small { font-size:7px; }
+.upload-terminal[data-presentation="story"] .signal-world>span { font-size:12px; }
+.upload-terminal[data-presentation="story"] .signal-world small { font-size:9px;white-space:normal;max-width:100%; }
 .upload-terminal[data-presentation="story"] .signal-path { margin-top:-40px; }
 .upload-terminal[data-presentation="story"] .signal-path__line { background:repeating-linear-gradient(90deg,#dce4e085 0 4px,transparent 4px 10px); }
 .upload-terminal[data-presentation="story"] .signal-path__wave { opacity:calc(.3 + var(--pressure)*.65); }
@@ -65,13 +65,13 @@ body[data-screen="game"][data-tool="true"] .interaction-dock {
 .upload-terminal[data-presentation="story"] .upload-terminal__guidance { max-width:none;margin:0;text-align:center; }
 .upload-terminal[data-presentation="story"] .upload-terminal__guidance progress { width:180px;height:3px;margin-top:8px; }
 .upload-terminal[data-presentation="story"] .upload-terminal__footer { justify-content:flex-end;min-height:40px;margin-top:12px; }
-.upload-terminal[data-presentation="story"] .upload-terminal__instruction { font:13px/1.4 var(--sans);color:#fff0d9; }
+.upload-terminal[data-presentation="story"] .upload-terminal__instruction { font:600 18px/1.4 var(--sans);color:#fff0d9; }
 body[data-upload="true"][data-screen="game"] .play-screen { background:linear-gradient(transparent 20%,#050c1622 40%,#050c1699 78%,#050c16b3); }
-.story-receipt { margin:12px 0 0;color:#bfdce9;font:10px var(--mono);letter-spacing:.1em; }
+.story-receipt { margin:12px 0 0;color:#bfdce9;font:14px/1.5 var(--mono);letter-spacing:.05em; }
 .story-receipt[data-mode="silence"],.story-receipt[data-mode="partial"] { color:#e3bf96; }
 /* Introductions and time jumps use exactly the same reading position. */
 .mission-briefing .briefing-console { position:absolute;left:50%;transform:translateX(-50%);bottom:32px;width:min(850px,calc(100vw - 100px)); }
-.briefing-console .briefing-skip { position:static;margin-left:auto;display:block;font-size:11px;padding:8px 12px; }
+.briefing-console .briefing-skip { position:static;margin-left:auto;display:block;font-size:16px;min-height:44px;padding:10px 14px; }
 .mission-briefing::before,.mission-briefing::after { height:0; }
 .handover-link { top:26%; }
 @media(max-width:1000px) {
@@ -84,8 +84,8 @@ body[data-upload="true"][data-screen="game"] .play-screen { background:linear-gr
   body[data-screen="game"] .interaction-dock,body[data-screen="game"][data-upload="true"] .interaction-dock,body[data-screen="game"][data-tool="true"] .interaction-dock { left:12px;right:12px;bottom:100px!important;width:auto;max-height:calc(100svh - 180px); }
   .story-shell { padding:14px 16px; }
   .story-console__meta { flex-wrap:wrap;gap:4px; }
-  .story-console__time { max-width:none;text-align:left;font-size:8px; }
-  .story-console__line { font-size:14px;line-height:1.55; }
+  .story-console__time { max-width:none;text-align:left;font-size:12px; }
+  .story-console__line { font-size:18px;line-height:1.55; }
   .story-actions .objective-line { align-items:flex-start;flex-direction:column;gap:5px; }
   .mission-briefing .briefing-console { bottom:24px;width:calc(100vw - 28px); }
   .upload-terminal[data-presentation="story"] .signal-map { height:100px; }
@@ -93,7 +93,7 @@ body[data-upload="true"][data-screen="game"] .play-screen { background:linear-gr
 }
 @media(max-height:620px) and (min-width:651px) {
   .story-shell { padding-block:12px; }
-  .story-console__line { font-size:14px;min-height:3.1em;line-height:1.55;margin-top:7px; }
+  .story-console__line { font-size:18px;min-height:3.1em;line-height:1.55;margin-top:7px; }
   .story-actions { margin-top:8px; }
   .upload-terminal[data-presentation="story"] .signal-map { height:96px; }
   .upload-terminal[data-presentation="story"] .upload-terminal__apparatus { padding-bottom:10px; }
@@ -104,7 +104,7 @@ body[data-upload="true"][data-screen="game"] .play-screen { background:linear-gr
 .story-voice-absent .story-console__line { display:none; }
 .story-handover { font:400 clamp(20px,2.5vw,30px)/1.45 var(--sans);margin:12px 0;color:#e0edf0; }
 .story-handover small { display:block;font:13px/1.5 var(--sans);color:#c6d2d7;margin-top:8px; }
-.story-operational { font:14px/1.5 var(--sans);color:#dbe5e9;margin:12px 0; }
+.story-operational { font:17px/1.5 var(--sans);color:#dbe5e9;margin:12px 0; }
 
 body[data-screen="game"] #world-controls { grid-template-columns:44px 44px 44px; }
 body[data-screen="game"] #journal-toggle[hidden] { display:none; }
@@ -175,4 +175,28 @@ body[data-screen="game"][data-upload="true"] .interaction-dock {
 
 .archive-choice-echo { max-width:50ch;margin:6px 0 0;font:13px/1.6 var(--sans);color:#d6c6ad;letter-spacing:0; }
 
-.brief-ending { scrollbar-width:thin;scrollbar-color:#caa77a66 transparent; }
+.brief-ending,.upload-terminal > .story-shell { scrollbar-width:thin;scrollbar-color:#caa77a66 transparent; }
+
+/* Keep task information readable from a controller viewing distance. */
+#input-hint .controller-hint { font-size:14px;line-height:1.4; }
+#input-hint .control-rest { font-size:13px;line-height:1.4; }
+body[data-screen="game"] #waypoint-hud:not([hidden]) { font-size:14px;max-width:250px; }
+.story-shell .sample-reading>span { font-size:13px;color:#d2e0e5; }
+.story-shell .evidence-readings p { font-size:15px;line-height:1.5; }
+.story-shell .evidence-readings span { font-size:12px;color:#d2e0e5; }
+.story-shell .recovery-trace { font-size:12px; }
+.brief-ending .ending-actions button { font-size:16px;min-height:48px; }
+
+/* A short dark shutter, with an unboxed confirmation beside the camera. */
+.photo-shutter { position:fixed;inset:0;z-index:20;pointer-events:none;overflow:hidden; }
+.photo-shutter span { position:absolute;left:0;width:100%;height:50%;background:#080b10; }
+.photo-shutter span:first-child { top:0;transform:translateY(-100%); }
+.photo-shutter span:last-child { bottom:0;transform:translateY(100%); }
+.photo-feedback { position:fixed;top:82px;right:32px;z-index:21;margin:0;
+  max-width:calc(100vw - 48px);font:500 17px/1.5 var(--sans);color:#fff1d8;
+  text-shadow:0 2px 5px #000,0 0 18px #000;pointer-events:none; }
+.photo-feedback[data-state="saved"]::before { content:'✓ ';color:#d7e9d0; }
+.photo-feedback[data-state="error"] { color:#ffcfba; }
+@media(max-width:650px) { .photo-feedback { top:72px;right:20px; } }
+
+.brand .brand-rover { width:32px;height:30px;flex:0 0 32px; }

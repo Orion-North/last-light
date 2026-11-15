@@ -588,9 +588,22 @@ app.addEventListener('focusin',event=>{document.body.classList.toggle('controlle
 app.addEventListener('pointerover',previewChoice);
 
 $('#credits-content').innerHTML = `<p>${escape(credits)}</p><h3>Built to remember</h3><p>Original story and procedural sound. The interactive terrain is an artistic reconstruction, not a surveyed map. Rover model: NASA/JPL-Caltech. Ground and rock surfaces use CC0 terrestrial scans by Rob Tuytel, Dario Barresi and Dimitrios Savva / Poly Haven, artistically adapted for Mars. Rendering: Three.js (MIT). Generated poster art is used only if 3D graphics are unavailable.</p><p>This independent project is not affiliated with or endorsed by NASA. Inspiration: the scale of Journey, the curiosity of Outer Wilds, and the grounded science fiction of The Invincible.</p><h3>Primary mission sources</h3><ul class="sources-list">${sources.map(s=>`<li><a href="${escape(s.url)}" target="_blank" rel="noreferrer">${escape(s.title)} ↗</a>${s.credit ? `<small>${escape(s.credit)}</small>`:''}</li>`).join('')}<li><a href="https://science.nasa.gov/resource/spirit-and-opportunity-rover-3d-model/" target="_blank" rel="noreferrer">NASA/JPL-Caltech rover model ↗</a></li><li><a href="./vendor/three/LICENSE" target="_blank">Three.js MIT license ↗</a></li></ul>`;
+let photoFeedbackTimer;
+function photoFeedback(message, state) {
+  clearTimeout(photoFeedbackTimer);
+  const feedback=$('#photo-feedback');
+  feedback.textContent=message;feedback.dataset.state=state;feedback.hidden=false;
+  if(state!=='capturing')photoFeedbackTimer=setTimeout(()=>{feedback.hidden=true;},3200);
+}
 $('#photo-button').addEventListener('click',async()=>{
   const button=$('#photo-button');
   button.disabled=true;
+  photoFeedback('Taking photo…','capturing');
+  document.querySelectorAll('.photo-shutter span').forEach((curtain,index)=>{
+    curtain.getAnimations().forEach(animation=>animation.cancel());
+    const open=`translateY(${index?100:-100}%)`;
+    curtain.animate([{transform:open},{transform:'translateY(0)',offset:.35},{transform:'translateY(0)',offset:.48},{transform:open}],{duration:420,easing:'ease-in-out'});
+  });
   try {
     const photo=await view?.capturePhoto?.();
     if(!photo)throw new Error('Photo unavailable');
@@ -600,9 +613,9 @@ $('#photo-button').addEventListener('click',async()=>{
     link.download=`last-light-${new Date().toISOString().replace(/[:.]/g,'-')}.png`;
     document.body.append(link);link.click();link.remove();
     setTimeout(()=>URL.revokeObjectURL(url),30000);
-    announce('Photo downloaded.');
+    photoFeedback('Photo downloaded','saved');
   } catch {
-    announce('Photo could not be saved. Please try again.');
+    photoFeedback('Could not save photo. Try again.','error');
   } finally {
     button.disabled=!worldReady;
   }
