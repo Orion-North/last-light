@@ -5,7 +5,12 @@ a controller is the primary target. The Windows/Electron edition and its build
 workflow are removed; earlier native-edition milestones below are historical.
 Browser Gamepad rumble and optional USB WebHID trigger effects remain supported.
 
-**v0.19 focus:** controller scrolling and disconnect recovery, readable short-screen
+**v0.20 camera pass:** Two geological investigations now lead to rover-eye framing,
+intentional capture, sending and a credited real NASA image reveal. Keep the screen
+immersive: minimal reticle/actions, with scientific explanations in the journal.
+Inline skipping is replaced by deliberate pause-menu assistance.
+
+**Previous v0.19 focus:** controller scrolling and disconnect recovery, readable short-screen
 receipts, clearer Earth recovery actions, and a visible consequence for the archive
 choice. The cinematic score and centered sending instrument remain intact.
 

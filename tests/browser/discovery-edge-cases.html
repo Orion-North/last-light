@@ -1,0 +1,53 @@
+<!doctype html><meta charset="utf-8"><title>Discovery edge cases</title>
+<style>body{background:#171918;color:#eee;font:14px system-ui;margin:12px}button{padding:10px}output{display:block;white-space:pre-wrap;padding:12px 0}iframe{width:100%;height:650px;border:0}</style>
+<button id="run">Run edge checks</button><output>Ready. Saves are isolated; audio is muted. Harness keeps the document active: manual pause is tested, actual browser background behavior is not.</output><iframe title="Production game edge checks"></iframe>
+<script type="module">
+import {scenes} from '../../src/content/story.js';
+const frame=document.querySelector('iframe'),out=document.querySelector('output'),run=document.querySelector('#run');
+const key='last-light-journey-v1';let memory=new Map(),options={},deadline=0,results=[],errors=[];
+const pad={id:'DualSense',index:0,mapping:'standard',connected:true,axes:[0,0,0,0],buttons:Array.from({length:17},()=>({value:0,pressed:false}))};
+window.installDiscoveryEdges=win=>{
+ const backing=memory,optionsSnapshot={...options};
+ // Keep sequential harness cases active while another review tab is inspected.
+ // Manual pause dialogs are exercised; real browser background behavior is not.
+ Object.defineProperty(win.document,'hidden',{configurable:true,get:()=>false});
+ win.addEventListener('blur',event=>event.stopImmediatePropagation(),true);
+ Object.defineProperty(win,'localStorage',{value:{getItem:k=>backing.get(k)??null,setItem:(k,v)=>backing.set(k,String(v)),removeItem:k=>backing.delete(k)}});
+ Object.defineProperty(win.navigator,'getGamepads',{value:()=>[pad]});
+ win.addEventListener('error',e=>errors.push(e.message));win.addEventListener('unhandledrejection',e=>errors.push(String(e.reason)));
+ if(optionsSnapshot.captureFailure)win.HTMLCanvasElement.prototype.toBlob=function(callback){win.setTimeout(()=>callback(null),0);};
+ if(optionsSnapshot.noWebGL){const original=win.HTMLCanvasElement.prototype.getContext;win.HTMLCanvasElement.prototype.getContext=function(type,...args){return String(type).includes('webgl')?null:original.call(this,type,...args);};}
+ if(optionsSnapshot.imageFailure){const Native=win.Image;win.Image=function(...args){const img=new Native(...args),descriptor=Object.getOwnPropertyDescriptor(win.HTMLImageElement.prototype,'src');Object.defineProperty(img,'src',{get(){return descriptor.get.call(this);},set(value){if(String(value).includes('/discoveries/'))win.setTimeout(()=>this.dispatchEvent(new win.Event('error')),0);else descriptor.set.call(this,value);}});return img;};}
+};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function until(test,label,limit=9000){const end=Math.min(deadline,Date.now()+limit);while(!test()){if(Date.now()>end)throw Error('Timed out: '+label);await sleep(35);}}
+const doc=()=>frame.contentDocument;
+const saved=()=>JSON.parse(memory.get(key)||'null');
+const assert=(ok,message)=>{if(!ok)throw Error(message);};
+const click=selector=>{const el=doc().querySelector(selector);assert(el,'Missing '+selector);el.click();};
+let html;
+async function load(phase='transmit',opts={},preserve=false){
+ options=opts;errors=[];pad.buttons.forEach(b=>{b.value=0;b.pressed=false;});
+ if(!preserve){memory=new Map([['last-light-settings',JSON.stringify({touch:false,haptics:false,reducedMotion:true})]]);if(phase!=='intro'){const index=1;const count=index+(['transmit','received'].includes(phase)?1:0);memory.set(key,JSON.stringify({version:1,sceneIndex:index,phase,choices:scenes.slice(0,count).map(s=>s.choices[0].id),checkpoint:{sceneId:'stone-ripples',reached:true,position:{x:7,z:-7,heading:0}}}));}}
+ const loaded=new Promise(resolve=>frame.addEventListener('load',resolve,{once:true}));
+ frame.srcdoc=html.replace('<head>','<head><base href="../../"><script>parent.installDiscoveryEdges(window);<\/script>');
+ await loaded;
+ await until(()=>doc()?.querySelector('[data-action="begin"]'),'title');click('[data-action="begin"]');
+ await until(()=>doc().body.dataset.screen!=='title','begin');
+}
+async function assistance(){click('#settings-toggle');await until(()=>doc().querySelector('#settings-modal').open,'settings');click('#activity-help');await until(()=>doc().querySelector('#assistance-modal').open,'assistance dialog');}
+async function send(){click('[data-action="transmit"]');await until(()=>doc().querySelector('[data-action="next"]'),'transmission receipt',6000);}
+async function test(name,fn){out.textContent=results.join('\n')+'\nRUNNING '+name;try{await fn();results.push('PASS '+name);}catch(e){results.push('FAIL '+name+' — '+e.message);}out.textContent=results.join('\n');}
+run.onclick=async()=>{
+ run.disabled=true;results=[];deadline=Date.now()+60000;out.textContent='Running production edge checks…';html=await(await fetch('../../index.html')).text();
+ try{
+ await test('Legacy choose save opens discovery camera',async()=>{await load('choose');await until(()=>doc().querySelector('.discovery-camera'),'legacy camera');assert(!doc().querySelector('[data-action="assist-observation"]'),'inline skip exists');});
+ await test('Observe assistance cancel preserves phase; confirm records assistance',async()=>{await load('observe');await until(()=>doc().querySelector('[data-action="observe"]')||doc().querySelector('.geology-tool-panel'),'observation');await assistance();const before=memory.get(key);click('#assistance-modal [data-close]');await sleep(80);assert(memory.get(key)===before,'cancel changed save');await assistance();click('#confirm-assistance');await until(()=>saved()?.assistedScenes?.includes('stone-ripples'),'assisted save');assert(saved().phase!=='observe','confirmation did not advance');});
+ await test('Intro ignores primary/Enter; deliberate settings assistance finishes it',async()=>{await load('intro');await until(()=>doc().body.dataset.screen==='intro','intro');doc().dispatchEvent(new frame.contentWindow.KeyboardEvent('keydown',{key:'Enter',bubbles:true}));pad.buttons[0]={value:1,pressed:true};await sleep(150);pad.buttons[0]={value:0,pressed:false};assert(doc().body.dataset.screen==='intro','primary skipped intro');await assistance();click('#confirm-assistance');await until(()=>doc().body.dataset.screen==='game','assisted intro completion');});
+ await test('Received save reload displays authentic NASA image',async()=>{await load('received');await until(()=>doc().querySelector('[data-discovery-photo]')?.naturalWidth>0,'authentic receipt image');await load('received',{},true);await until(()=>doc().querySelector('[data-discovery-photo]')?.naturalWidth>0,'reloaded image');assert(!!doc().querySelector('[data-action="next"]'),'Continue missing');});
+ await test('Failed camera capture offers historical fallback and sends',async()=>{await load('transmit',{captureFailure:true});await until(()=>doc().querySelector('[data-action="capture-discovery"]:not(:disabled)'),'camera ready');click('[data-action="capture-discovery"]');await until(()=>doc().querySelector('[data-action="use-discovery-photo"]'),'capture failure fallback');click('[data-action="use-discovery-photo"]');await send();assert(saved().phase==='received','receipt not saved');});
+ await test('Unavailable WebGL supports historical observation flow',async()=>{await load('transmit',{noWebGL:true});await until(()=>doc().querySelector('[data-action="use-discovery-photo"]'),'WebGL fallback');click('[data-action="use-discovery-photo"]');await send();assert(saved().phase==='received','fallback did not send');});
+ await test('NASA preload failure does not block Continue after send',async()=>{await load('transmit',{noWebGL:true,imageFailure:true});await until(()=>doc().querySelector('[data-action="use-discovery-photo"]'),'fallback');click('[data-action="use-discovery-photo"]');await send();assert(!doc().querySelector('[data-discovery-photo]'),'failed photo unexpectedly displayed');assert(!doc().querySelector('[data-action="next"]').disabled,'Continue disabled');click('[data-action="next"]');await until(()=>saved()?.sceneIndex!==1,'next scene');});
+ }catch(e){results.push('FAIL fixture — '+e.message);}finally{out.textContent=results.join('\n')+'\nDONE';run.disabled=false;}
+};
+</script>

@@ -172,3 +172,14 @@ test('physical checkpoints preserve arrival and survey captures without altering
     assert.equal(restoreCheckpoint(invalid,scenes),null);assert.deepEqual(restoreSession(invalid,scenes),state);
   }
 });
+
+// Assisted progression is explicitly labeled, while invalid/future provenance is ignored.
+const { restoreAssistedScenes } = await import('../../src/session.js');
+{
+  let assisted=createState();
+  assisted=transition(assisted,{type:'OBSERVE'},scenes);
+  assisted=transition(assisted,{type:'CHOOSE',choiceId:scenes[0].choices[0].id},scenes);
+  const raw=serializeSession(assisted,null,{assistedScenes:[scenes[0].id,scenes[1].id,'unknown',scenes[0].id]});
+  assert.deepEqual(restoreAssistedScenes(raw,scenes),[scenes[0].id]);
+  assert.deepEqual(restoreAssistedScenes('bad',scenes),[]);
+}

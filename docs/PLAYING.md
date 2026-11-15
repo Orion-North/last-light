@@ -6,7 +6,7 @@ You are Opportunity, exploring Mars and sending discoveries home. Follow the des
 
 ## Getting started
 
-Use a desktop browser with WebGL 2. Connect a standard gamepad and press a button to let the browser detect it, or use keyboard and mouse. The opening introduces the mission and can be skipped. On-screen prompts show the action available at each stage.
+Use a desktop browser with WebGL 2. Connect a standard gamepad and press a button to let the browser detect it, or use keyboard and mouse. The opening introduces the mission. Assistance is available deliberately through Pause → Help with this activity. On-screen prompts show the action available at each stage.
 
 | Activity | Controller |
 | --- | --- |
@@ -43,3 +43,22 @@ The sound toggle mutes music and effects. The camera icon in the upper-right dow
 - **Cannot send:** release both triggers first, squeeze and hold until the prompt changes, then release both. Reconnecting or resuming requires a fresh release.
 - **3D cannot start:** check hardware acceleration and WebGL 2 availability. The game shows a story fallback if graphics initialization fails.
 - **Unexpected layout or movement:** [report a bug](https://github.com/Orion-North/last-light/issues/new/choose) with the scene, browser, device, and steps. A screenshot helps.
+
+
+## Discovery camera
+
+At Last Chance and Berry Bowl, completing the investigation opens the rover camera.
+Drag or use the arrow keys/right stick to frame the discovery, then choose **Take
+picture** (Enter or the controller’s bottom face button). Framing is forgiving and
+has no timer. **Retake** returns to the live view. **Send** or the usual two-trigger
+squeeze/release sends the captured frame; receipt reveals a credited original NASA
+image. The reconstructed terrain is not an exact recreation of the historic photo.
+
+Pause preserves the captured frame. Reload before sending returns to camera framing
+without repeating the investigation; received observations remain available after
+reload. Reduced motion in Settings quiets the camera/reveal transitions.
+
+There are no inline skip buttons. Pause → Help with this activity opens a separate
+confirmation, initially focused on keeping the current activity. Assisted
+investigations are marked in the journal. Graphics/capture failure offers a
+historical-image alternative; missing imagery does not block the story.

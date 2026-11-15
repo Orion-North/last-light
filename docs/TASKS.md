@@ -848,3 +848,33 @@ CAMERA-35 complete: fixed-eye survey collision keeps the eye clear without pulli
 TOOLS-36 — root owns integration/main.js, renderer event forwarding, docs and browser QA. TRIGGERS-36 / Sol owns src/input/controller.js and tests/engine/controller.test.js only: discrete R2 dot pulses plus movement-driven brush texture. CONTACT-36 / Sol owns src/engine/geology-tool.js and tests/engine/geology-tool.test.js only: durable per-dot contact sequence and actual movement feedback. Shared checkout, disjoint paths. Contract: snapshot().feedback={active,mode,pulse,motion,pressure,roughness}; controller.setToolFeedback(feedback). No independent publication.
 
 TOOLS-36 complete: engine tracks nearest crossed dots separately from forgiving visual coverage and computes actual brush movement/dust texture. R2-only zoned resistance bumps have 20ms attacks and at least 16ms relief; rapid contacts coalesce without backlog. Sweeping alternates irregular bounded vibration/resistance. Per-frame events bypass UI throttling, L2 stays free, standard rumble fallback retained. Sol independent review found new-tool sequence reset issue; corrected and regression-tested. Actual game with simulated Gamepad/WebHID passes dot contacts (14 distinct), relief, brush variation, stationary/release/pause cleanup. All 26 engine files, source/asset checks and build pass. Physical force requires user playtesting. v0.19.10.
+
+
+## PHOTO-37 — discovery camera and authentic image reveal
+
+User authorizes planning and implementation with GPT-6.1 Sol subagents. Shared
+branch improve/discovery-camera; disjoint paths, no independent commits/deploys.
+- CAMERA-37 / Sol: src/ui/landscape.js and new focused camera helper/test only.
+  Rover-eye framing at Last Chance and Berry Bowl, controlled aiming, clean
+  capture, safe pause/exit, bounded view and usable portrait framing.
+- PRESENT-37 / Sol: new src/ui/discovery-camera.js and discovery-camera.css,
+  focused presentation tests only. Camera HUD/captured-image/send/real-photo
+  reveal UI; restrained animation, responsive, reduced-motion.
+- SCIENCE-37 / Sol: new src/content/discovery-photos.js, public/images/discoveries/
+  and docs/handoffs/SCIENCE-37.md only. Verify and download two authentic NASA
+  observations; accurate labels and credit/source provenance.
+- Root: integration, deliberate assistance modal, session/input lifecycle, asset
+  ledger, browser QA, tests/docs and GitHub Pages release.
+Done: investigate → aim → intentional capture → send → real NASA image, both
+science scenes; no accidental skip actions; deliberate help remains accessible;
+keyboard/controller/touch/pause/reload and failure paths verified as available.
+
+EDGE-37 / Sol: tests/browser/discovery-edge-cases.html only; browser fixture for
+assistance, legacy saves, graphics/capture/image failure and intro protection.
+
+PHOTO-37 integrated: renderer, authentic photos and minimal camera HUD; actual
+crop-to-frame capture, deliberate assistance with journal provenance, reduced
+motion and accessible sending. Root incorporated independent lifecycle reviews.
+Both photo flows, pause/retake, seven edge cases, completed investigation handoff
+and portrait/short receipt layouts verified. Engine/source/build checks pass;
+physical controller feel and full uninterrupted journey remain unverified.

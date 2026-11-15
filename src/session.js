@@ -29,8 +29,8 @@ export function restoreSession(raw, scenes) {
   } catch { return null; }
 }
 
-export function serializeSession(state, checkpoint = null) {
-  return JSON.stringify({ version: 1, sceneIndex: state.sceneIndex, phase: state.phase, choices: state.memories.map(m => m.choiceId), ...(checkpoint ? {checkpoint} : {}) });
+export function serializeSession(state, checkpoint = null, metadata = {}) {
+  return JSON.stringify({ version: 1, sceneIndex: state.sceneIndex, phase: state.phase, choices: state.memories.map(m => m.choiceId), ...(checkpoint ? {checkpoint} : {}), assistedScenes: Array.isArray(metadata.assistedScenes) ? metadata.assistedScenes : [] });
 }
 
 /** Physical work is optional: malformed checkpoints never invalidate a legal story save. */
@@ -50,4 +50,15 @@ export function restoreCheckpoint(raw, scenes) {
       result.survey = createSurvey(surveyProfiles[sceneId],undefined,saved.survey).checkpoint();
     return result;
   } catch { return null; }
+}
+
+/** Optional provenance cannot create progress or invalidate a legal journey. */
+export function restoreAssistedScenes(raw, scenes) {
+  const state=restoreSession(raw,scenes);
+  if(!state)return [];
+  try {
+    const entries=JSON.parse(raw).assistedScenes;
+    if(!Array.isArray(entries))return [];
+    return [...new Set(entries.filter(id=>scenes.some((s,i)=>s.id===id && !s.end && (i<state.sceneIndex || i===state.sceneIndex && state.phase!=='observe'))))];
+  }catch{return [];}
 }

@@ -1,0 +1,105 @@
+/* A clear camera window; all presentation rules stay inside this component. */
+.discovery-camera {
+  --camera-edge: rgba(247, 201, 155, .72);
+  position: fixed; inset: 82px max(24px, env(safe-area-inset-right)) 28px max(24px, env(safe-area-inset-left));
+  z-index: 5; display: grid; grid-template-rows: auto minmax(90px, 1fr) auto;
+  gap: 14px; max-width: 1100px; margin-inline: auto; pointer-events: none;
+  color: var(--ink, #f3e8d9); text-align: left;
+}
+.discovery-camera__header { text-shadow: 0 2px 12px #000, 0 1px 3px #000; }
+.discovery-camera__eyebrow { margin: 0 0 5px; font: 12px/1.5 var(--mono, monospace); letter-spacing: .15em; color: #f7c99b; }
+.discovery-camera__header h2 { margin: 0; font: 400 clamp(23px, 3vw, 36px)/1.15 var(--serif, Georgia); }
+.discovery-camera__view { position: relative; min-height: 0; overflow: hidden; background: #101112; }
+.discovery-camera__view--open { background: transparent; }
+.discovery-camera__capture, .discovery-camera__original { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.discovery-camera__original { background: #101112; animation: discovery-photo-reveal 1.4s ease both; }
+.discovery-camera__brackets { position: absolute; inset: 1px; pointer-events: none; }
+.discovery-camera__brackets i { position: absolute; width: 25px; height: 25px; border: 0 solid var(--camera-edge); }
+.discovery-camera__brackets i:nth-child(1) { top: 0; left: 0; border-top-width: 1px; border-left-width: 1px; }
+.discovery-camera__brackets i:nth-child(2) { top: 0; right: 0; border-top-width: 1px; border-right-width: 1px; }
+.discovery-camera__brackets i:nth-child(3) { bottom: 0; left: 0; border-bottom-width: 1px; border-left-width: 1px; }
+.discovery-camera__brackets i:nth-child(4) { bottom: 0; right: 0; border-bottom-width: 1px; border-right-width: 1px; }
+.discovery-camera__instrument, .discovery-camera__alignment { position: absolute; bottom: 16px; font: 12px/1.5 var(--mono, monospace); letter-spacing: .08em; text-shadow: 0 1px 5px #000, 0 0 12px #000; }
+.discovery-camera__instrument { left: 16px; max-width: 60%; }
+.discovery-camera__alignment { right: 16px; display: flex; align-items: center; gap: 8px; }
+.discovery-camera__alignment i { width: 5px; height: 5px; border: 1px solid #f7c99b; border-radius: 50%; }
+.discovery-camera[data-aligned="true"] .discovery-camera__alignment i { background: #cce2cd; border-color: #cce2cd; }
+.discovery-camera__reading { max-height: min(41svh, 300px); overflow: auto; padding: 12px 8px 8px; margin: -8px; pointer-events: auto; background: linear-gradient(180deg, rgba(13,15,16,.82), rgba(13,15,16,.95)); scrollbar-width: thin; scrollbar-color: #a18c78 transparent; }
+.discovery-camera__provenance { margin: 0 0 8px; color: #f7c99b; font: 13px/1.5 var(--mono, monospace); }
+.discovery-camera__discovery { margin: 0 0 8px; font: 18px/1.45 var(--sans, sans-serif); max-width: 64ch; }
+.discovery-camera__metadata { margin: 0 0 5px; color: #d1c7bd; font: 12px/1.5 var(--mono, monospace); }
+.discovery-camera__metadata span { display: block; }
+.discovery-camera__reading > a { display: inline-block; font-size: 14px; line-height: 1.8; margin-bottom: 5px; }
+.discovery-camera__status { margin: 0 0 10px; font: 15px/1.45 var(--sans, sans-serif); color: #e2d9ce; }
+.discovery-camera__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; }
+.discovery-camera .discovery-camera__action { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; font-size: 16px; pointer-events: auto; }
+.discovery-camera__action .controller-glyph { width: 25px; height: 25px; }
+.discovery-camera__scan { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 45%, rgba(247,201,155,.15) 50%, transparent 55%); transform: translateY(-100%); animation: discovery-downlink 2.6s linear infinite; }
+.discovery-camera__downlink { position: absolute; inset: auto 20px 20px; display: flex; align-items: center; gap: 12px; font: 12px/1.5 var(--mono, monospace); color: #f7c99b; text-shadow: 0 1px 5px #000; }
+.discovery-camera__downlink i { width: 65px; border-top: 1px solid currentColor; }
+@keyframes discovery-photo-reveal { from { opacity: 0; } to { opacity: 1; } }
+@keyframes discovery-downlink { to { transform: translateY(100%); } }
+.discovery-camera[data-reduced-motion="true"] .discovery-camera__original, .discovery-camera[data-reduced-motion="true"] .discovery-camera__scan { animation: none; }
+.discovery-camera[data-reduced-motion="true"] .discovery-camera__scan { transform: none; opacity: .4; }
+@media (prefers-reduced-motion: reduce) {
+  .discovery-camera__original, .discovery-camera__scan { animation: none; }
+  .discovery-camera__scan { transform: none; opacity: .4; }
+}
+@media (max-height: 580px) and (min-width: 701px) {
+  .discovery-camera { inset: 76px 28px 16px; grid-template-columns: minmax(0, 1.35fr) minmax(240px, .8fr); grid-template-rows: auto minmax(70px, 1fr); gap: 10px 22px; }
+  .discovery-camera__header { grid-column: 1 / -1; }
+  .discovery-camera__reading { grid-column: 2; grid-row: 2; max-height: none; }
+  .discovery-camera__view { grid-column: 1; grid-row: 2; }
+  .discovery-camera__header h2 { font-size: 23px; }
+}
+@media (max-width: 700px) {
+  .discovery-camera { inset: 86px 18px max(18px, env(safe-area-inset-bottom)); gap: 12px; }
+  .discovery-camera__reading { max-height: 43svh; }
+  .discovery-camera__instrument { font-size: 10px; left: 12px; bottom: 12px; }
+  .discovery-camera__alignment { right: 12px; bottom: 12px; font-size: 10px; }
+  .discovery-camera__eyebrow { font-size: 10px; }
+  .discovery-camera__discovery { font-size: 17px; }
+}
+@media (max-height: 420px) {
+  .discovery-camera { top: 68px; bottom: 12px; gap: 8px; }
+  .discovery-camera__eyebrow { display: none; }
+  .discovery-camera__header h2 { font-size: 21px; }
+}
+
+.discovery-camera__help { display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin:0 0 10px;color:#e2d9ce;font:14px/1.5 var(--sans,sans-serif); }
+.discovery-camera__help .controller-glyph { width:22px;height:22px; }
+.discovery-camera__crosshair { position:absolute;left:50%;top:50%;width:9px;height:9px;transform:translate(-50%,-50%);opacity:.7; }
+.discovery-camera__crosshair::before,.discovery-camera__crosshair::after { content:'';position:absolute;background:#f7e7d3;box-shadow:0 0 3px #000; }
+.discovery-camera__crosshair::before { left:4px;top:0;width:1px;height:9px; }
+.discovery-camera__crosshair::after { left:0;top:4px;width:9px;height:1px; }
+.discovery-camera__exposure { position:absolute;inset:0;background:#080a0c;pointer-events:none;animation:discovery-exposure 200ms ease-out both; }
+@keyframes discovery-exposure { from { opacity:.28; } to { opacity:0; } }
+body[data-paused="true"] .discovery-camera :is(.discovery-camera__original,.discovery-camera__scan,.discovery-camera__exposure) { animation-play-state:paused; }
+.discovery-camera[data-reduced-motion="true"] .discovery-camera__exposure { display:none;animation:none; }
+@media (prefers-reduced-motion:reduce) { .discovery-camera__exposure { display:none;animation:none; } }
+
+/* The live window and the captured crop share a photographic proportion. */
+.discovery-camera__view { aspect-ratio:4 / 3;height:100%;width:auto;max-width:100%;max-height:100%;justify-self:center;align-self:center;pointer-events:none; }
+
+/* The image carries the scene; only small operational cues remain. */
+.discovery-camera { grid-template-rows:minmax(90px,1fr) auto;gap:10px; }
+.discovery-camera__reading { background:linear-gradient(transparent,rgba(10,12,13,.65));padding:8px;margin:-8px;max-height:28svh; }
+.discovery-camera__actions { justify-content:center;gap:16px; }
+.discovery-camera .discovery-camera__action { min-height:44px;font-size:15px;padding:8px 14px; }
+.discovery-camera__help { margin:0;font:12px/1.4 var(--mono,monospace);color:#d2c9bd; }
+.discovery-camera__target { position:absolute;top:14px;left:16px;font:11px/1.5 var(--mono,monospace);letter-spacing:.16em;color:#f7e7d3;text-shadow:0 1px 6px #000; }
+.discovery-camera__alignment { top:14px;bottom:auto;font-size:10px; }
+.discovery-camera__credit { display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;gap:5px 12px;margin:0 0 8px;font:12px/1.4 var(--sans,sans-serif);color:#d8cfc4; }
+.discovery-camera__credit small { font-size:10px; }
+.discovery-camera__credit a { font-size:11px; }
+.discovery-camera__status:not(.sr-only) { margin:0 0 8px;text-align:center;font-size:14px; }
+@media (max-height:580px) and (min-width:701px) {
+  .discovery-camera { grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(60px,1fr) auto; }
+  .discovery-camera__view { grid-column:1;grid-row:1; }
+  .discovery-camera__reading { grid-column:1;grid-row:2;max-height:28svh; }
+}
+
+.discovery-camera__charge { position:absolute;left:0;right:0;bottom:0;height:2px;background:#f7c99b;transform-origin:left;transform:scaleX(var(--charge-progress,0));transition:transform 80ms linear; }
+.discovery-camera[data-squeeze="charged"] { --camera-edge:#bde3bd; }
+/* Fit the photographic frame on both axes; never stretch it into a portrait strip. */
+.discovery-camera__view { width:min(100%,calc((100svh - 200px) * 1.333333));height:auto;aspect-ratio:4 / 3; }

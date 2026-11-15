@@ -721,3 +721,33 @@ Geology and controller agents implemented disjoint lanes; a third Sol review che
 Adaptive R2 uses documented zoned 0x21 resistance for 20ms dot attacks, with at least 16ms relief; high-rate contacts coalesce rather than queue. Brush varies documented 0x21/0x26 grains with movement, pressure and spatial texture. L2 stays disengaged. Standard rumble fallback is finite. Existing transmission behavior remains unchanged.
 
 `tests/browser/tool-feedback.html` runs the production game with isolated saves, a simulated Gamepad and fake USB output device. Verified 14 distinct tracing contacts, resistance requests, relief gaps, variable brush reports, L2 neutral, movement stop, trigger release and pause cleanup. Browser testing establishes integration/report timing only, not physical force or OS HID access. Unit regressions cover reverse/jitter/fast contacts, new producer/pause baselines, stale packets, interruptions, brush bounds and fallback. All 26 engine test files, 64 JavaScript syntax checks, scene/assets and static build pass.
+
+
+## PHOTO-37 — v0.20 discovery camera (2026-11-15)
+
+Three GPT-6.1 Sol lanes implemented the renderer camera, immersive presentation
+and primary-source assets; root integrated and reviewed. Both science scenes
+now support fixed-eye framing, clean cropped WebGL capture, retake, sending and
+a dissolve to an original NASA observation. The UI was reduced after user review
+to a reticle/actions and discreet original-image credit; science remains in the
+journal. Two JPEGs add 87,791 bytes.
+
+Observed browser checks (production runtime through isolated fixture):
+- Last Chance and Berry Bowl: readiness, keyboard framing, actual canvas blob,
+  pause-preserved capture, retake, transmission, NASA image decoding and saved
+  receipt; Berry Bowl also used a simulated controller face-button send.
+- Actual restored completed layer investigation → compare → camera handoff.
+- Seven edge checks pass: legacy choose save, assistance cancel/confirmed
+  provenance, intro primary/Enter protection, received reload, capture failure,
+  WebGL failure, NASA preload failure and continued progression.
+- Receipt layout at 390×760 and 960×480: no horizontal overflow; Continue
+  remains in viewport. Portrait photograph preserves aspect ratio.
+- 27 engine test files, 67 JS syntax checks, scene/asset contracts and static
+  build pass. Inline test fixtures syntax checked separately.
+
+The browser harness isolates saves and holds document visibility while testing
+manual pause dialogs. These checks do not establish actual background-tab
+suspension, physical controller feel, every mobile device, or a fresh complete
+beginning-to-ending emotional playthrough. Existing save checkpoints preserve
+fieldwork; an unsent camera frame is retaken after reload instead of persisting
+a large image in localStorage. NASA image failure never blocks Continue.

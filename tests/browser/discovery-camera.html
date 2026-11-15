@@ -1,0 +1,64 @@
+<!doctype html><meta charset="utf-8"><title>Discovery camera integration review</title>
+<style>body{margin:0;background:#171918;color:#eee;font:14px system-ui}nav{padding:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}button,select{padding:7px}output{white-space:pre-wrap;display:block;padding:8px;height:40px;overflow:auto}iframe{display:block;border:0;width:100%;height:calc(100vh - 96px);margin:auto}</style>
+<nav><select id="scene"><option value="stone-ripples">Last Chance</option><option value="blueberries">Berry Bowl</option></select><select id="phase"><option>transmit</option><option>observe</option><option>choose</option><option>received</option><option value="investigation">finish investigation</option></select><label><input type="checkbox" id="pad">Simulated controller</label><label><input type="checkbox" id="motion">Reduced motion</label><button id="load">Load scene</button><button id="desktop">Desktop</button><button id="portrait">Portrait</button><button id="short">Short</button><button id="verify">Verify lifecycle</button></nav><output>Loading</output><iframe title="Discovery camera game"></iframe>
+<script type="module">
+import {scenes} from '../../src/content/story.js';
+const frame=document.querySelector('iframe'),output=document.querySelector('output');
+let memory=new Map(),seed,padEnabled=false,samples=[],errors=[],captures=0;
+const pad={id:'DualSense',index:0,mapping:'standard',connected:true,axes:[0,0,0,0],buttons:Array.from({length:17},()=>({value:0,pressed:false})),vibrationActuator:{effects:['dual-rumble'],playEffect:async()=>{},reset:async()=>{}}};
+window.installDiscovery=win=>{
+ const backing=memory;
+ // Keep this isolated harness running while other QA tabs are inspected.
+ Object.defineProperty(win.document,'hidden',{get:()=>false});
+ win.addEventListener('blur',event=>event.stopImmediatePropagation());
+ Object.defineProperty(win.navigator,'getGamepads',{value:()=>padEnabled?[pad]:[]});
+ Object.defineProperty(win,'localStorage',{value:{getItem:k=>backing.get(k)??null,setItem:(k,v)=>backing.set(k,String(v)),removeItem:k=>backing.delete(k)}});
+ win.addEventListener('error',e=>errors.push(e.message));
+ win.addEventListener('unhandledrejection',e=>errors.push(String(e.reason)));
+ win.document.addEventListener('discovery-camera-sample',e=>samples.push(e.detail));
+ win.document.addEventListener('world-status',e=>{if(e.detail.state==='ready')output.textContent='Ready: '+document.querySelector('#scene').value;});
+};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function waitFor(test,ms=10000){const start=Date.now();while(!test()){if(Date.now()-start>ms)throw Error('Timed out');await sleep(60);}}
+async function load(preserve=false){
+ const id=document.querySelector('#scene').value,index=scenes.findIndex(s=>s.id===id),selectedPhase=document.querySelector('#phase').value,phase=selectedPhase==='investigation'?'observe':selectedPhase;
+ samples=[];errors=[];padEnabled=document.querySelector('#pad').checked;pad.axes.fill(0);pad.buttons.forEach(b=>{b.value=0;b.pressed=false;});
+ if(!preserve){const choices=scenes.slice(0,index+(['transmit','received'].includes(phase)?1:0)).map(s=>s.choices[0].id);
+ memory=new Map([['last-light-settings',JSON.stringify({touch:false,haptics:false,prompts:'auto',reducedMotion:document.querySelector('#motion').checked})],['last-light-journey-v1',JSON.stringify({version:1,sceneIndex:index,phase,choices,checkpoint:{sceneId:id,reached:true,position:{x:id==='blueberries'?-5:7,z:id==='blueberries'?-10:-7,heading:0},...(selectedPhase==='investigation'?{tool:{sceneId:id,stage:'compare',cursor:{x:0,y:0},sampleIds:id==='blueberries'?['bedrock','grains']:['lower','upper'],visited:[Array(40).fill(true),Array(40).fill(true)],cleared:Array(576).fill(1)}}:{})}})]]);}
+ const html=await(await fetch('../../index.html')).text();const loaded=new Promise(resolve=>frame.addEventListener('load',resolve,{once:true}));frame.srcdoc=html.replace('<head>','<head><base href="../../"><script>parent.installDiscovery(window);<\/script>');
+ await loaded;
+ await waitFor(()=>frame.contentDocument?.querySelector('[data-action="begin"]'));
+ frame.contentWindow.focus();frame.contentDocument.querySelector('[data-action="begin"]').click();
+}
+document.querySelector('#load').onclick=()=>load();
+for(const [id,w,h] of [['desktop','100%','calc(100vh - 96px)'],['portrait','390px','760px'],['short','960px','480px']])document.getElementById(id).onclick=()=>{frame.style.width=w;frame.style.height=h;};
+document.querySelector('#verify').onclick=async()=>{
+ const checks=[];output.textContent='Checking actual rendered camera…';
+ const check=(ok,message)=>{checks.push((ok?'PASS ':'FAIL ')+message);output.textContent=checks.join('\n');};
+ try{
+  await load();let d=frame.contentDocument,w=frame.contentWindow;
+  await waitFor(()=>d.querySelector('[data-action="capture-discovery"]:not(:disabled)'));
+  check(samples.some(s=>s.ready),'camera becomes ready');
+  check(!d.querySelector('[data-action="assist-observation"],[data-action="skip-intro"]'),'no inline skips');
+  const before=samples.at(-1).yaw;d.dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));await sleep(450);d.dispatchEvent(new w.KeyboardEvent('keyup',{key:'ArrowRight',bubbles:true}));await sleep(150);
+  check(Math.abs(samples.at(-1).yaw-before)>.03,'keyboard changes framing');
+  d.querySelector('[data-action="capture-discovery"]').click();await waitFor(()=>d.querySelector('[data-action="retake-discovery"]'));
+  check(d.querySelector('.discovery-camera__capture')?.src.startsWith('blob:'),'actual WebGL frame captured');
+  const source=d.querySelector('.discovery-camera__capture').src;
+  d.querySelector('#settings-toggle').click();await sleep(100);d.querySelector('#settings-modal [data-close]').click();await sleep(200);
+  check(d.querySelector('.discovery-camera__capture')?.src===source,'pause preserves captured image');
+  d.querySelector('[data-action="retake-discovery"]').click();await waitFor(()=>d.querySelector('[data-action="capture-discovery"]:not(:disabled)'));
+  check(!d.querySelector('.discovery-camera__capture'),'retake returns to live view');
+  d.querySelector('[data-action="capture-discovery"]').click();await waitFor(()=>d.querySelector('[data-action="transmit"]'));
+  if(padEnabled){pad.buttons[0]={value:1,pressed:true};await sleep(130);pad.buttons[0]={value:0,pressed:false};}else d.querySelector('[data-action="transmit"]').click();
+  await waitFor(()=>d.querySelector('[data-action="next"]'));
+  await waitFor(()=>d.querySelector('[data-discovery-photo]')?.complete);
+  check(d.querySelector('[data-discovery-photo]').naturalWidth>0,'authentic NASA photo decoded after sending');
+  check(d.querySelector('.discovery-camera__credit').textContent.includes('Actual mission image'),'actual image explicitly labeled');
+  check(errors.length===0,'no runtime errors '+errors.join('; '));
+  const saved=JSON.parse(memory.get('last-light-journey-v1'));check(saved.phase==='received','receipt saved');
+  output.textContent=checks.join('\n');
+ }catch(error){check(false,error.message);}
+};
+await load();
+</script>
