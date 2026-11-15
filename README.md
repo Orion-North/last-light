@@ -3,7 +3,7 @@
 A playable, real-time 3D story about NASA's Opportunity rover: discovery,
 attachment, a fading signal, and the things that remain.
 
-**Playable v0.19.** [Play on GitHub Pages](https://orion-north.github.io/last-light/). Built with parallel Codex agents. The game uses NASA's
+**Playable v0.19.1.** [Play on GitHub Pages](https://orion-north.github.io/last-light/). Built with parallel Codex agents. The game uses NASA's
 textured rover model, a navigable original Mars environment, an original adaptive
 score, and a complete three-act story. No account or AI API is needed by the game
 itself. A hosting provider may apply its own access gate.
@@ -40,6 +40,7 @@ the detailed NASA model alone is 11.91 MB. The optional poster adds about 2 MB.
 Web-only: a desktop browser with a controller is the primary target.
 Existing keyboard/touch fallbacks remain available.
 
+- The camera icon in the upper-right corner downloads a PNG of the current 3D view without the interface.
 - Saves retain rover position, earned arrival, brushed dust, traced paths, sample readings and captured survey views. Pause and controller disconnect preserve completed work; partial holds require a fresh input.
 - Geological evidence stays in view through sending and receipt, with both findings visible. The compact signal display leaves the landscape readable; the ending includes your chosen Earth archive.
 - Only the first view and Earth archive ask for a text choice. Other records follow your observations. The later storm recalls your actual first horizon/ground memory.

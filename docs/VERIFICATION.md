@@ -605,3 +605,17 @@ Verification:
 Limits: seeded checkpoints cover targeted paths, not a fresh uninterrupted full
 playthrough. Controller input was simulated; physical haptics and human listening
 were not tested. Screenshot outside repository: outputs/last-light-v19-ending.jpg.
+
+
+## v0.19.1 — photo download
+
+Upper-right camera button exports the current 3D view as a timestamped PNG,
+without HTML interface overlays. Rendering immediately before canvas.toBlob
+avoids blank WebGL screenshots without enabling preserveDrawingBuffer. Button
+is disabled until the rover loads and while encoding; errors are announced.
+
+Real browser: downloaded two valid PNG files, from title (mouse) and a received
+geology scene (keyboard Enter). Visually inspected the first export: rendered
+terrain and rover, no UI, no blank buffer. The second download left the game at
+the same receipt with Continue available. Corner placement inspected; no console
+errors. Source/asset checks, static build and diff whitespace check pass.

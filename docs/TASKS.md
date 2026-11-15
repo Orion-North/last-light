@@ -759,3 +759,14 @@ on disconnect. Integrated narrative improvements, 120 browser layout profiles,
 short-screen receipt scroll, geology continuity and the consecutive late-game
 sequence through saved ending/journal. Engine/source/build checks pass. Publishing
 v0.19.0; physical feedback and a fresh uninterrupted playthrough remain unverified.
+
+
+## PHOTO-22 — corner screenshot download
+
+Root owns index.html, main.js and landscape.js. Add a small upper-right camera
+button that exports the current rendered 3D view as PNG without UI. Keep the
+normal graphics buffer behavior; disable until the rover is ready. Verify an
+actual browser download and its image, then publish the web update.
+
+PHOTO-22 complete: actual mouse/keyboard downloads verified; valid PNG output,
+no game advancement, no console errors. Source/build checks pass. v0.19.1.

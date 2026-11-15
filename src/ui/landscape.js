@@ -10,7 +10,7 @@ import { mergeVertices, mergeGeometries } from 'three/addons/utils/BufferGeometr
 /** A real, navigable Martian diorama. NASA's rover is loaded from a local GLB. */
 export function createLandscape(canvas) {
   const noop = () => {};
-  const empty = { setToolMode: () => false, setToolInput: noop, compareToolSamples: () => false, setMissionAge: noop, setScene: noop, setPaused: noop,
+  const empty = { capturePhoto: async () => null, setToolMode: () => false, setToolInput: noop, compareToolSamples: () => false, setMissionAge: noop, setScene: noop, setPaused: noop,
     setMode: noop, setIntro: noop, previewMemory: noop, revealFirstView: noop, setRemoteView: noop, setDrive: noop, stopDrive: noop, setSurvey: noop, setInvestigation: noop, setContact: noop, setContactInput: noop, nudgeContact: noop, sendContact: noop, cancelContactPulse: noop, focusRover: noop, inspect: noop,
     setWaypoint: noop, setObservationTarget: noop, reset: noop, destroy: noop };
   const status = (state, message) => canvas?.dispatchEvent(new CustomEvent('world-status', {
@@ -1650,6 +1650,13 @@ export function createLandscape(canvas) {
   frame = requestAnimationFrame(animate);
 
   return {
+    capturePhoto() {
+      if (disposed || !modelReady || renderer.getContext().isContextLost()) return Promise.resolve(null);
+      // Read immediately after rendering: keep normal WebGL buffer disposal and
+      // avoid a permanent preserveDrawingBuffer cost during gameplay.
+      renderer.render(scene, camera);
+      return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    },
     setToolMode, setToolInput, compareToolSamples, setEvidence, getCheckpoint, restoreCheckpoint,
     setMissionAge,
     previewMemory,

@@ -588,6 +588,25 @@ app.addEventListener('focusin',event=>{document.body.classList.toggle('controlle
 app.addEventListener('pointerover',previewChoice);
 
 $('#credits-content').innerHTML = `<p>${escape(credits)}</p><h3>Built to remember</h3><p>Original story and procedural sound. The interactive terrain is an artistic reconstruction, not a surveyed map. Rover model: NASA/JPL-Caltech. Ground and rock surfaces use CC0 terrestrial scans by Rob Tuytel, Dario Barresi and Dimitrios Savva / Poly Haven, artistically adapted for Mars. Rendering: Three.js (MIT). Generated poster art is used only if 3D graphics are unavailable.</p><p>This independent project is not affiliated with or endorsed by NASA. Inspiration: the scale of Journey, the curiosity of Outer Wilds, and the grounded science fiction of The Invincible.</p><h3>Primary mission sources</h3><ul class="sources-list">${sources.map(s=>`<li><a href="${escape(s.url)}" target="_blank" rel="noreferrer">${escape(s.title)} ↗</a>${s.credit ? `<small>${escape(s.credit)}</small>`:''}</li>`).join('')}<li><a href="https://science.nasa.gov/resource/spirit-and-opportunity-rover-3d-model/" target="_blank" rel="noreferrer">NASA/JPL-Caltech rover model ↗</a></li><li><a href="./vendor/three/LICENSE" target="_blank">Three.js MIT license ↗</a></li></ul>`;
+$('#photo-button').addEventListener('click',async()=>{
+  const button=$('#photo-button');
+  button.disabled=true;
+  try {
+    const photo=await view?.capturePhoto?.();
+    if(!photo)throw new Error('Photo unavailable');
+    const url=URL.createObjectURL(photo);
+    const link=document.createElement('a');
+    link.href=url;
+    link.download=`last-light-${new Date().toISOString().replace(/[:.]/g,'-')}.png`;
+    document.body.append(link);link.click();link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),30000);
+    announce('Photo downloaded.');
+  } catch {
+    announce('Photo could not be saved. Please try again.');
+  } finally {
+    button.disabled=!worldReady;
+  }
+});
 $('#sound-toggle').addEventListener('click',()=>{soundPreferenceSet=true;toggleSound(!settings.sound);});
 $('#sound-setting').addEventListener('change',event=>{soundPreferenceSet=true;toggleSound(event.target.checked);});
 $('#touch-setting').addEventListener('change',event=>{
@@ -679,6 +698,7 @@ document.addEventListener('visibilitychange',()=>{pressed.clear();if(document.hi
 canvas.addEventListener('world-status',event=>{
   const {state:status,message}=event.detail;
   worldReady=status==='ready';
+  $('#photo-button').disabled=!worldReady;
   graphicsError=status==='error';
   $('#world-status').textContent=message;
   $('#world-status').dataset.state=status;
