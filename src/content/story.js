@@ -58,7 +58,7 @@ export const scenes = [
       fact: 'The Last Chance outcrop preserves cross-lamination interpreted as evidence of ancient water flow.', sourceId: 'N6',
     },
     choices: [
-      { id: 'layers', shortLabel: 'Send the crossing layers', shortReply: 'Crossing layers: the trace of water moving through a place now dry.', label: 'Send the crossing layers', detail: 'A few fine lines can change a whole world.', memory: { title: 'A river in the rock', text: 'Thin crossing layers preserved evidence that water once flowed here.' }, reply: 'You choose the thin lines. A small detail people can study together.' },
+      { id: 'layers', shortLabel: 'Send the crossing layers', shortReply: 'Crossing layers: the trace of water moving through a place now dry.', label: 'Send the crossing layers', detail: 'A few fine lines can change a whole world.', memory: { title: 'A river in the rock', text: 'Traced crossing layers preserved evidence that water once flowed here.' }, reply: 'I traced the crossing layers. A dry rock holds the shape of moving water.' },
       { id: 'landscape', shortLabel: 'Send the surrounding plain', shortReply: 'The dry plain around that water-shaped stone. The same place, changed.', label: 'Send the surrounding plain', detail: 'Remember the desert around the discovery.', memory: { title: 'The world beneath the world', text: 'A silent desert held evidence of a wetter past.' }, reply: 'You choose the outcrop and the plain around it. The small clue belongs to an enormous story.' },
     ],
     transmission: 'Earth, imagined: There it is. A place that used to be different. You have given us a way to see it.',
@@ -81,7 +81,7 @@ export const scenes = [
       fact: 'The real brushing took place on sol 48. The instrument measurements distinguished the rock from the hematite-rich “blueberries.”', sourceId: 'N7',
     },
     choices: [
-      { id: 'name', shortLabel: 'Send the blueberry grains', shortReply: 'Round grains, named blueberries by people who had never stood beside them.', label: 'Send the blueberry grains', detail: 'Something familiar, very far from home.', memory: { title: 'Blueberries', text: 'Hematite-rich grains on Mars carried a little name from Earth: blueberries.' }, reply: 'You keep the image of the little grains. The name makes the distance feel smaller.' },
+      { id: 'name', shortLabel: 'Send the blueberry grains', shortReply: 'Brushed rock and hematite-rich grains, measured and compared.', label: 'Send the blueberry grains', detail: 'Something familiar, very far from home.', memory: { title: 'Blueberries and brushed rock', text: 'Brushing and comparing the rock with its hematite-rich grains revealed another clue to ancient water.' }, reply: 'I brushed the rock and compared both readings. The little grains hold another clue.' },
       { id: 'care', shortLabel: 'Send the brushed patch', shortReply: 'The brushed patch let scientists compare bare rock with the hematite-rich grains.', label: 'Send the brushed patch', detail: 'A discovery made by many patient hands.', memory: { title: 'The gentle brush', text: 'A brushed patch let scientists compare the rock with its hematite-rich grains.' }, reply: 'You keep the clean patch in the rock. It is the mark of a question asked gently.' },
     ],
     transmission: 'Earth, imagined: Beautiful work. We will look at this again tomorrow. There is more here than we thought.',
@@ -103,7 +103,7 @@ export const scenes = [
       fact: 'Opportunity passed 42.195 km of driving on March 24, 2015, more than eleven years after landing.', sourceId: 'N8',
     },
     choices: [
-      { id: 'tracks', shortLabel: 'Send the tracks behind me', shortReply: 'Eleven years of careful drives. These tracks are part of a marathon.', label: 'Send the tracks behind me', detail: 'All the small steps that became a journey.', memory: { title: 'A long way from the beginning', text: 'Eleven years of ordinary drives added up to a marathon on Mars.' }, reply: 'You choose the tracks behind you. No single memory can hold the whole journey.' },
+      { id: 'tracks', shortLabel: 'Send the tracks behind me', shortReply: 'Eleven years of careful drives. These tracks are part of a marathon.', label: 'Send the tracks behind me', detail: 'All the small steps that became a journey.', memory: { title: 'A long way from the beginning', text: 'Eleven years of ordinary drives added up to a marathon on Mars.' }, reply: 'I looked across the valley and the ground behind me. Eleven years of mornings.' },
       { id: 'next', shortLabel: 'Send the horizon ahead', shortReply: 'A marathon behind me. Another unanswered question ahead.', label: 'Send the horizon ahead', detail: 'There is still something you have not seen.', memory: { title: 'One more horizon', text: 'Even after a marathon, there was another question ahead.' }, reply: 'You look forward. The far ground is still full of things without names.' },
     ],
     transmission: 'Earth, imagined: We are proud of you. All right, old friend. Let’s see what is around the next bend.',
@@ -112,7 +112,7 @@ export const scenes = [
     id: 'ordinary-day', act: 2, chapter: 'II · The light grows thin',
     subtitle: 'Wake. Look. Send. The work has become familiar.',
     objective: 'Take in the valley',
-    discovery: '2018. After fourteen years, you are exploring Perseverance Valley. Today, send one ordinary detail home.',
+    discovery: '2018. After fourteen years, sunlight still reaches the ground beside your wheels. Send this ordinary view home.',
     response: 'Earth, imagined: Received. We will be here for the next one.',
     sol: 'PERSEVERANCE VALLEY · 2018', title: 'An ordinary day.',
     text: 'Wake. Check the warmth inside your body. Turn toward the light.\n\nThe work has become familiar. A camera movement. A little pause. A packet of information crossing the dark between worlds.\n\nNothing about this morning tells you it will be one of the mornings you remember.',
@@ -121,11 +121,11 @@ export const scenes = [
     actionLabel: 'Take in the valley',
     observation: {
       title: 'The quiet things',
-      text: 'There are no footprints here. No voices in the air. Only the landscape, the machine, and the work they share with people far away.\n\nIn this imagined moment, you choose an ordinary detail to carry forward. You do not need to know that a day is precious to notice it.',
+      text: 'There are no footprints here. No voices in the air. Only the landscape, the machine, and the work they share with people far away.\n\nIn this imagined moment, you look down and record the sunlit ground beside your wheels. You do not need to know that a day is precious to notice it.',
       fact: 'Opportunity was in Perseverance Valley when contact was lost during the 2018 dust storm.', sourceId: 'N1',
     },
     choices: [
-      { id: 'light', shortLabel: 'Send sunlight on stone', shortReply: 'An ordinary bright edge of stone. A day worth sending home.', label: 'Send sunlight on stone', detail: 'Sunlight on the edge of a stone.', memory: { title: 'An ordinary afternoon', text: 'Sunlight reached the stones. For a while, that was enough.' }, reply: 'You choose a bright edge of stone. It is not a new discovery. It is simply here.' },
+      { id: 'light', shortLabel: 'Send the sunlit ground', shortReply: 'Sunlight on the ground beside my wheels. An ordinary view, sent home.', label: 'Send the sunlit ground', detail: 'The ground beside your wheels, still in sunlight.', memory: { title: 'An ordinary afternoon', text: 'Sunlight reached the ground beside my wheels. An ordinary view crossed the distance home.' }, reply: 'Sunlight on the ground beside my wheels. I’ll send that.' },
       { id: 'shadow', shortLabel: 'Send my mast’s shadow', shortReply: 'My mast casts a small shape. I am here, looking for them.', label: 'Send my mast’s shadow', detail: 'A small shape that means you are here.', memory: { title: 'A small presence', text: 'On a wide and quiet world, something had come to look.' }, reply: 'You notice the shape cast by your mast. For a moment, the landscape contains a companion.' },
     ],
     transmission: 'Earth, imagined: Received. We will be here for the next one.',
@@ -147,7 +147,7 @@ export const scenes = [
       fact: 'The 2018 dust storm reduced sunlight enough to end communication with the solar-powered rover.', sourceId: 'N1',
     },
     choices: [
-      { id: 'remember-morning', shortLabel: 'Send the first morning', shortReply: 'The first bright crater, before thousands of mornings and this dark sky.', label: 'Send the first morning', detail: 'There was so much light then.', memory: { title: 'Light remembered', text: 'Before the storm, there had been thousands of mornings.' }, reply: 'You return to the image of a bright crater. It is still clear, even now.' },
+      { id: 'remember-morning', shortLabel: 'Send the darkening sky', shortReply: 'Dust thickens across the sky. Less sunlight reaches the panels.', label: 'Send the darkening sky', detail: 'Dust dims the sunlight.', memory: { title: 'A sky filling with dust', text: 'The observed sky darkened as storm dust blocked the sunlight.' }, reply: 'The sky is darker. I have recorded what light still reaches me.' },
       { id: 'remember-work', shortLabel: 'Send the people’s care', shortReply: 'Every careful turn had people behind it, waiting to hear what I found.', label: 'Send the people’s care', detail: 'Distance has never meant no one is there.', memory: { title: 'The other end of the signal', text: 'Every observation had someone waiting to understand it.' }, reply: 'You remember the familiar pattern of a reply. Somewhere, they are looking at the same sky through you.' },
     ],
     transmission: 'Earth, imagined: We are watching the storm. We are still with you.',
@@ -165,7 +165,7 @@ export const scenes = [
     actionLabel: 'Revisit what you sent home',
     observation: {
       title: 'Things the storm cannot take back',
-      text: 'The river in the stone. The grains named for fruit. A path longer than anyone expected. Those discoveries have already crossed the distance.\n\nThis archive is an imagined act of remembrance, not a reconstruction of the rover’s computer. Choose what you want to hold nearest as the sky grows dark.',
+      text: 'The river in the stone. The grains named for fruit. A path longer than anyone expected. Those discoveries have already crossed the distance.\n\nThis archive is an imagined act of remembrance, not a reconstruction of the rover’s computer. Revisit the observations already sent home as the sky grows dark.',
       fact: 'Opportunity’s observations helped establish a history of ancient water on Mars. They did not establish the presence of life.', sourceId: 'N9',
     },
     choices: [
@@ -191,7 +191,7 @@ export const scenes = [
       fact: 'The last contact was June 10, 2018. Later images existed as transmitted thumbnails; the incomplete frame is not simply the last photograph taken.', sourceId: 'N3',
     },
     choices: [
-      { id: 'little-light', shortLabel: 'Send this little light', shortReply: 'Some light reaches Earth. The missing part will stay missing.', label: 'Send this little light', detail: 'An unfinished thing can still reach someone.', memory: { title: 'The light that arrived', text: 'The picture was incomplete. Someone on Earth still received it.' }, reply: 'You keep what is visible. It does not need to be whole to matter.' },
+      { id: 'little-light', shortLabel: 'Send this little light', shortReply: 'Some light reaches Earth. The missing part will stay missing.', label: 'Send this little light', detail: 'An unfinished thing can still reach someone.', memory: { title: 'The light that arrived', text: 'The picture was incomplete. Someone on Earth still received it.' }, reply: 'I have recorded what light remains. The image begins its journey.' },
       { id: 'whole-journey', shortLabel: 'Send a journey’s last frame', shortReply: 'One incomplete frame joins years of discoveries. It cannot stand for all of them.', label: 'Send a journey’s last frame', detail: 'A final frame is not the whole story.', memory: { title: 'More than the last image', text: 'One dark frame came after years of discovery, patience, and light.' }, reply: 'You set this frame beside the others. It is one moment in a very long life of looking.' },
     ],
     transmission: 'The image reaches Earth. Then the channel becomes quiet. There is no final sentence from the rover. The silence begins.',
@@ -213,19 +213,19 @@ export const scenes = [
       fact: 'Recovery attempts continued after June 2018. NASA did not declare the mission complete until February 2019.', sourceId: 'N2',
     },
     choices: [
-      { id: 'listen', shortLabel: 'Remember the waiting people', shortReply: 'On Earth, people stay beside the quiet channel. The archive will remember their waiting.', label: 'Remember the waiting people', detail: 'An empty channel still had people beside it.', memory: { title: 'The people stayed', text: 'When the rover grew quiet, the effort to reach it continued.' }, reply: 'You leave a place in the archive for the people at the other end.' },
+      { id: 'listen', shortLabel: 'Call Opportunity from Earth', shortReply: 'A recovery command leaves Earth. No reply returns.', label: 'Call Opportunity from Earth', detail: 'Send a recovery command and listen.', memory: { title: 'An unanswered recovery call', text: 'A recovery command went from Earth to Opportunity. No reply returned.' }, reply: 'The recovery command goes out. No signal is received.' },
       { id: 'work', shortLabel: 'Remember the recovery commands', shortReply: 'On Earth, another command goes out. The archive will remember the work of trying.', label: 'Remember the recovery commands', detail: 'Hope became another careful day of work.', memory: { title: 'Another attempt', text: 'Care was not only a feeling. It was work, repeated across months.' }, reply: 'You remember the patient attempts. None could guarantee an answer. They tried anyway.' },
     ],
     transmission: 'Earth, imagined: Opportunity, this is home. We are listening. No signal is received.',
   },
   {
     id: 'months', receiptMode: 'archive', act: 3, chapter: 'III · On the other side',
-    subtitle: 'Eight months of trying. The discoveries still have things to tell us.',
+    subtitle: 'June to February. Calls accumulate; no answer arrives. The discoveries remain.',
     objective: 'Revisit the archive on Earth',
     discovery: 'On Earth, recovery attempts continue for eight months. More than 1,000 commands bring no answer. The discoveries remain.',
     response: 'Added to your archive on Earth. These discoveries can still reach someone new.',
     sol: 'EARTH · JUNE 2018–FEBRUARY 2019 · THE RECOVERY CAMPAIGN', title: 'The shape of waiting.',
-    text: 'Weeks become months. The world turns. The work continues.\n\nFor more than fourteen years, there was another observation to plan, another part of Mars to understand. Now the task is to wait carefully, to try again, to leave room for an answer.\n\nThe archive does not grow quiet. People can still open it.',
+    text: 'June becomes autumn, then winter. Recovery commands accumulate: more than 1,000 attempts, no answer.\n\nFor more than fourteen years, there was another observation to plan, another part of Mars to understand. Now the task is to wait carefully, to try again, to leave room for an answer.\n\nThe archive does not grow quiet. People can still open it.',
     thought: 'Something can stop sending and still have things to tell us.',
     environment: 'earth', power: 0, signal: 0,
     actionLabel: 'Open the discoveries on Earth',
@@ -235,8 +235,8 @@ export const scenes = [
       fact: 'The recovery effort included more than 1,000 commands aimed at re-establishing contact.', sourceId: 'N2',
     },
     choices: [
-      { id: 'share-science', shortLabel: 'Archive the water discoveries', shortReply: 'Keep the layers and hematite grains for the next person curious about Mars.', label: 'Archive the water discoveries', detail: 'Let someone new learn what you found.', memory: { title: 'For the next curious person', text: 'The work continued whenever someone asked a new question of it.' }, reply: 'You imagine someone opening a Mars image for the first time. To them, the discovery is new.' },
-      { id: 'share-story', shortLabel: 'Archive the rover’s story', shortReply: 'Keep the first morning, the long drives, and the people who listened.', label: 'Archive the rover’s story', detail: 'Let someone know there was a rover here.', memory: { title: 'For someone who has not heard', text: 'Once there was a little rover, and people who kept listening.' }, reply: 'You imagine telling someone about ninety days that became thousands. You begin with the first morning.' },
+      { id: 'share-science', shortLabel: 'Archive the water discoveries', shortReply: 'Keep the layers and hematite grains for the next person curious about Mars.', label: 'Archive the water discoveries', detail: 'Let someone new learn what you found.', memory: { title: 'Water discoveries, carried forward', text: 'Crossing layers and hematite grains: evidence of ancient water, kept for new questions.' }, reply: 'You imagine someone opening a Mars image for the first time. To them, the discovery is new.' },
+      { id: 'share-story', shortLabel: 'Archive the rover’s story', shortReply: 'Keep the first morning, the long drives, and the people who listened.', label: 'Archive the rover’s story', detail: 'Let someone know there was a rover here.', memory: { title: 'The rover’s story, carried forward', text: 'The first morning, the long drives, and the people who kept listening.' }, reply: 'You imagine telling someone about ninety days that became thousands. You begin with the first morning.' },
     ],
     transmission: 'The memory joins the archive. The images, measurements, and questions are still here.',
   },
@@ -247,7 +247,7 @@ export const scenes = [
     discovery: 'February 12, 2019. Send the final recovery call from Earth. Leave the channel open, and listen.',
     response: 'No signal is received. The last call ends.',
     sol: 'EARTH · FEBRUARY 12, 2019', title: 'Earth’s final call.',
-    text: 'The final commands are sent.\n\nNothing you choose now will change the silence. Nothing you chose before caused it. This was a machine that worked through years it was never promised.\n\nThere is one last thing to decide in this story: how you want to remember the journey.',
+    text: 'The final commands are sent.\n\nNothing you choose now will change the silence. Nothing you chose before caused it. This was a machine that worked through years it was never promised.\n\nThe archive you kept on Earth remains after the final call.',
     thought: 'You do not have to come back for the journey to have mattered.',
     environment: 'night', power: 0, signal: 0,
     actionLabel: 'Stay for Earth’s final call',
@@ -257,7 +257,7 @@ export const scenes = [
       fact: 'The team sent its final recovery commands on February 12, 2019. Opportunity did not respond.', sourceId: 'N2',
     },
     choices: [
-      { id: 'thank-you', shortLabel: 'Thank you for showing us', shortReply: 'Our farewell, kept on Earth: another world is a little less unknown.', label: 'Thank you for showing us', detail: 'Remember a life of looking.', memory: { title: 'Thank you for showing us', text: 'You made another world a little less unknown.' }, reply: 'You leave a thank-you in the archive. It is for the rover, and for everyone who helped it look.' },
+      { id: 'thank-you', shortLabel: 'Make the final recovery call', shortReply: 'The final recovery call goes out. No reply returns.', label: 'Make the final recovery call', detail: 'Send the final command and listen.', memory: { title: 'Earth’s final unanswered call', text: 'After eight months and more than 1,000 recovery commands, the final call received no answer.' }, reply: 'The final call goes out from Earth. No signal is received.' },
       { id: 'rest', shortLabel: 'You have done enough', shortReply: 'Our farewell, kept on Earth: the work mattered. We can let the final task end.', label: 'You have done enough', detail: 'Remember that the work mattered.', memory: { title: 'You have done enough', text: 'A mission does not need to last forever to be extraordinary.' }, reply: 'You let the last task be finished. The story does not ask the little machine for anything more.' },
     ],
     transmission: 'No signal is received. For a moment, there is only the space where an answer used to be.',
@@ -275,7 +275,7 @@ export const scenes = [
     actionLabel: 'Read what remains',
     observation: {
       title: 'Your archive of a journey',
-      text: 'These are the moments you chose to carry home. The choices belong to this story. The mission, the discoveries, and the people behind them were real.',
+      text: 'These are your observations and the memories you chose to carry home. The choices belong to this story. The mission, the discoveries, and the people behind them were real.',
       fact: 'Opportunity’s mission lasted more than fourteen years on the Martian surface.', sourceId: 'N1',
     },
     choices: [], transmission: '', end: true,

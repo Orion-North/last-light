@@ -1,3 +1,5 @@
+import { createGeologyTool } from './engine/geology-tool.js';
+import { createSurvey, surveyProfiles } from './engine/fieldwork.js';
 import { createState, transition } from './engine/game.js';
 
 /** Rebuild a save from legal actions; never trust stored state objects. */
@@ -27,6 +29,25 @@ export function restoreSession(raw, scenes) {
   } catch { return null; }
 }
 
-export function serializeSession(state) {
-  return JSON.stringify({ version: 1, sceneIndex: state.sceneIndex, phase: state.phase, choices: state.memories.map(m => m.choiceId) });
+export function serializeSession(state, checkpoint = null) {
+  return JSON.stringify({ version: 1, sceneIndex: state.sceneIndex, phase: state.phase, choices: state.memories.map(m => m.choiceId), ...(checkpoint ? {checkpoint} : {}) });
+}
+
+/** Physical work is optional: malformed checkpoints never invalidate a legal story save. */
+export function restoreCheckpoint(raw, scenes) {
+  const state = restoreSession(raw, scenes);
+  if (!state) return null;
+  try {
+    const saved = JSON.parse(raw).checkpoint, sceneId = scenes[state.sceneIndex].id;
+    if (!saved || saved.sceneId !== sceneId) return null;
+    const position = saved.position;
+    if (!position || ![position.x,position.z,position.heading].every(Number.isFinite)
+      || Math.hypot(position.x,position.z)>25) return null;
+    const result = {sceneId,position:{x:position.x,z:position.z,heading:position.heading},reached:saved.reached===true};
+    if (saved.tool?.sceneId === sceneId && ['stone-ripples','blueberries'].includes(sceneId))
+      result.tool = createGeologyTool(sceneId,saved.tool).checkpoint();
+    if (state.phase==='observe' && surveyProfiles[sceneId] && saved.survey)
+      result.survey = createSurvey(surveyProfiles[sceneId],undefined,saved.survey).checkpoint();
+    return result;
+  } catch { return null; }
 }

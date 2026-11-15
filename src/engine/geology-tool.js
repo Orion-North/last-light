@@ -1,7 +1,7 @@
 // Authored educational comparison, never instrument telemetry.
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 const finite = n => Number.isFinite(n) ? n : 0;
-export function createGeologyTool(sceneId) {
+export function createGeologyTool(sceneId, saved = null) {
   const berry = sceneId === 'blueberries';
   if (!berry && sceneId !== 'stone-ripples') return null;
   const targets = berry ? [
@@ -16,6 +16,28 @@ export function createGeologyTool(sceneId) {
   let cursor = { x: 0, y: 0 }, input = {}, stage = berry ? 'brush' : 'trace', samples = [], dwell = 0, holding = null, coverage = 0, needsRelease = true;
   const radius = .22, requiredCoverage = .56;
   let previousCursor = { ...cursor };
+  // Restore only durable work. Input, dwell and force always require a fresh release.
+  if (saved?.sceneId === sceneId) {
+    if (Array.isArray(saved.cleared) && saved.cleared.length === cleared.length)
+      saved.cleared.forEach((value, i) => { cleared[i] = value === 1 ? 1 : 0; });
+    paths.forEach((path, i) => path.points.forEach((point, j) => {
+      point.visited = saved.visited?.[i]?.[j] === true;
+    }));
+    coverage = berry ? cleared.reduce((a,b) => a+b,0)/cleared.length
+      : paths.reduce((sum,path) => sum+path.points.filter(p=>p.visited).length,0)/80;
+    if (berry && coverage >= requiredCoverage) {
+      stage = 'sample';
+      samples = targets.filter(t => Array.isArray(saved.sampleIds) && saved.sampleIds.includes(t.id)).map(t=>({...t}));
+    } else if (!berry) samples = paths.filter(path=>path.points.filter(p=>p.visited).length>=32).map(path=>({...targets.find(t=>t.id===path.id)}));
+    if (samples.length === 2) stage = saved.stage === 'complete' ? 'complete' : 'compare';
+    if (Number.isFinite(saved.cursor?.x) && Number.isFinite(saved.cursor?.y))
+      cursor = {x:clamp(saved.cursor.x,-.95,.95),y:clamp(saved.cursor.y,-.95,.95)};
+    previousCursor = {...cursor};
+  }
+  function checkpoint() {
+    return {sceneId, stage, cursor:{...cursor}, cleared:Array.from(cleared),
+      visited:paths.map(path=>path.points.map(p=>p.visited)), sampleIds:samples.map(s=>s.id)};
+  }
   function snapshot() {
     const traceProgress = paths.map(path => Math.min(1, path.points.filter(p => p.visited).length / (path.points.length * .8)));
     const target = targets.find(t => !samples.some(s => s.id === t.id) && Math.hypot(t.x - cursor.x, t.y - cursor.y) < .24) || null;
@@ -26,7 +48,7 @@ export function createGeologyTool(sceneId) {
       cleared };
   }
   return {
-    snapshot,
+    snapshot, checkpoint,
     setInput(value = {}) { input = { x: clamp(finite(value.x), -1, 1), y: clamp(finite(value.y), -1, 1), pressure: clamp(finite(value.pressure), 0, 1), measure: value.measure === true }; if (needsRelease && value.actualSample !== false && input.pressure <= .15 && !input.measure) needsRelease = false; },
     setCursor(x, y) { if (Number.isFinite(x) && Number.isFinite(y)) cursor = { x: clamp(x, -.95, .95), y: clamp(y, -.95, .95) }; },
     stop() { input = {}; dwell = 0; holding = null; needsRelease = true; previousCursor = { ...cursor }; },
@@ -63,7 +85,7 @@ export function createGeologyTool(sceneId) {
         if (target && (input.pressure > .15 || input.measure) && Math.hypot(finite(input.x), finite(input.y)) < .18 && cursorSpeed < .207) {
           if (holding !== target.id) dwell = 0;
           holding = target.id; dwell += dt;
-          if (dwell >= .7) { samples.push({ ...target }); dwell = 0; holding = null; if (samples.length === 2) stage = 'compare'; }
+          if (dwell >= .7) { samples.push({ ...target }); dwell = 0; holding = null; needsRelease = true; if (samples.length === 2) stage = 'compare'; }
         } else { dwell = 0; holding = null; }
       }
       return snapshot();

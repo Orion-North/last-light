@@ -633,3 +633,62 @@ sparse delivery. 141 engine tests and source/asset/build checks pass. Browser
 coverage includes actual Last Chance tracing/comparison plus seeded controller
 and contact-loss checkpoints; limits recorded in VERIFICATION.md. Publication
 owned by root for web and Windows v0.16.
+
+## AUDIT-16 — deep inspection for improvements
+
+User requests a deep inspection of the shipped game. Review only; no runtime
+changes or publication. Shared review/deep-16, disjoint report ownership:
+- GAME-AUDIT-16 / Sol: docs/reviews/GAME-AUDIT-16.md; controls, fieldwork,
+  progression, save/pause correctness and missing consequential gameplay.
+- STORY-AUDIT-16 / Sol: docs/reviews/STORY-AUDIT-16.md; whole-journey comprehension,
+  emotional pacing, agency and delivery beyond the latest copy revision.
+- PRESENTATION-AUDIT-16 / Sol: docs/reviews/PRESENTATION-AUDIT-16.md; 3D assets,
+  UI readability/coherence, soundtrack/signal design and performance risks.
+- Root: browser playthrough, evidence capture, docs/reviews/DEEP-16.md synthesis
+  and task board. Reviewers cite exact code, distinguish verified defects from
+  design hypotheses, rank recommendations and challenge each other's priorities.
+No physical actuator output; QA uses isolated origin or simulated controller.
+
+AUDIT-16 complete: three independent reports plus root synthesis DEEP-16.md.
+Root completed actual early tools/manual travel and investigated survey clipping,
+Berry vertical inversion, journal progress loss and reload arrival loss. Late
+controller checkpoints verified archive/ending mismatch. Engine probes confirmed
+held-trigger readings and identical ending lists across archive choices. Review
+only: no runtime edits/deployment; limits and evidence recorded in the synthesis.
+
+## WEB-ONLY — remove Windows distribution
+
+User explicitly withdrew the Windows version. Root removed the isolated Electron
+wrapper, generated local builds, Windows workflow, setup/handoff and unused ICO.
+Updated current platform instructions and download links; retained web Gamepad
+and USB WebHID support. GitHub Windows preview release and assets removed.
+Published cleanup commit: 3db846127a422cc38eee8606a103bcbda0c0ebcf.
+All 19 engine test files, 47 syntax checks, scene/asset checks and static build
+passed. No gameplay code changed. Previous audit reports remain local/uncommitted.
+GitHub Pages run 43675275214 completed successfully.
+
+## FIX-17 — implement the deep inspection
+
+User authorized the audit improvements; web-only. Shared develop/v0.17 with
+strict disjoint ownership, no agent commits or deployment:
+- WORLD-17 / Sol: src/ui/landscape.js only. Correct Berry screen-space movement;
+  retain completed physical evidence during sending/receipt; improve Berry
+  materials and tool presentation without draw-call explosion. Add renderer
+  checkpoint get/restore API for physical position/tool state in coordination.
+- STORY-17 / Sol: src/content/story.js, src/ui/experience.js and their focused
+  tests only. Accurate automatic records and consequential visible archive ending.
+- AUDIO-17 / Sol: src/audio/sound.js and focused audio lifecycle tests only.
+  Correct tool pitch; preserve reply motif across scene/music section changes,
+  preserving mute/pause and authored silence.
+- Root: main integration, session/geology/fieldwork checkpoint contracts and tests,
+  survey overlay/pause fix, sending composition/CSS, docs, build, browser QA,
+  critical review and publication. Agents challenge choices and report limitations.
+
+
+FIX-17 integrated: renderer/controller mapping, durable tool/travel/survey saves,
+visible unboxed aim, pause/disconnect preservation, physical discovery continuity,
+compact signal and recovery timeline, accurate records/ending and audio lifetime.
+Three Sol implementation/review lanes; root browser QA completed all five surveys
+from seeded arrivals and consecutive final-sky-through-ending sequence. Physical
+hardware/audio perception and a fresh uninterrupted playthrough remain unverified.
+All 21 engine test files, source/assets and static build pass; publishing web only.

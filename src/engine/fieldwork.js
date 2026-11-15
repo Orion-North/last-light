@@ -5,9 +5,7 @@ export const surveyProfiles = {
     { yaw: .35, pitch: -.08, hint: 'Look right toward the horizon: another question ahead.' },
   ] },
   'ordinary-day': { title: 'Notice an ordinary day', steps: [
-    { yaw: -.3, pitch: .12, hint: 'Look left toward the valley floor.' },
-    { yaw: 0, pitch: .22, hint: 'Look down at the ground beside your wheels.' },
-    { yaw: .3, pitch: -.06, hint: 'Look right toward the valley rim.' },
+    { yaw: 0, pitch: .22, hold: .8, hint: 'Look down at the sunlit ground beside your wheels.' },
   ] },
   dust: { title: 'Observe the changing sky', steps: [
     { yaw: 0, pitch: -.3, hold: 1.4, hint: 'Lift the mast toward the dusty sky. Hold to measure the fading light.' },
@@ -24,11 +22,15 @@ export const surveyProfiles = {
 const wrap = angle => Math.atan2(Math.sin(angle), Math.cos(angle));
 
 /** Origin is the camera azimuth/polar at arrival; positive pitch means looking down. */
-export function createSurvey(profile, origin = { yaw: 0, pitch: 0 }) {
+export function createSurvey(profile, origin = { yaw: 0, pitch: 0 }, saved = null) {
   if (!profile?.steps?.length) throw new TypeError('A survey needs observation steps.');
   let step = 0, held = 0;
   let lastCapture = null;
+  if (Number.isInteger(saved?.step)) step = Math.max(0, Math.min(profile.steps.length, saved.step));
+  if (Number.isFinite(saved?.lastCapture?.yaw) && Number.isFinite(saved?.lastCapture?.pitch)) lastCapture = {...saved.lastCapture};
   return {
+    checkpoint() { return {step, lastCapture:lastCapture && {...lastCapture}}; },
+    pause() { held = 0; },
     sample({ yaw, pitch, steady = true }, dt) {
       if (step < profile.steps.length) {
         const target = profile.steps[step];

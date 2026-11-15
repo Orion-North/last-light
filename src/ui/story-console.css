@@ -38,7 +38,7 @@ body[data-screen="game"][data-tool="true"] .interaction-dock {
 .story-actions .tool-actions { margin-top:10px; }
 .story-actions .sample-comparison { margin:6px 0; }
 .story-actions .sample-reading strong { font-size:14px; }
-.story-actions .survey-aim { position:fixed;left:calc(50% - 80px);bottom:42svh;margin:0;pointer-events:none; }
+.play-screen > .survey-aim { position:fixed;z-index:4;left:calc(50% - 80px);top:34svh;bottom:auto;margin:0;pointer-events:none; }
 .story-actions .survey-ticks { justify-content:flex-start; }
 .story-actions .pace-note { text-align:left;font:11px/1.5 var(--sans); }
 .story-actions .quiet-button[data-action="assist-observation"] { font-size:10px; }
@@ -47,8 +47,8 @@ body[data-screen="game"][data-tool="true"] .interaction-dock {
 .story-shell .tool-actions { justify-content:space-between; }
 /* The diagram remains in the world; all language returns to the terminal below. */
 .upload-terminal[data-presentation="story"] { padding:0; }
-.upload-terminal[data-presentation="story"] .upload-terminal__apparatus { padding:0 18px 20px; }
-.upload-terminal[data-presentation="story"] .signal-map { height:140px;max-width:630px; }
+.upload-terminal[data-presentation="story"] .upload-terminal__apparatus { padding:0 18px 10px; }
+.upload-terminal[data-presentation="story"] .signal-map { height:66px;max-width:510px; }
 .upload-terminal[data-presentation="story"] .signal-dialogue { margin-bottom:0; }
 .upload-terminal[data-presentation="story"] .upload-terminal__guidance { max-width:none;margin:14px 0 0;text-align:left; }
 .upload-terminal[data-presentation="story"] .signal-exciter { justify-content:flex-start;margin-top:12px; }
@@ -78,16 +78,14 @@ body[data-screen="game"][data-tool="true"] .interaction-dock {
   .story-console__line { font-size:14px;line-height:1.55; }
   .story-actions .objective-line { align-items:flex-start;flex-direction:column;gap:5px; }
   .mission-briefing .briefing-console { bottom:24px;width:calc(100vw - 28px); }
-  .upload-terminal[data-presentation="story"] .signal-map { height:115px; }
+  .upload-terminal[data-presentation="story"] .signal-map { height:66px; }
   .upload-terminal[data-presentation="story"] .upload-terminal__apparatus { padding-bottom:14px; }
 }
 @media(max-height:620px) and (min-width:651px) {
   .story-shell { padding-block:12px; }
   .story-console__line { font-size:14px;min-height:3.1em;line-height:1.55;margin-top:7px; }
   .story-actions { margin-top:8px; }
-  .upload-terminal[data-presentation="story"] .signal-map { height:100px; }
-  .upload-terminal[data-presentation="story"] .planet { width:52px;height:52px; }
-  .upload-terminal[data-presentation="story"] .planet--earth { width:43px;height:43px; }
+  .upload-terminal[data-presentation="story"] .signal-map { height:60px; }
   .upload-terminal[data-presentation="story"] .upload-terminal__apparatus { padding-bottom:10px; }
 }
 

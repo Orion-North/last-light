@@ -56,6 +56,7 @@ export function createLandscape(canvas) {
   const motion = createDriveMotion();
   let wasMoving = false;
   let roverFrame = null;
+  let evidence = null, retainedTool = null;
   let tool = null, toolPointer = null, toolSampleTime = 0;
   let investigation = false;
   let inspectionOrigin = null;
@@ -358,8 +359,9 @@ export function createLandscape(canvas) {
     grainVertices.setXYZ(i, x * wear, y * wear, z * wear);
   }
   grainGeometry.computeVertexNormals();
-  const grainMaterial = own(new THREE.MeshStandardMaterial({ color: '#a9adb0',
-    roughness: .79, metalness: .05, bumpMap: outcropTexture, bumpScale: .012 }));
+  const grainMaterial = own(new THREE.MeshStandardMaterial({ color: '#aeb3b5',
+    roughness: .9, metalness: .015, bumpMap: outcropTexture, bumpScale: .012 }));
+  grainMaterial.userData.normalStrength = .2;
   const grains = new THREE.InstancedMesh(grainGeometry, grainMaterial, 96);
   const grainRandom = seededRandom(7403);
   for (let i = 0; i < grains.count; i += 1) {
@@ -369,14 +371,14 @@ export function createLandscape(canvas) {
     const z = Math.sin(angle) * radius * .65;
     // A deliberately brushed comparison patch exposes the host rock beside the
     // nodules. Keep its whole radius free, including overhanging grain edges.
-    if (Math.hypot(x - .5, z - .16) < .38) x -= .78;
+    if (Math.hypot(x - .5, z + .1024) < .38) x -= .78;
     const size = (.055 + grainRandom() * .035) * .75;
     // Every third nodule remains partly locked into the host sediment.
     const embedded = i % 3 === 0;
     dummy.position.set(x, bowlHeight(x, z) + size * (embedded ? .15 : .72), z);
     dummy.rotation.set(grainRandom() * 3, grainRandom() * 6, grainRandom() * 3);
-    dummy.scale.set(size, size * (.84 + grainRandom() * .2), size);
-    grains.setColorAt(i, new THREE.Color().setHSL(.59, .045, .67 + grainRandom() * .14));
+    dummy.scale.set(size, size * (.68 + grainRandom() * .35), size * (.8 + grainRandom() * .35));
+    grains.setColorAt(i, new THREE.Color().setHSL(.06 + grainRandom() * .06, .08 + grainRandom() * .12, .3 + grainRandom() * .25));
     dummy.updateMatrix();
     grains.setMatrixAt(i, dummy.matrix);
   }
@@ -408,10 +410,16 @@ export function createLandscape(canvas) {
   const dustChip = own(new THREE.PlaneGeometry(2 / 24 * 1.7, 2 / 24 * 1.7));
   const toolDust = new THREE.InstancedMesh(dustChip, toolDustMaterial, 24 * 24); toolGroup.add(toolDust);
   const toolHead = new THREE.Group(); toolGroup.add(toolHead);
-  const headMaterial = own(new THREE.MeshStandardMaterial({ color: '#d9e4e4', metalness: .55, roughness: .4 }));
-  const headRing = new THREE.Mesh(own(new THREE.TorusGeometry(.105, .014, 8, 36)), headMaterial); toolHead.add(headRing);
-  const stem = new THREE.Mesh(own(new THREE.CylinderGeometry(.022, .035, .23, 10)), headMaterial);
-  stem.rotation.x = Math.PI / 2; stem.position.z = .14; toolHead.add(stem);
+  // The cursor is an emissive instrument reticle, explicitly a diagram rather
+  // than a floating mechanical arm. Its open center leaves the surface visible.
+  const headMaterial = own(new THREE.MeshBasicMaterial({ color: '#d9f3ff', depthTest: false, transparent: true, opacity: .9 }));
+  const headRing = new THREE.Mesh(own(new THREE.TorusGeometry(.085, .005, 6, 32)), headMaterial);
+  headRing.renderOrder = 6; toolHead.add(headRing);
+  for (let i = 0; i < 4; i++) {
+    const tick = new THREE.Mesh(own(new THREE.BoxGeometry(.045, .005, .005)), headMaterial);
+    tick.position.set(Math.cos(i * Math.PI / 2) * .115, Math.sin(i * Math.PI / 2) * .115, 0);
+    tick.rotation.z = i * Math.PI / 2; tick.renderOrder = 6; toolHead.add(tick);
+  }
   const toolRings = [0, 1].map(() => {
     const ring = new THREE.Mesh(own(new THREE.TorusGeometry(.16, .012, 6, 32)), own(new THREE.MeshBasicMaterial({ color: '#ffd18b', depthTest: false })));
     ring.renderOrder = 5; toolGroup.add(ring); return ring;
@@ -430,7 +438,7 @@ export function createLandscape(canvas) {
       normal: hit ? hit.face.normal.clone().transformDirection(hit.object.matrixWorld) : new THREE.Vector3(0, 0, 1) };
   }
   function toolPoint(x, y, lift = 0) {
-    return toolBerry ? new THREE.Vector3(x, bowlHeight(x, -y * .64) + .035 + lift, -y * .64)
+    return toolBerry ? new THREE.Vector3(x, bowlHeight(x, y * .64) + .035 + lift, y * .64)
       : new THREE.Vector3(x, .67 - y * .48, layerSurface(x, .67 - y * .48).z + .012 + lift);
   }
   const layerDustPoints = Array.from({ length: 576 }, (_, index) => toolPoint(-1 + (index % 24 + .5) / 12, -1 + (Math.floor(index / 24) + .5) / 12));
@@ -477,13 +485,14 @@ export function createLandscape(canvas) {
     const { cleared, ...detail } = state;
     canvas.dispatchEvent(new CustomEvent('tool-sample', { bubbles: true, detail }));
   }
-  function setToolMode(sceneId) {
+  function setToolMode(sceneId, savedTool = null) {
     if (tool?.sceneId === sceneId) return true;
+    if (tool) retainedTool = tool;
     tool?.stop(); toolPointer = null;
-    const next = createGeologyTool(sceneId);
+    const next = !savedTool && retainedTool?.sceneId === sceneId ? retainedTool : createGeologyTool(sceneId, savedTool);
     tool = next ? Object.assign(next, { sceneId }) : null;
-    toolGroup.visible = Boolean(tool); traceGuidePositions = null;
-    controls.enabled = !tool && !survey && !remoteView && !paused && !intro && !contactActive;
+    toolGroup.visible = Boolean(tool || evidence); traceGuidePositions = null;
+    controls.enabled = !tool && !evidence && !survey && !remoteView && !paused && !intro && !contactActive;
     if (!tool) return false;
     setSurvey(false); investigation = false; stopDrive(); look = { x: 0, y: 0 };
     toolBerry = sceneId === 'blueberries';
@@ -492,10 +501,51 @@ export function createLandscape(canvas) {
     cameraTween = null; controls.target.copy(center);
     camera.position.copy(center).add(toolBerry ? new THREE.Vector3(0, 2.9, 1.8) : new THREE.Vector3(0, .2, 3.2));
     controls.update(); controls.enabled = false;
+    toolHead.visible = !evidence;
     updateToolVisual(tool.snapshot()); emitTool(tool.snapshot()); render(); return true;
   }
-  function setToolInput(value) { if (tool && toolPointer === null && !paused && !document.hidden) tool.setInput(value); }
-  function compareToolSamples() { const result = tool?.compare() || false; if (result) emitTool(tool.snapshot()); return result; }
+  function setEvidence(sceneId) {
+    evidence = sceneId === 'blueberries' || sceneId === 'stone-ripples' ? sceneId : null;
+    const source = tool?.sceneId === evidence ? tool : retainedTool?.sceneId === evidence ? retainedTool : null;
+    toolGroup.visible = Boolean(tool || evidence && source);
+    toolHead.visible = Boolean(tool && !evidence);
+    if (evidence) {
+      toolBerry = evidence === 'blueberries';
+      toolGroup.position.copy(toolBerry ? berryBowl.position : lastChance.position);
+      stopDrive(); look = { x: 0, y: 0 }; toolPointer = null;
+      // Legacy saves and explicit skips have no recorded physical work. Frame
+      // the authored rock itself, without inventing cleared dust or samples.
+      // Hide the whole overlay if no matching engine exists so another site's
+      // cached rings/dust/path marks cannot masquerade as earned evidence.
+      toolGroup.visible = Boolean(source);
+      if (source) { source.stop(); updateToolVisual(source.snapshot()); }
+      controls.enabled = false;
+    }
+    render();
+  }
+  function getCheckpoint() {
+    const source = tool || retainedTool;
+    return { position: { x: vehicle.position.x, z: vehicle.position.z, heading },
+      tool: source?.checkpoint ? { ...source.checkpoint(), sceneId: source.sceneId } : null };
+  }
+  function restoreCheckpoint(checkpoint) {
+    const saved = checkpoint?.position;
+    if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.z)) {
+      const length = Math.hypot(saved.x, saved.z), scale = length > 19 ? 19 / length : 1;
+      vehicle.position.set(saved.x * scale, 0, saved.z * scale);
+      heading = Number.isFinite(saved.heading) ? saved.heading : -.45;
+      stopDrive(); groundRover(); lastTrackPosition.copy(vehicle.position);
+      focusRover(true);
+    }
+    if (checkpoint?.tool?.sceneId) {
+      const saved = checkpoint.tool;
+      const restored = createGeologyTool(saved.sceneId, saved);
+      retainedTool = restored ? Object.assign(restored, { sceneId: saved.sceneId }) : null;
+    }
+    render();
+  }
+  function setToolInput(value) { if (tool && !evidence && toolPointer === null && !paused && !document.hidden) tool.setInput(value); }
+  function compareToolSamples() { const result = !evidence && tool?.compare() || false; if (result) emitTool(tool.snapshot()); return result; }
 
   // Fractured shoulders and talus tie each hero to the ground. Shared geometry
   // and one instanced batch keep staging inexpensive on mobile GPUs.
@@ -529,6 +579,8 @@ export function createLandscape(canvas) {
         loaded => {
           if (disposed) { loaded.dispose(); return; }
           for (const material of materials) {
+            // Preserve mineral color variation; borrow only scanned microrelief.
+            if (material === grainMaterial && property === 'map') continue;
             material[property] = loaded;
             if (property === 'normalMap') {
               material.normalScale.setScalar(material.userData.normalStrength ?? normalStrength);
@@ -551,7 +603,7 @@ export function createLandscape(canvas) {
   loadSurfaceMaps({ map: 'textures/ground/albedo.jpg', normalMap: 'textures/ground/normal.jpg',
     roughnessMap: 'textures/ground/roughness.jpg' }, [terrainMaterial], 80, .45);
   loadSurfaceMaps({ map: 'textures/rock/albedo.jpg', normalMap: 'textures/rock/normal.jpg',
-    roughnessMap: 'textures/rock/roughness.jpg' }, [rockMaterial, ...strataMaterials, bowlMaterial], 1.1, .7);
+    roughnessMap: 'textures/rock/roughness.jpg' }, [rockMaterial, ...strataMaterials, bowlMaterial, grainMaterial], 1.1, .7);
 
   const sun = new THREE.DirectionalLight('#ffd4a3', 3.2);
   sun.position.set(-28, 7, -58);
@@ -819,7 +871,7 @@ export function createLandscape(canvas) {
       contactActive = false;
       contactInput = { x: 0, y: 0 };
       contactVisual.visible = false;
-      controls.enabled = !tool && !survey && !remoteView && !paused;
+      controls.enabled = !tool && !evidence && !survey && !remoteView && !paused;
       render();
       return;
     }
@@ -1154,7 +1206,7 @@ export function createLandscape(canvas) {
       if (!survey) return;
       survey = null; surveyPointer = null;
       look = { x: 0, y: 0 };
-      controls.enabled = !tool && !survey && !remoteView && !paused && !intro && !contactActive;
+      controls.enabled = !tool && !evidence && !survey && !remoteView && !paused && !intro && !contactActive;
       return;
     }
     survey = null;
@@ -1176,7 +1228,7 @@ export function createLandscape(canvas) {
     controls.target.copy(camera.position).add(new THREE.Vector3().setFromSpherical(gaze));
   }
   function surveyPointerDown(event) {
-    if (tool && !paused) {
+    if (tool && !evidence && !paused) {
       tool.setInput({}); // A fresh pointer press follows a released pointer.
       toolPointer = event.pointerId;
       toolPointerMove(event); return;
@@ -1184,14 +1236,14 @@ export function createLandscape(canvas) {
     if (survey?.origin && !paused) surveyPointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
   }
   function toolPointerMove(event) {
-    if (!tool || toolPointer !== event.pointerId || paused) return;
+    if (!tool || evidence || toolPointer !== event.pointerId || paused) return;
     const rect = canvas.getBoundingClientRect();
     const ray = new THREE.Raycaster();
     ray.setFromCamera(new THREE.Vector2((event.clientX - rect.left) / rect.width * 2 - 1, 1 - (event.clientY - rect.top) / rect.height * 2), camera);
     const origin = toolGroup.position.clone().add(toolPoint(0, 0));
     const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(new THREE.Vector3(0, toolBerry ? 1 : 0, toolBerry ? 0 : 1), origin);
     const hit = ray.ray.intersectPlane(plane, new THREE.Vector3());
-    if (hit) { hit.sub(toolGroup.position); tool.setCursor(hit.x, toolBerry ? -hit.z / .64 : (.67 - hit.y) / .48); }
+    if (hit) { hit.sub(toolGroup.position); tool.setCursor(hit.x, toolBerry ? hit.z / .64 : (.67 - hit.y) / .48); }
     tool.setInput({ pressure: 1 });
   }
   function surveyPointerMove(event) {
@@ -1442,15 +1494,26 @@ export function createLandscape(canvas) {
 
   function render() {
     if (disposed) return;
+    if (evidence) {
+      const center = toolGroup.position.clone().add(toolPoint(0, 0));
+      const offset = toolBerry ? new THREE.Vector3(0, 2.9, 1.8) : new THREE.Vector3(0, .2, 3.2);
+      // After comparison, leave the lower reading/signal dock clear. Move the
+      // aim down in camera space while backing away; active tools keep their
+      // original surface-centered camera and pointer projection.
+      const screenUp = new THREE.Vector3(0, offset.z, -offset.y).normalize();
+      controls.target.copy(center).addScaledVector(screenUp, -.55);
+      camera.position.copy(center).add(offset.multiplyScalar(1.15));
+      toolHead.visible = false;
+    }
     // Orbiting and following the rover must never put the eye beneath a dune.
     const ground = surfaceHeight(camera.position.x, camera.position.z);
     const targetGround = surfaceHeight(controls.target.x, controls.target.z);
     if (camera.position.y < ground + .85) camera.position.y = ground + .85;
-    if (!survey && controls.target.y < targetGround + .45) controls.target.y = targetGround + .45;
+    if (!survey && !evidence && controls.target.y < targetGround + .45) controls.target.y = targetGround + .45;
     camera.lookAt(controls.target);
     // Dedicated evidence close-ups omit the foreground rover that otherwise
     // blocks the near-side rock/grains. Restored on every other world view.
-    vehicle.visible = !investigation && !tool;
+    vehicle.visible = !investigation && !tool && !evidence;
     anchorShadows();
     renderer.render(scene, camera);
     sampleWaypointGuidance();
@@ -1464,10 +1527,10 @@ export function createLandscape(canvas) {
       elapsed += delta;
       updateContactPulse();
       updateContact(delta);
-      if (tool) {
+      if (tool && !evidence) {
         const state = tool.update(delta); updateToolVisual(state);
         if (elapsed - toolSampleTime >= .1) { toolSampleTime = elapsed; emitTool(state); }
-      } else moveRover(delta);
+      } else if (!evidence) moveRover(delta);
       const speed = environment === 'storm' ? 6.0 : .35;
       for (let i = 0; i < dustCount; i += 1) {
         dustPositions[i * 3] += delta * speed;
@@ -1512,7 +1575,7 @@ export function createLandscape(canvas) {
       controls.target.copy(returned.target);
       intro = null;
       stopDrive(); look = { x: 0, y: 0 };
-      controls.enabled = !tool && !survey && !remoteView && !intro && !paused && !contactActive && !contactPulse;
+      controls.enabled = !tool && !evidence && !survey && !remoteView && !intro && !paused && !contactActive && !contactPulse;
       controls.update(); render();
       return;
     }
@@ -1587,7 +1650,7 @@ export function createLandscape(canvas) {
   frame = requestAnimationFrame(animate);
 
   return {
-    setToolMode, setToolInput, compareToolSamples,
+    setToolMode, setToolInput, compareToolSamples, setEvidence, getCheckpoint, restoreCheckpoint,
     setMissionAge,
     previewMemory,
     revealFirstView,
@@ -1599,7 +1662,7 @@ export function createLandscape(canvas) {
       if (nextMode === mode) return;
       mode = nextMode;
       if (mode !== 'game') { setToolMode(null); setSurvey(false); remoteView = false; memoryPreview = null; }
-      controls.enabled = !tool && !survey && !remoteView && !paused && !intro && !contactActive && !contactPulse;
+      controls.enabled = !tool && !evidence && !survey && !remoteView && !paused && !intro && !contactActive && !contactPulse;
       stopDrive();
       marker.visible = mode === 'game' && Boolean(waypoint && !waypoint.reached);
       focusRover();
@@ -1613,19 +1676,19 @@ export function createLandscape(canvas) {
     sendContact,
     cancelContactPulse,
     setDrive(value = {}) {
-      if (tool || intro || remoteView) return;
+      if (tool || evidence || intro || remoteView) return;
       drive = {
         forward: THREE.MathUtils.clamp(Number(value.forward) || 0, -1, 1),
         turn: THREE.MathUtils.clamp(Number(value.turn) || 0, -1, 1),
       };
     },
     setLook(value={}) {
-      if (tool || intro || remoteView) return;
+      if (tool || evidence || intro || remoteView) return;
       look={x:THREE.MathUtils.clamp(Number(value.x)||0,-1,1),y:THREE.MathUtils.clamp(Number(value.y)||0,-1,1)};
     },
     setPaused(value) {
       paused = Boolean(value);
-      controls.enabled = !tool && !survey && !remoteView && !intro && !paused && !contactActive && !contactPulse;
+      controls.enabled = !tool && !evidence && !survey && !remoteView && !intro && !paused && !contactActive && !contactPulse;
       if (paused) {cancelContactPulse();blur();look={x:0,y:0};}
       if (survey) { controls.enabled = false; survey.previous = camera.getWorldDirection(new THREE.Vector3()); }
       previous = 0;
@@ -1635,7 +1698,9 @@ export function createLandscape(canvas) {
     setWaypoint,
     setObservationTarget,
     reset() {
+      evidence = null; retainedTool = null;
       setToolMode(null);
+      retainedTool = null;
       setSurvey(false);
       remoteView = false; memoryPreview = null;
       missionAge.value = 0;

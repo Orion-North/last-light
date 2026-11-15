@@ -40,3 +40,28 @@ test('ending recalls chosen memories, including the last choice, without duplica
   assert.deepEqual(endingMemories(memories.slice(0, 2)), memories.slice(0, 2));
   assert.deepEqual(endingMemories([]), []);
 });
+
+test('real ending retains both discoveries and the chosen Earth archive across resume', () => {
+  const endings = [];
+  for (const archiveChoice of ['share-science', 'share-story']) {
+    let state = createState();
+    while (!state.complete) {
+      const scene = scenes[state.sceneIndex];
+      state = transition(state, { type: 'OBSERVE' }, scenes);
+      const choice = scene.id === 'months' ? archiveChoice : scene.choices[0].id;
+      state = transition(state, { type: 'CHOOSE', choiceId: choice }, scenes);
+      state = restoreSession(serializeSession(state), scenes);
+      assert.ok(state, `resume during ${scene.id}`);
+      state = transition(state, { type: 'TRANSMIT' }, scenes);
+      state = transition(state, { type: 'NEXT' }, scenes);
+    }
+    const restored = restoreSession(serializeSession(state), scenes);
+    const visible = endingMemories(restored.memories);
+    assert.deepEqual(visible.map(m => m.sceneId), ['first-morning', 'stone-ripples', 'blueberries', 'months']);
+    assert.equal(visible.at(-1).choiceId, archiveChoice);
+    endings.push(visible.map(m => m.title));
+  }
+  assert.notDeepEqual(endings[0], endings[1], 'the visible ending changes with the archive choice');
+  assert.match(endings[0].at(-1), /Water discoveries/);
+  assert.match(endings[1].at(-1), /rover’s story/);
+});

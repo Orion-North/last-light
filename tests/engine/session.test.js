@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createState, transition } from '../../src/engine/game.js';
 import { scenes, sources } from '../../src/content/story.js';
-import { restoreSession, serializeSession } from '../../src/session.js';
+import { restoreSession, serializeSession, restoreCheckpoint } from '../../src/session.js';
 
 const interactiveScenes = scenes.filter(scene => !scene.end);
 const finalIndex = scenes.length - 1;
@@ -154,5 +154,21 @@ test('impossible phases, mismatched choice counts, and foreign choices are rejec
   ];
   for (const value of cases) {
     assert.equal(restoreSession(JSON.stringify(value), scenes), null, `reject ${JSON.stringify(value)}`);
+  }
+});
+
+
+test('physical checkpoints preserve arrival and survey captures without altering story state',()=>{
+  let state=createState();for(const scene of scenes.slice(0,3))state=playScene(state,scene.choices[0].id);
+  const checkpoint={sceneId:'marathon',position:{x:-10,z:3,heading:.4},reached:true,survey:{step:1,lastCapture:{yaw:-.35,pitch:.12}}};
+  const raw=serializeSession(state,checkpoint);
+  assert.deepEqual(restoreSession(raw,scenes),state);
+  assert.deepEqual(restoreCheckpoint(raw,scenes),checkpoint);
+  const travelling={...checkpoint,reached:false,survey:null};
+  assert.equal(restoreCheckpoint(serializeSession(state,travelling),scenes).reached,false);
+  assert.equal(restoreCheckpoint(serializeSession(state),scenes),null);
+  for(const mutation of [{sceneId:'blueberries'},{position:{x:999,z:0,heading:0}},{position:{x:0,z:0,heading:'bad'}}]){
+    const invalid=serializeSession(state,{...checkpoint,...mutation});
+    assert.equal(restoreCheckpoint(invalid,scenes),null);assert.deepEqual(restoreSession(invalid,scenes),state);
   }
 });

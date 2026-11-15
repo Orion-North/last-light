@@ -3,7 +3,7 @@
 A playable, real-time 3D story about NASA's Opportunity rover: discovery,
 attachment, a fading signal, and the things that remain.
 
-**Playable v0.16.** [Play on GitHub Pages](https://orion-north.github.io/last-light/). Built with parallel Codex agents. The game uses NASA's
+**Playable v0.17.** [Play on GitHub Pages](https://orion-north.github.io/last-light/). Built with parallel Codex agents. The game uses NASA's
 textured rover model, a navigable original Mars environment, an original adaptive
 score, and a complete three-act story. No account or AI API is needed by the game
 itself. A hosting provider may apply its own access gate.
@@ -40,10 +40,12 @@ the detailed NASA model alone is 11.91 MB. The optional poster adds about 2 MB.
 Web-only: a desktop browser with a controller is the primary target.
 Existing keyboard/touch fallbacks remain available.
 
+- Saves retain rover position, earned arrival, brushed dust, traced paths, sample readings and captured survey views. Pause and controller disconnect preserve completed work; partial holds require a fresh input.
+- Geological evidence stays in view through sending and receipt, with both findings visible. The compact signal display leaves the landscape readable; the ending includes your chosen Earth archive.
 - Only the first view and Earth archive ask for a text choice. Other records follow your observations. The later storm recalls your actual first horizon/ground memory.
 - Manual driving leads to two hands-on geological investigations and five mast observations. Survey lengths vary from a valley panorama to a single sustained look into the darkened sky.
 - Last Chance: hold R2 and trace two crossing layer paths with the right stick. Berry Bowl: sweep dust away, then take two steady probe readings. Release between readings, hold steady over each marked patch, then press Cross to compare. Keyboard and pointer alternatives remain available.
-- Sending shows Mars and Earth, animated traveling packets, and a returning receipt. A four-note musical question receives a complementary answer early in the mission; after contact loss the familiar answer is absent. The final image is incomplete; recovery calls have no return pulse.
+- Sending uses a compact Mars–Earth signal route, animated traveling packets, and a returning receipt. A four-note musical question receives a complementary answer early in the mission; after contact loss the familiar answer is absent. The final image is incomplete; recovery calls have no return pulse.
 - Losing contact cuts to a distant rover view and an explicit Earth handover. Recovery calls visibly run from Earth toward Opportunity.
 - Lighting follows the atmosphere; terrain contact and traveling shadows better anchor the rover and rocks. Desktop quality uses 2× pixel ratio cap, 2048 shadows and up to 8× surface anisotropy.
 

@@ -21,7 +21,8 @@ test('requires trigger release, distinct surface readings, and deliberate compar
   t.setInput({}); t.update(.05); t.setInput({ pressure: 1 }); hold(t);
   assert.equal(t.snapshot().samples.length, 1); hold(t, 100); assert.equal(t.snapshot().samples.length, 1);
   assert.equal(t.compare(), false);
-  t.setCursor(b.x, b.y); hold(t); assert.equal(t.snapshot().stage, 'compare');
+  t.setCursor(b.x, b.y); hold(t, 100); assert.equal(t.snapshot().samples.length, 1);
+  t.setInput({}); t.setInput({pressure:1}); hold(t); assert.equal(t.snapshot().stage, 'compare');
   hold(t, 100); assert.equal(t.snapshot().complete, false);
   assert.equal(t.compare(), true); assert.equal(t.snapshot().complete, true);
 });
@@ -108,4 +109,28 @@ test('tracing ignores off-path sweeps and retains coverage safely through pause'
   t.setInput({ pressure: 1 }); for (const p of points) { t.setCursor(p.x, p.y); t.update(.05); }
   assert.equal(t.snapshot().coverage, coverage); assert.equal(t.snapshot().samples.length, 0);
   tracePath(t, 0); assert.equal(t.snapshot().samples.length, 1);
+});
+
+
+test('reload preserves brush coverage and a completed reading but not a held input',()=>{
+  const t=createGeologyTool('blueberries');brush(t);
+  const a=t.snapshot().targets[0];t.setCursor(a.x,a.y);t.setInput({});t.setInput({pressure:1});hold(t);
+  const checkpoint=JSON.parse(JSON.stringify(t.checkpoint()));
+  const restored=createGeologyTool('blueberries',checkpoint);
+  assert.deepEqual(restored.checkpoint(),checkpoint);
+  const b=restored.snapshot().targets[1];restored.setCursor(b.x,b.y);restored.setInput({pressure:1});hold(restored,100);
+  assert.equal(restored.snapshot().samples.length,1);
+  restored.setInput({});restored.setInput({pressure:1});hold(restored);assert.equal(restored.snapshot().stage,'compare');
+  const compared=createGeologyTool('blueberries',restored.checkpoint());assert.equal(compared.snapshot().stage,'compare');assert.equal(compared.compare(),true);
+  assert.equal(createGeologyTool('blueberries',compared.checkpoint()).snapshot().complete,true);
+});
+
+test('reload preserves partial tracing and reconstructs completed paths from visited points',()=>{
+  const t=createGeologyTool('stone-ripples');t.setInput({});t.setInput({pressure:1});
+  for(const p of t.snapshot().paths[0].points.slice(0,12)){t.setCursor(p.x,p.y);t.update(.05);}
+  const r=createGeologyTool('stone-ripples',t.checkpoint());assert.deepEqual(r.checkpoint(),t.checkpoint());
+  tracePath(r,0);const r2=createGeologyTool('stone-ripples',r.checkpoint());assert.equal(r2.snapshot().samples.length,1);
+  tracePath(r2,1);assert.equal(r2.snapshot().stage,'compare');
+  const forged=createGeologyTool('stone-ripples',{sceneId:'stone-ripples',stage:'complete',sampleIds:['lower','upper']});
+  assert.equal(forged.snapshot().stage,'trace');assert.equal(forged.snapshot().samples.length,0);
 });

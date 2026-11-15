@@ -26,5 +26,9 @@ export function missionConditions(scene) {
 
 /** A few specific memories on the ending; the complete archive remains optional. */
 export function endingMemories(memories) {
-  return memories.filter((_, index) => index < 3 || index === memories.length - 1);
+  const anchors = ['first-morning', 'stone-ripples', 'blueberries', 'months'];
+  const selected = anchors.map(id => memories.find(memory => memory.sceneId === id)).filter(Boolean);
+  // Keep partial/legacy archives useful without letting an automatic final call
+  // displace the player's deliberate Earth archive choice.
+  return selected.length ? selected : memories.filter((_, index) => index < 3 || index === memories.length - 1);
 }

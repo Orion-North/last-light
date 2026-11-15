@@ -47,3 +47,15 @@ test('overlapping views cannot be recorded by leaving the camera still',()=>{
   for(let i=0;i<6;i++)result=survey.sample({yaw:.24,pitch:0},.1);
   assert.equal(result.complete,true);
 });
+
+
+test('pause and reload retain captured views while clearing an incomplete hold',()=>{
+  const profile=surveyProfiles.marathon,s=createSurvey(profile);
+  for(let i=0;i<6;i++)s.sample(profile.steps[0],.1);
+  for(let i=0;i<3;i++)s.sample(profile.steps[1],.1);
+  s.pause();assert.equal(s.sample({...profile.steps[1],steady:false},.1).progress,.5);
+  const restored=createSurvey(profile,undefined,JSON.parse(JSON.stringify(s.checkpoint())));
+  assert.equal(restored.sample({...profile.steps[1],steady:false},.1).step,1);
+  let result;for(let i=0;i<6;i++)result=restored.sample(profile.steps[1],.1);
+  assert.equal(result.complete,true);
+});

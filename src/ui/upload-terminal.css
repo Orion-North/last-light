@@ -68,7 +68,7 @@ body.controller-connected[data-upload="true"][data-screen="game"] .interaction-d
 .upload-terminal[data-stage="sending"] .signal-exciter{visibility:hidden;}
  .upload-terminal[data-stage="received"] .signal-exciter{visibility:hidden;}
 body[data-upload="true"] .mission-objective,body[data-upload="true"] .play-heading h1{display:none;}
-body[data-upload="true"][data-screen="game"] .play-screen{background:linear-gradient(#050c1640,#050c16b3 45%,#050c1699);}
+body[data-upload="true"][data-screen="game"] .play-screen{background:linear-gradient(transparent 38%,#050c1612 60%,#050c1666);}
 @keyframes signal-depart{0%{left:0;opacity:0}12%{opacity:1}85%{opacity:1}100%{left:calc(100% - 10px);opacity:0}}
 @keyframes signal-return{0%{left:100%;opacity:1}85%{opacity:1}100%{left:0;opacity:0}}
 @keyframes signal-partial{0%{left:0;opacity:0}12%,28%,44%,70%{opacity:1}32%,49%,74%{opacity:.1}100%{left:calc(100% - 10px);opacity:0}}
@@ -126,3 +126,29 @@ body[data-upload="true"][data-screen="game"] .play-screen{background:linear-grad
 .upload-terminal[data-input="controller"] .upload-terminal__guidance{max-width:560px;}
 @media(max-height:720px){.upload-terminal[data-input="controller"][data-stage="ready"] .signal-exciter{height:40px;margin-bottom:8px}.signal-exciter .controller-glyph{width:31px;height:31px}}
 @media(max-width:600px){.upload-terminal__half i{width:55px}}
+
+/* A small signal instrument leaves the photographed work in view. */
+.upload-terminal .signal-world { width:92px;gap:9px; }
+.upload-terminal .planet,.upload-terminal .planet--earth,
+.upload-terminal[data-mode="archive"] .planet--earth {
+  width:9px;height:9px;background:#f3c590;box-shadow:0 0 8px #ffc57899;
+}
+.upload-terminal .planet--earth,.upload-terminal[data-mode="archive"] .planet--earth { background:#c3e6f4;box-shadow:0 0 10px #a2dcff88; }
+.upload-terminal .planet::before,.upload-terminal .planet::after { display:none; }
+.upload-terminal .signal-world::after { width:30px;height:30px;left:calc(50% - 15px);top:-11px; }
+.upload-terminal .signal-world>span { font-size:9px;letter-spacing:.16em; }
+.upload-terminal .signal-world small { font-size:6px;margin-top:5px; }
+.upload-terminal .signal-path { height:28px;margin-top:-33px; }
+.upload-terminal .signal-dialogue { gap:30px;margin:0 auto 6px; }
+.upload-terminal .signal-phrase span { font-size:7px; }
+.recovery-trace {display:flex;justify-content:center;gap:36px;list-style:none;padding:0;margin:0 0 18px;font:8px var(--mono);letter-spacing:.12em;color:#b4bcc2;}
+.recovery-trace li {display:flex;align-items:center;gap:8px;opacity:.28;}
+.recovery-trace li[data-reached="true"] {opacity:1;}
+.recovery-trace i {width:5px;height:5px;border:1px solid currentColor;border-radius:50%;}
+.recovery-trace li[data-reached="true"] i {border-color:#e6bd88;box-shadow:0 0 8px #e6bd8833;}
+
+.evidence-readings {display:flex;justify-content:center;gap:30px;margin:0 auto 14px;max-width:580px;text-align:left;}
+.evidence-readings p {margin:0;flex:1;font:11px/1.4 var(--sans);color:#bfe3d7;}
+.evidence-readings span {display:block;font:8px/1.5 var(--mono);color:#d5b98c;margin-bottom:4px;}
+.evidence-readings strong {font-weight:400;}
+@media(max-width:650px){.evidence-readings{gap:14px;margin-bottom:8px}.evidence-readings p{font-size:10px}}

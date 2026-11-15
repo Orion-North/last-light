@@ -153,3 +153,19 @@ test('silent Earth operations retain recovery and archive information', () => {
   assert.match(render('archive','ready',extra),/story-operational">&lt;memory&gt;/);
   assert.doesNotMatch(render('archive','sending',extra),/Use &amp; hold/);
 });
+
+test('compared readings remain available during preparation, departure and receipt',()=>{
+  const findings=[{label:'Grain-rich surface',reading:'Higher relative iron-bearing signal'},{label:'Exposed bedrock',reading:'Lower relative iron-bearing signal'}];
+  for(const stage of ['ready','sending','received']){
+    const html=renderUploadTerminal({title:'Comparison',mode:'reply',stage,findings,story:'<div></div>',voice:false,input:'controller'});
+    assert.match(html,/Compared observations/);assert.match(html,/Higher relative iron-bearing signal/);assert.match(html,/Lower relative iron-bearing signal/);
+  }
+});
+
+test('recovery chronology advances with story scenes and never adds a reply',()=>{
+  for(const [index,sceneId] of ['earth-listens','months','last-call'].entries()){
+    const html=renderUploadTerminal({title:'Recovery',mode:sceneId==='months'?'archive':'silence',stage:'received',sceneId,story:'<div></div>',voice:false});
+    assert.equal((html.match(/data-reached="true"/g)||[]).length,index+1);
+    assert.match(html,/JUN 2018/);assert.match(html,/FEB 2019/);assert.doesNotMatch(html,/REPLY RECEIVED/);
+  }
+});

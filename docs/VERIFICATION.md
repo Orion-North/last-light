@@ -463,3 +463,39 @@ restores without resurrecting the rover voice. No captured browser warnings or
 errors. This is targeted verification, not a fresh complete playthrough; Berry
 Bowl tool completion, soundtrack listening and physical actuator feel were not
 retested. Emotional effect still requires the user's playtest.
+
+
+## v0.17 — reliable work and continuous discoveries
+
+Web-only. Fixed survey overlay clipping, Berry vertical controls, the missing
+between-sample release, physical checkpointing and survey pause preservation.
+Kept geological evidence and paired findings visible through sending/receipt;
+reduced the signal display and broad darkening. Berry grains reuse existing rock
+normal/roughness maps with varied colors/shapes; the floating prop is now an
+explicit diagrammatic reticle. The ending includes the selected Earth archive;
+automatic records describe performed observations. Tool motor pitch is audible
+and normal score transitions preserve foreground replies, including passages.
+
+Root browser checks at 1280×720 (plus storm survey at 900×720): all five surveys
+completed through actual look input from seeded arrivals. Marathon retained its
+first capture through settings pause and reload; smaller-world retained it through
+controller disconnect/reconnect. Travel after reload retained the driven location
+(11.9m remaining, rather than the start). Seeded first layer/sample checkpoints
+were resumed and their second path/reading actually completed. Berry Down moved
+the probe down. Comparison retained the rock, two findings and safe held-trigger
+release gate. Full squeeze/release sent; Cross alone did not. Receipt/reload kept
+the evidence view. Legacy saves without physical work also frame the correct rock.
+Final sky observation, partial transmission, Earth handover, both recovery calls,
+rover-story archive selection and ending were played consecutively from a final
+sky checkpoint. The selected archive appeared in the main ending. No captured
+browser warnings/errors in the inspected logs. These are targeted tests, not a
+fresh uninterrupted complete journey or a performance benchmark.
+
+21 engine test files pass, including new durable-work/release, archive variants,
+foreground audio lifetime and missing-reply tests. Source/asset checks and static
+build pass. Fake audio graph tests verify scheduling/cleanup, not perceived sound.
+Three Sol agents implemented and source-reviewed separate areas. Their browser
+inventory was unavailable; root performed the browser checks. Physical haptics,
+subjective audio and emotional effectiveness remain human playtest limits.
+Screenshots are retained in the workspace outputs as last-light-v17-discovery.jpg,
+last-light-v17-survey.jpg and last-light-v17-ending.jpg; they are not web assets.

@@ -5,6 +5,10 @@ a controller is the primary target. The Windows/Electron edition and its build
 workflow are removed; earlier native-edition milestones below are historical.
 Browser Gamepad rumble and optional USB WebHID trigger effects remain supported.
 
+**v0.17 focus:** preserve earned physical work, keep discoveries visible while
+sending, make the ending honor the selected archive, and repair survey/control
+and audio feedback defects. See VERIFICATION.md for tested scope.
+
 **Pitch:** You are Opportunity. Every day you wake, look, investigate, and send
 something home. As a dust storm erases the sunlight, familiar routines become
 harder to complete. The final silence hurts because the player remembers what

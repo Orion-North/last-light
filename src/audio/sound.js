@@ -77,7 +77,7 @@ export function createSound() {
     const contactLevel = activity.contactCharged ? 0.025 * chargedTail : 0.020 + pressure * 0.046 + compression * 0.028;
     smooth(motorGain.gain, contact ? contactLevel : tool ? toolEnergy * .028 : speed * 0.019, contact ? 0.055 : 0.09);
     smooth(gritGain.gain, tool ? toolEnergy * .006 : contact ? (activity.contactCharged ? 0 : pressure * (1 - pressure) * 0.040) : speed * (0.008 + activity.roughness * 0.027), 0.08);
-    smooth(motorSource.frequency, tool ? toolEnergy * .006 : contact ? (activity.contactCharged ? 220 : 110 + pressure * 110 + compression * 80) : tool ? 135 + activity.toolPressure * 65 : 42 + speed * 38, 0.10);
+    smooth(motorSource.frequency, contact ? (activity.contactCharged ? 220 : 110 + pressure * 110 + compression * 80) : tool ? 135 + activity.toolPressure * 65 : 42 + speed * 38, 0.10);
     smooth(motorFilter.frequency, contact ? 420 + pressure * 300 + compression * 280 : tool ? 330 + activity.toolMotion * 210 : 170 + speed * 110, 0.15);
   }
 
@@ -93,8 +93,9 @@ export function createSound() {
     }
   }
 
-  function stopVoices() {
+  function stopVoices(group = null) {
     for (const voice of [...activeVoices]) {
+      if (group !== null && voice.group !== group) continue;
       // Stopping future sources prevents queued notes from leaking after unmute.
       for (const source of voice.sources) {
         try { source.stop(); } catch { /* Already ended or canceled. */ }
@@ -103,11 +104,11 @@ export function createSound() {
     }
   }
 
-  function stopScheduler() {
+  function stopScheduler(stopForeground = true) {
     if (timer !== null) clearTimeout(timer);
     timer = null;
     queue = [];
-    stopVoices();
+    stopVoices(stopForeground ? null : 'accompaniment');
   }
 
   function hush() {
@@ -138,7 +139,9 @@ export function createSound() {
     smooth(windGain?.gain, config.wind, section === 'silence' ? 0.06 : 1.4);
     smooth(windFilter?.frequency, config.cutoff, 1.5);
     if (changed) {
-      stopScheduler();
+      // Continue may change the score while Earth is still answering. Only
+      // authored silence (or an explicit lifecycle stop) cuts foreground voices.
+      stopScheduler(section === 'silence');
       phraseNumber = 0;
       // Silence is explicit rather than an almost-inaudible drone.
       if (section !== 'silence') restartScheduler(section === 'remembrance' ? 1.8 : 0.7);
@@ -180,8 +183,8 @@ export function createSound() {
     return buffer;
   }
 
-  function registerVoice(sources, nodes) {
-    const voice = { sources, nodes };
+  function registerVoice(sources, nodes, group = 'foreground') {
+    const voice = { sources, nodes, group };
     activeVoices.add(voice);
     let remaining = sources.length;
     for (const source of sources) {
@@ -205,7 +208,7 @@ export function createSound() {
       pan.pan.value = note < 50 ? 0 : -0.14 + ((note % 5) * 0.06);
       source.connect(gain).connect(pan).connect(musicBus);
     } else source.connect(gain).connect(musicBus);
-    registerVoice([source], [source, gain, ...(pan ? [pan] : [])]);
+    registerVoice([source], [source, gain, ...(pan ? [pan] : [])], 'accompaniment');
     source.start(when);
     source.stop(when + duration + 0.02);
   }
@@ -232,7 +235,7 @@ export function createSound() {
       oscillator.connect(filter);
       return oscillator;
     });
-    registerVoice(oscillators, [...oscillators, filter, envelope, ...(pan ? [pan] : [])]);
+    registerVoice(oscillators, [...oscillators, filter, envelope, ...(pan ? [pan] : [])], 'accompaniment');
     for (const oscillator of oscillators) {
       oscillator.start(when);
       oscillator.stop(when + duration + 0.03);

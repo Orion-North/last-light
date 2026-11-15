@@ -14,7 +14,7 @@ const observations = {
   'stone-ripples': 'The upper layers cross the lower ones.',
   blueberries: 'The grains read differently from the brushed rock.',
   marathon: 'Forty-two kilometres. There is more ground ahead.',
-  'ordinary-day': 'That bright edge of stone. I’ll send that.',
+  'ordinary-day': 'Sunlight on the ground beside my wheels. I’ll send that.',
   dust: 'I’ll send this sky.',
   'last-image': 'I’ll send this view.',
 };

@@ -6,12 +6,13 @@ import { createBriefing, briefingBeats } from './engine/briefing.js';
 import { missionTime, timePassage } from './content/time.js';
 import { createSound } from './audio/sound.js';
 import { createLandscape } from './ui/landscape.js';
-import { restoreSession, serializeSession } from './session.js';
+import { restoreSession, serializeSession, restoreCheckpoint } from './session.js';
 import { createController } from './input/controller.js';
 import { currentObjective, inputMode } from './ui/objectives.js';
 import { renderGeologyPanel } from './ui/geology-panel.js';
 import { renderUploadTerminal } from './ui/upload-terminal.js';
 import { createSqueeze } from './engine/squeeze.js';
+import { createGeologyTool } from './engine/geology-tool.js';
 import { createSurvey, surveyProfiles } from './engine/fieldwork.js';
 import { createInvestigation } from './engine/investigation.js';
 import { createInteractionWait } from './engine/interaction-wait.js';
@@ -28,10 +29,13 @@ const storageKey = 'last-light-journey-v1';
 const padPreviewMuted = new URLSearchParams(location.search).get('controller') === 'off';
 let state = createState();
 let saved = null;
+let savedCheckpoint = null, pendingCheckpoint = null;
+let checkpointAt = 0;
 let settings = { haptics: true, sound: false,
   touch: matchMedia('(any-pointer: coarse)').matches, prompts: 'auto' };
 try {
   saved = restoreSession(localStorage.getItem(storageKey), scenes);
+  savedCheckpoint = restoreCheckpoint(localStorage.getItem(storageKey), scenes);
   const storedSettings = JSON.parse(localStorage.getItem('last-light-settings'));
   if (storedSettings && typeof storedSettings.haptics === 'boolean') settings.haptics = storedSettings.haptics;
   if (storedSettings && typeof storedSettings.touch === 'boolean') settings.touch = storedSettings.touch;
@@ -92,7 +96,34 @@ const goals = {
 function announce(text) { $('#announcement').textContent = text; }
 function save() {
   saved = state;
-  try { localStorage.setItem(storageKey, serializeSession(state)); } catch { /* Optional. */ }
+  const sceneId = scenes[state.sceneIndex].id, physical = view?.getCheckpoint?.();
+  const sameScene = lastScene === sceneId;
+  savedCheckpoint = physical?.position ? {sceneId, position:physical.position,
+    reached:sameScene ? reached : !goals[state.sceneIndex] || state.phase!=='observe',
+    tool:physical.tool?.sceneId===sceneId ? physical.tool : null,
+    survey:sameScene && survey ? survey.checkpoint() : null} : null;
+  checkpointAt = performance.now();
+  try { localStorage.setItem(storageKey, serializeSession(state,savedCheckpoint)); } catch { /* Optional. */ }
+}
+function saveWork() {
+  if (screen==='game' && performance.now()-checkpointAt>700) save();
+}
+function restoreWork() {
+  if (!pendingCheckpoint || !view) return;
+  const checkpoint=pendingCheckpoint;pendingCheckpoint=null;
+  if (checkpoint.sceneId!==scenes[state.sceneIndex].id) return;
+  view.restoreCheckpoint?.(checkpoint);
+  reached = reached || checkpoint.reached;
+  view.setWaypoint?.(goals[state.sceneIndex] && !reached ? goals[state.sceneIndex] : null);
+  if (state.phase!=='observe' || !reached || graphicsError) return;
+  if (checkpoint.tool) {
+    geologyActive=true;investigating=true;scanning=true;toolSampleCount=checkpoint.tool.sampleIds?.length || 0;
+    view.setToolMode?.(checkpoint.sceneId);
+  } else if(checkpoint.survey && surveyProfiles[checkpoint.sceneId]) {
+    survey=createSurvey(surveyProfiles[checkpoint.sceneId],undefined,checkpoint.survey);
+    surveyStep=survey.checkpoint().step;investigating=true;scanning=true;
+    investigationSampleAt=performance.now();view.setSurvey?.(true);
+  }
 }
 function focusContent(selector = 'h1') {
   requestAnimationFrame(() => app.querySelector(selector)?.focus({ preventScroll: true }));
@@ -106,7 +137,7 @@ function setExploring(value) {
   if (panel) panel.inert = value;
 }
 function setWorld(environment, mode) {
-  if(mode!=='game')view?.setRemoteView?.(false);
+  if(mode!=='game'){view?.setRemoteView?.(false);view?.setEvidence?.(null);}
   document.body.dataset.environment = environment;
   if(mode!=='game')document.body.dataset.upload='false';
   document.body.dataset.screen = mode;
@@ -155,7 +186,8 @@ function finishBriefing({ skipped = false } = {}) {
   announce(wasPassage ? `${missionTime(scenes[state.sceneIndex].id)?.label}. ${scenes[state.sceneIndex].subtitle}` : 'First, look through your cameras. Choose a view to send to Earth.');
 }
 function startBriefing(passage = null) {
-  stopBriefing();cancelScan();cancelTransmission();stopContact();
+  stopBriefing();cancelScan();cancelTransmission({preserveReply:!!passage});stopContact();
+  view?.setEvidence?.(null);
   pressed.clear();padInput={throttle:0,steer:0};
   screen=passage?'passage':'intro';briefingActive=true;briefingPassage=!!passage;setExploring(false);
   if(!passage) {purposeKnown=false;setWorld('dawn','game');}
@@ -262,6 +294,8 @@ function renderGame({ focus = false } = {}) {
     else if(state.sceneIndex>0)view?.focusRover?.();
     setExploring(false);
   } else document.body.dataset.screen = 'game';
+  restoreWork();
+  document.body.dataset.tool=String(geologyActive);
   document.body.dataset.travelling=String(state.phase==='observe' && !!goals[state.sceneIndex] && !reached);
   sound.setNarrative?.(state.sceneIndex,state.phase);
   const choice = scene.choices.find(c=>c.id===state.selected);
@@ -282,6 +316,9 @@ function renderGame({ focus = false } = {}) {
       announce(uploadPrompt());
     }
   } else stopContact();
+  const evidence=['stone-ripples','blueberries'].includes(scene.id) && ['choose','transmit','received'].includes(state.phase);
+  view?.setEvidence?.(evidence?scene.id:null);
+  document.body.dataset.evidence=String(evidence);
   $('#waypoint-hud').hidden=!goal || reached || state.phase!=='observe';
   $('#waypoint-hud').textContent=goal ? goal.label : '';
   let content = '';
@@ -289,7 +326,7 @@ function renderGame({ focus = false } = {}) {
     content=renderGeologyPanel(toolState || (scene.id==='stone-ripples'?{mode:'trace',stage:'trace'}:{}),controllerConnected);
   } else if (investigating) {
     const profile=surveyProfiles[scene.id];
-    content = survey ? `<div class="survey-instrument" aria-label="${escape(profile.title)}"><div class="survey-aim" aria-hidden="true"><span class="survey-center"></span><i id="survey-target"></i></div><div class="survey-ticks" aria-label="Observation views">${profile.steps.map((_,i)=>`<span data-survey-step="${i}">${String(i+1).padStart(2,'0')}</span>`).join('')}</div><p id="investigation-hint" class="discovery-line">${escape(profile.steps[0].hint)}</p><progress id="investigation-progress" max="1" value="0" aria-label="Observation recorded"></progress><p class="pace-note">Bring the amber bearing to the center. Hold still to record.</p></div>` : `<p id="investigation-hint" class="discovery-line">Look around the feature, then hold the view still.</p><progress id="investigation-progress" max="1" value="0" aria-label="Observation recorded"></progress>`;
+    content = survey ? `<div class="survey-instrument" aria-label="${escape(profile.title)}"><div class="survey-ticks" aria-label="Observation views">${profile.steps.map((_,i)=>`<span data-survey-step="${i}">${String(i+1).padStart(2,'0')}</span>`).join('')}</div><p id="investigation-hint" class="discovery-line">${escape(profile.steps[surveyStep]?.hint || "Observation recorded.")}</p><progress id="investigation-progress" max="1" value="0" aria-label="Observation recorded"></progress><p class="pace-note">Bring the amber bearing to the center. Hold still to record.</p></div>` : `<p id="investigation-hint" class="discovery-line">Look around the feature, then hold the view still.</p><progress id="investigation-progress" max="1" value="0" aria-label="Observation recorded"></progress>`;
     content += '<button class="quiet-button" data-action="assist-observation">Skip this observation</button>';
   } else if (state.phase === 'observe') {
     content = scene.signal===0 ? `<p class="story-operational">${escape(scene.subtitle)}</p>` : '';
@@ -302,11 +339,11 @@ function renderGame({ focus = false } = {}) {
     content = renderUploadTerminal({title:recalled?`Remember: ${recalled.title}`:choice?.memory?.title || scene.title,mode:contact.mode,
       stage:state.phase==='received'?'received':transmitting?'sending':'ready',
       prompt:state.phase==='received'?'':transmitting?contact.waiting:contacting?uploadPrompt():contact.mode==='archive'?'Keep this moment in the mission archive.':'Send a call. Listen for a reply.',
-      response:scene.response || scene.transmission,meaning:recalled?'The first view you sent is still on Earth. The storm cannot take it back.':contact.mode==='partial'?'A sky full of dust. Send what light remains.':recordedChoice(scene,state)?scene.discovery:choice?.shortReply || '',input:controllerConnected?'controller':'pointer',family:controllerFamily(controllerId,settings.prompts),story:consoleHTML,voice:!!thought.text});
+      response:scene.response || scene.transmission,meaning:recalled?'The first view you sent is still on Earth. The storm cannot take it back.':contact.mode==='partial'?'A sky full of dust. Send what light remains.':recordedChoice(scene,state)?scene.discovery:choice?.shortReply || '',input:controllerConnected?'controller':'pointer',sceneId:scene.id,findings:evidence?createGeologyTool(scene.id).snapshot().targets.toSorted((a,b)=>a.x-b.x):[],family:controllerFamily(controllerId,settings.prompts),story:consoleHTML,voice:!!thought.text});
   }
 
   const upload = ['transmit','received'].includes(state.phase);
-  app.innerHTML = `<section class="play-screen"><h1 class="sr-only" tabindex="-1">${escape(scene.title)}</h1><article class="interaction-dock" aria-label="Current interaction" aria-busy="${scanning || transmitting}">${upload?content:`<div class="story-shell ${thought.text?'':'story-voice-absent'}">${consoleHTML}<div class="story-actions">${content}</div></div>`}</article></section>`;
+  app.innerHTML = `<section class="play-screen">${survey?'<div class="survey-aim" aria-hidden="true"><span class="survey-center"></span><i id="survey-target"></i></div>':''}<h1 class="sr-only" tabindex="-1">${escape(scene.title)}</h1><article class="interaction-dock" aria-label="Current interaction" aria-busy="${scanning || transmitting}">${upload?content:`<div class="story-shell ${thought.text?'':'story-voice-absent'}">${consoleHTML}<div class="story-actions">${content}</div></div>`}</article></section>`;
   storyWriter.mount(app.querySelector('.story-console'),thought,`${scene.id}:${state.phase}:${thought.text}`);
   setExploring(exploring);
   $('#world-controls').hidden = false;
@@ -336,7 +373,7 @@ function renderEnding() {
   view?.setWaypoint?.(null);
   controller?.setTerrain({moving:false,blocked:false,power:0});
   const scene = scenes.at(-1);
-  app.innerHTML = `<section class="ending-screen brief-ending"><p class="eyebrow">OPPORTUNITY · 2004–2018</p><h1 class="ending-title" tabindex="-1">You were here.</h1><p class="inner-voice">${escape(scene.subtitle)}</p><div class="mission-numbers"><div><strong>90</strong><span>SOLS PLANNED</span></div><div><strong>5,111</strong><span>SOLS TO LAST CONTACT</span></div><div><strong>${state.memories.length}</strong><span>MEMORIES WITH YOU</span></div></div><ul class="memory-echoes" aria-label="Moments you chose">${endingMemories(state.memories).map(m=>`<li>${escape(m.title)}</li>`).join('')}</ul><p class="ending-fact">Opportunity revealed evidence of ancient water on Mars. NASA declared the mission complete on February 13, 2019.</p><div class="ending-actions"><button class="primary-button" data-action="journal">Open your memories ◇</button><button class="secondary-button" data-action="download">Keep them ↓</button><button class="quiet-button" data-action="restart">Begin again</button></div></section>`;
+  app.innerHTML = `<section class="ending-screen brief-ending"><p class="eyebrow">OPPORTUNITY · 2004–2018</p><h1 class="ending-title" tabindex="-1">You were here.</h1><p class="inner-voice">${escape(scene.subtitle)}</p><div class="mission-numbers"><div><strong>90</strong><span>SOLS PLANNED</span></div><div><strong>5,111</strong><span>SOLS TO LAST CONTACT</span></div><div><strong>${state.memories.length}</strong><span>MEMORIES WITH YOU</span></div></div><ul class="memory-echoes" aria-label="Moments you observed and chose">${endingMemories(state.memories).map(m=>`<li>${escape(m.title)}</li>`).join('')}</ul><p class="ending-fact">Opportunity revealed evidence of ancient water on Mars. NASA declared the mission complete on February 13, 2019.</p><div class="ending-actions"><button class="primary-button" data-action="journal">Open your memories ◇</button><button class="secondary-button" data-action="download">Keep them ↓</button><button class="quiet-button" data-action="restart">Begin again</button></div></section>`;
   refreshControllerPrompts();
   focusContent();
 }
@@ -432,8 +469,8 @@ function sendMemory(source='button') {
   });
 }
 
-function cancelTransmission() {
-  sound.cancelTransmission?.();
+function cancelTransmission({preserveReply=false} = {}) {
+  if(!preserveReply || transmitting)sound.cancelTransmission?.();
   transmissionWait.cancel();
   const wasTransmitting = transmitting;
   transmitting = false;
@@ -482,7 +519,9 @@ function act(action) {
 }
 
 function pause() {
-  if(!geologyActive)cancelScan();
+  if(screen==='game')save();
+  if(survey)survey.pause();
+  else if(!geologyActive)cancelScan();
   toolButtonHeld=false;toolPad={x:0,y:0,pressure:0};view?.setToolInput?.({actualSample:false});
   cancelTransmission();
   stopContact();
@@ -494,6 +533,7 @@ function pause() {
 function resume() {
   if (document.hidden || document.querySelector('dialog[open]')) return;
   state = transition(state,{type:'RESUME'},scenes);
+  investigationSampleAt=performance.now();
   view?.setPaused(briefingPassage); controller?.setPaused(false); if (settings.sound) sound.resume();
   if (restoreSendFocus && screen === 'game' && state.phase === 'transmit') focusContent('[data-action="transmit"]');
   restoreSendFocus = false;
@@ -557,18 +597,18 @@ $('#settings-toggle').addEventListener('click',()=>openModal('#settings-modal'))
 $('#credits-button').addEventListener('click',()=>{$('#settings-modal').close();openModal('#credits-modal');});
 $('#restart-button').addEventListener('click',()=>{$('#settings-modal').close();openModal('#restart-modal');});
 $('#confirm-restart').addEventListener('click',()=>{
-  $('#restart-modal').close(); stopBriefing();cancelScan();cancelTransmission();lastDistance=0; state=createState(); lastScene=null; reached=false; save();
-  view?.reset?.(); startBriefing(); window.scrollTo(0,0);
+  $('#restart-modal').close(); stopBriefing();cancelScan();cancelTransmission();lastDistance=0; state=createState(); lastScene=null; reached=false; savedCheckpoint=null;pendingCheckpoint=null;
+  view?.reset?.(); save(); startBriefing(); window.scrollTo(0,0);
 });
-$('.brand').addEventListener('click',event=>{event.preventDefault();cancelScan();renderTitle();window.scrollTo(0,0);});
+$('.brand').addEventListener('click',event=>{event.preventDefault();if(screen==='game')save();cancelScan();renderTitle();window.scrollTo(0,0);});
 $('#explore-toggle').addEventListener('click',()=>setExploring(!exploring));
-$('#camera-reset').addEventListener('click',()=>{if(contacting)resetUpload();else if(geologyActive){view?.setToolInput?.({});}else if(survey){survey=createSurvey(surveyProfiles[scenes[state.sceneIndex].id]);surveyStep=0;view?.setSurvey?.(true);}else if(investigating)view?.setInvestigation?.(true);else view?.focusRover?.();});
+$('#camera-reset').addEventListener('click',()=>{if(contacting)resetUpload();else if(geologyActive){view?.setToolInput?.({});}else if(survey){survey.pause();view?.setSurvey?.(false);view?.setSurvey?.(true);}else if(investigating)view?.setInvestigation?.(true);else view?.focusRover?.();});
 
 app.addEventListener('click',event=>{
   const button=event.target.closest('[data-action]');
   if (!button || button.disabled) return;
   switch(button.dataset.action) {
-    case 'begin': { const fresh=!saved;if(!soundPreferenceSet)toggleSound(true); state=saved || createState(); state={...state,paused:false}; lastScene=null;if(fresh)startBriefing();else renderGame({focus:true});save();break; }
+    case 'begin': { const fresh=!saved;if(!soundPreferenceSet)toggleSound(true); state=saved || createState(); state={...state,paused:false}; lastScene=null;pendingCheckpoint=savedCheckpoint;if(fresh)startBriefing();else renderGame({focus:true});save();break; }
     case 'skip-intro': finishBriefing({skipped:true});break;
     case 'observe': scan(); break;
     case 'assist-observation': cancelScan();act({type:'OBSERVE'});break;
@@ -642,8 +682,9 @@ canvas.addEventListener('world-status',event=>{
 canvas.addEventListener('tool-sample',event=>{
   if(!geologyActive || state.paused || screen!=='game')return;
   const next=event.detail,previous=toolState;toolState=next;
+  saveWork();
   if(next.complete){cancelScan();act({type:'OBSERVE'});return;}
-  if(next.samples.length>toolSampleCount){toolSampleCount=next.samples.length;sound.cue('observe');controller?.feedback('observe');}
+  if(next.samples.length>toolSampleCount){toolSampleCount=next.samples.length;save();sound.cue('observe');controller?.feedback('observe');}
   if(previous && (next.stage!==previous.stage || next.samples.length!==previous.samples.length))renderGame();
   const hint=$('#tool-hint');if(hint)hint.textContent=next.hint.replaceAll('R2',controllerConnected?'R2':'Space').replace('×',controllerConnected?'×':'Enter');
   const coverage=$('#tool-coverage');if(coverage)coverage.textContent=`${next.stage==='trace'?'Layers traced':'Brush progress'} · ${Math.round(next.progress*100)}%`;
@@ -664,7 +705,7 @@ canvas.addEventListener('survey-sample',event=>{
     marker.style.transform=`translate(${Math.max(-65,Math.min(65,dx*160))}px,${Math.max(-45,Math.min(45,dy*160))}px)`;
     marker.dataset.aligned=String(Math.abs(dx)<=.16 && Math.abs(dy)<=.16);
   }
-  if(result.step>surveyStep){surveyStep=result.step;sound.cue('observe');controller?.feedback('observe');announce(result.hint);}
+  if(result.step>surveyStep){surveyStep=result.step;save();sound.cue('observe');controller?.feedback('observe');announce(result.hint);}
   if(result.complete){cancelScan();act({type:'OBSERVE'});}
 });
 canvas.addEventListener('inspection-sample',event=>{
@@ -689,12 +730,13 @@ canvas.addEventListener('waypoint-guidance',event=>{
 });
 canvas.addEventListener('waypoint-reached',()=>{
   if(screen!=='game'||!goals[state.sceneIndex]||reached) return;
-  reached=true; setExploring(false); renderGame({focus:true});
+  reached=true; setExploring(false); renderGame({focus:true}); save();
   announce('Destination reached. Press Interact to investigate.');sound.cue('observe');controller?.feedback('arrival');
 });
 canvas.addEventListener('rover-move',event=>{
   movementBlocked=!!event.detail.blocked && (Math.abs(padInput.throttle)>.1 || ['w','s','arrowup','arrowdown'].some(key=>pressed.has(key)));
   const moving=event.detail.distance>lastDistance+.001; lastDistance=event.detail.distance;
+  if(moving)saveWork();
   if(!contacting)sound.setActivity?.({moving:moving||!!event.detail.blocked,speed:event.detail.speed,roughness:event.detail.roughness});
   controller?.setTerrain({moving:moving||!!event.detail.blocked,blocked:!!event.detail.blocked,power:scenes[state.sceneIndex].power/100,speed:event.detail.speed,roughness:event.detail.roughness,slip:event.detail.slip});
   if(goals[state.sceneIndex] && !reached && Number.isFinite(event.detail.remaining)) $('#waypoint-hud').textContent=`${goals[state.sceneIndex].label} · ${event.detail.remaining.toFixed(1)} m`;
@@ -710,7 +752,7 @@ function controllerAction(action) {
   if(action==='back') { if(dialog) dialog.close(); else if(exploring) setExploring(false); else openModal('#settings-modal'); return; }
   if(briefingActive && !dialog) {if(action==='primary')finishBriefing({skipped:true});return;}
   if(action==='journal') { if(dialog?.id==='journal-modal') dialog.close(); else if(!dialog && screen!=='title') openJournal(); return; }
-  if(action==='camera' && !dialog) {if(contacting)resetUpload();else if(geologyActive){view?.setToolInput?.({});}else if(survey){survey=createSurvey(surveyProfiles[scenes[state.sceneIndex].id]);surveyStep=0;view?.setSurvey?.(true);}else if(investigating)view?.setInvestigation?.(true);else view?.focusRover?.();return;}
+  if(action==='camera' && !dialog) {if(contacting)resetUpload();else if(geologyActive){view?.setToolInput?.({});}else if(survey){survey.pause();view?.setSurvey?.(false);view?.setSurvey?.(true);}else if(investigating)view?.setInvestigation?.(true);else view?.focusRover?.();return;}
   const targets=menuTargets();
   if(action.startsWith('nav')) {
     if(exploring) setExploring(false);

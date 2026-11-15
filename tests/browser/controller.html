@@ -4,6 +4,7 @@
 <script type="module">
 // Test-only fixture, excluded from production by scripts/build.mjs.
 import {scenes} from '../../src/content/story.js';
+import {createGeologyTool} from '../../src/engine/geology-tool.js';
 import {restoreSession,serializeSession} from '../../src/session.js';
 const query=new URLSearchParams(location.search);
 const sceneIndex=scenes.findIndex(scene=>scene.id===query.get('scene'));
@@ -11,7 +12,25 @@ if(sceneIndex>=0) {
  const phase=query.get('phase') || 'received';
  const count=sceneIndex+(['transmit','received'].includes(phase)?1:0);
  const legal=restoreSession(JSON.stringify({version:1,sceneIndex,phase,choices:scenes.slice(0,count).map(scene=>scene.choices[0]?.id)}),scenes);
- if(legal)localStorage.setItem('last-light-journey-v1',serializeSession(legal));
+ if(legal){
+  const id=scenes[sceneIndex].id,locations={'stone-ripples':[7,-7],'blueberries':[-5,-10],marathon:[-11,3],'ordinary-day':[6,10],dust:[13,-2],'smaller-world':[3,-4],'last-image':[3,-4]};
+  const [x,z]=locations[id] || [0,0];
+  const checkpoint=query.has('arrived')?{sceneId:id,reached:true,position:{x,z,heading:-.45}}:null;
+  const work=query.get('work');
+  if(checkpoint && work && ['stone-ripples','blueberries'].includes(id)){
+    const tool=createGeologyTool(id);tool.setInput({});tool.setInput({pressure:1});
+    if(id==='blueberries'){
+      paint: for(let y=-.85;y<=.9;y+=.19)for(let x=-.85;x<=.9;x+=.19){tool.setCursor(x,y);tool.update(.05);if(work==='brush-half'&&tool.snapshot().coverage>.27)break paint;}
+      if(work!=='brush-half')for(const target of tool.snapshot().targets.slice(0,work==='sample-one'?1:2)){
+        tool.setInput({});tool.setCursor(target.x,target.y);tool.setInput({pressure:1});for(let n=0;n<18;n++)tool.update(.05);
+      }
+    } else for(const path of tool.snapshot().paths.slice(0,work==='trace-one'?1:2)){
+      tool.setInput({});tool.setInput({pressure:1});for(const point of path.points){tool.setCursor(point.x,point.y);tool.update(.05);}
+    }
+    if(work==='complete')tool.compare();checkpoint.tool=tool.checkpoint();
+  }
+  localStorage.setItem('last-light-journey-v1',serializeSession(legal,checkpoint));
+ }
 }
 const buttons=Array.from({length:17},()=>({value:0,pressed:false,touched:false}));
 const pad={id:'DualSense simulated fixture',index:0,mapping:'standard',connected:true,axes:[0,0,0,0],buttons};
