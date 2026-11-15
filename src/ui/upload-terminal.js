@@ -27,10 +27,11 @@ export function renderUploadTerminal({ sceneId = '', findings = [], title, mode,
     : stage === 'received' ? '<button class="upload-terminal__button" type="button" data-action="next">Continue <span aria-hidden="true">→</span></button>' : '';
   const exciter = `<div class="signal-exciter" aria-hidden="true"><div class="upload-terminal__half upload-terminal__half--left"><i></i><span data-trigger="left">${controllerGlyph('reverse',family)}</span></div><span class="upload-terminal__seam"></span><div class="upload-terminal__half upload-terminal__half--right"><i></i><span data-trigger="right">${controllerGlyph('forward',family)}</span></div></div>`;
   const guidance = `<div class="upload-terminal__guidance"><p id="squeeze-hint" class="upload-terminal__instruction">${instruction}</p><progress id="upload-progress" max="1" value="0" aria-label="${commitmentLabel}" style="--upload-progress:0"></progress></div>`;
+  const contextMarkup = `${findings.length?`<div class="evidence-readings" aria-label="Compared observations">${findings.map(f=>`<p><span>${escapeHtml(f.label)}</span><strong>${escapeHtml(f.reading)}</strong></p>`).join('')}</div>`:''}
+      ${['earth-listens','months','last-call'].includes(sceneId)?`<ol class="recovery-trace" aria-label="Unanswered recovery attempts">${[['earth-listens','JUN 2018'],['months','AUTUMN'],['last-call','FEB 2019']].map(([id,date],i)=>`<li data-reached="${i<=['earth-listens','months','last-call'].indexOf(sceneId)}"><i aria-hidden="true"></i><span>${date}</span></li>`).join('')}</ol>`:''}`;
   return `<section class="upload-terminal" data-presentation="${story?'story':'standalone'}" data-stage="${escapeHtml(stage)}" data-mode="${escapeHtml(mode)}" data-input="${controller ? 'controller' : 'pointer'}" data-squeeze="release" style="--upload-progress:0;--squeeze-left:0;--squeeze-right:0;--charge-progress:0" aria-label="${upload ? 'Memory uplink' : mode === 'silence' ? 'Earth recovery channel' : 'Mission archive'}">
     <div class="upload-terminal__body">
-      ${findings.length?`<div class="evidence-readings" aria-label="Compared observations">${findings.map(f=>`<p><span>${escapeHtml(f.label)}</span><strong>${escapeHtml(f.reading)}</strong></p>`).join('')}</div>`:''}
-      ${['earth-listens','months','last-call'].includes(sceneId)?`<ol class="recovery-trace" aria-label="Unanswered recovery attempts">${[['earth-listens','JUN 2018'],['months','AUTUMN'],['last-call','FEB 2019']].map(([id,date],i)=>`<li data-reached="${i<=['earth-listens','months','last-call'].indexOf(sceneId)}"><i aria-hidden="true"></i><span>${date}</span></li>`).join('')}</ol>`:''}
+      ${story?'':contextMarkup}
       <div class="upload-terminal__apparatus">
         <div class="signal-map" role="img" aria-label="${mode==='archive'?'Discoveries preserved on Earth':mode==='silence'?'A call travels from Earth to the silent rover on Mars':'A signal travels from Opportunity on Mars to Earth'}">
           <div class="signal-world signal-world--mars"><div class="planet planet--mars"><i></i></div><span>MARS<small>OPPORTUNITY</small></span></div>
@@ -42,7 +43,7 @@ export function renderUploadTerminal({ sceneId = '', findings = [], title, mode,
         ${stage==='ready' && controller ? `<div class="signal-controls">${exciter}${guidance}</div>` : ''}
       </div>
     </div>
-    ${story?`<div class="story-shell ${voice?'':'story-voice-absent'}">${story}`:''}
+    ${story?`<div class="story-shell ${voice?'':'story-voice-absent'}">${contextMarkup}${story}`:''}
     ${story && !voice && mode==='archive' && stage==='ready'?`<p class="story-operational">${escapeHtml(title)}</p>`:''}
     ${!story && stage === 'ready' && meaning ? `<p class="upload-terminal__meaning">${escapeHtml(meaning)}</p>` : ''}
     ${stage === 'ready' && !controller ? guidance : ''}

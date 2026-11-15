@@ -728,3 +728,13 @@ UI-19 complete: independent reviewer confirmed specificity conflict and the
 intentional tiny-dot/left-alignment rules. Root repaired cascade and instrument
 composition; 99 real-browser responsive combinations and simulated controller
 send/receipt pass. Engine/source/build checks pass. Publishing v0.18.1 web hotfix.
+
+
+## UI-20 — anchor the sending instrument
+
+Root owns story-console.css, upload-terminal.js and sending-layout.html. Separate
+viewport-centered signal apparatus from bottom narrative flow. Move compared
+readings/recovery dates into the independently scrolling bottom story area.
+Verified exact map-center coordinates across 198 responsive combinations, including
+present/absent thoughts and all three transmission stages. Focused upload tests,
+source/asset checks and build pass. Publishing web-only v0.18.2.

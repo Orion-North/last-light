@@ -553,3 +553,19 @@ thoughts do not overlap the map. Real game simulated-controller check progressed
 ready → full squeeze → charged → release → sending → reply received, with no
 console errors. Physical haptics were not tested. Screenshot retained outside the
 repository as outputs/last-light-v18-1-sending.png.
+
+
+## v0.18.2 — stable signal position
+
+The signal apparatus now has its own fixed viewport-center anchor; it no longer
+participates in the height of the bottom thought/receipt. Trigger controls are
+anchored immediately above it. The bottom narrative is independently bounded
+and scrollable in short viewports. Evidence readings and recovery dates belong
+there, so they cannot shift the signal either. The upload dock itself fills the
+viewport without a transform, avoiding a transformed ancestor changing the
+positioning reference. Only the actual instrument and story area intercept input.
+
+The browser fixture now checks the map's exact horizontal and vertical center,
+not just overflow: 11 sizes × 3 input classes × 3 stages × thought present/absent
+= 198 passing cases. Upload rendering tests (14), source/assets and build pass.
+The fixture preview is retained as outputs/last-light-v18-2-centered.png.

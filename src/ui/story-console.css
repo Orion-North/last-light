@@ -139,3 +139,36 @@ body[data-screen="game"] .topbar-actions button:focus-visible {
   outline:none;border-bottom:2px solid #ffe4bd;border-radius:0;
 }
 .brief-ending { background:none;border:0;box-shadow:none;text-shadow:0 2px 5px #000,0 0 20px #0009; }
+
+
+/* The signal is a viewport instrument, not part of the variable-height thought
+   flow. Keep its map centered across ready, sending and every receipt state. */
+body[data-screen="game"][data-upload="true"] .interaction-dock {
+  position:fixed;inset:0;top:0!important;bottom:0!important;
+  width:100%;height:100svh;max-width:none!important;max-height:none;
+  transform:none!important;overflow:visible;pointer-events:none;
+}
+.upload-terminal[data-presentation="story"] .upload-terminal__body { position:static; }
+.upload-terminal[data-presentation="story"] .upload-terminal__apparatus {
+  --map-height:112px;position:absolute;left:50%;top:50%;
+  transform:translate(-50%,-50%);width:min(680px,calc(100vw - 48px));
+  height:var(--map-height);padding:0;pointer-events:auto;
+}
+.upload-terminal[data-presentation="story"] .signal-map { height:var(--map-height); }
+.upload-terminal[data-presentation="story"] .signal-controls {
+  position:absolute;left:50%;bottom:calc(100% + 18px);
+  transform:translateX(-50%);width:100%;
+}
+.upload-terminal[data-presentation="story"] > .story-shell {
+  position:absolute;left:50%;bottom:24px;transform:translateX(-50%);
+  width:min(850px,calc(100vw - 240px));max-height:calc(50svh - 112px);
+  overflow:auto;pointer-events:auto;
+}
+@media(max-width:650px) {
+  .upload-terminal[data-presentation="story"] > .story-shell { width:calc(100vw - 24px);bottom:20px; }
+}
+@media(max-height:620px) {
+  .upload-terminal[data-presentation="story"] .upload-terminal__apparatus { --map-height:96px; }
+  .upload-terminal[data-presentation="story"] .signal-controls { bottom:calc(100% + 8px);gap:2px; }
+  .upload-terminal[data-presentation="story"] > .story-shell { bottom:12px;max-height:calc(50svh - 84px);padding-block:8px; }
+}
