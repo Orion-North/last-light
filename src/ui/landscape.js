@@ -450,7 +450,7 @@ export function createLandscape(canvas) {
     ring.renderOrder = 5; toolGroup.add(ring); return ring;
   });
   const traceGuide = new THREE.InstancedMesh(own(new THREE.SphereGeometry(.014, 8, 6)),
-    own(new THREE.MeshBasicMaterial({ color: '#ffffff', depthTest: false })), 80);
+    own(new THREE.MeshBasicMaterial({ color: '#ffffff', depthTest: false, toneMapped: false })), 80);
   traceGuide.renderOrder = 4; traceGuide.visible = false; toolGroup.add(traceGuide);
   let traceGuidePositions = null;
   let toolBerry = false;
@@ -482,7 +482,8 @@ export function createLandscape(canvas) {
         dummy.position.copy(traceGuidePositions[instance]); dummy.quaternion.identity();
         const near = Math.hypot(point.x - state.cursor.x, point.y - state.cursor.y) < .12;
         dummy.scale.setScalar(near ? 1.35 : 1); dummy.updateMatrix(); traceGuide.setMatrixAt(instance, dummy.matrix);
-        traceGuide.setColorAt(instance, new THREE.Color(path.complete || point.visited ? '#8be0bb' : pathIndex ? '#b7d9f3' : '#ffd18b'));
+        // Violet stays distinct from completed mint-green; amber marks the lower path.
+        traceGuide.setColorAt(instance, new THREE.Color(path.complete || point.visited ? '#8be0bb' : pathIndex ? '#d69aff' : '#ffd18b'));
       }));
       traceGuide.instanceMatrix.needsUpdate = true; traceGuide.instanceColor.needsUpdate = true;
     }

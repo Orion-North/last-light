@@ -821,3 +821,5 @@ SHOW-26 complete: 80-second actual-game showcase including ending; deterministic
 HERO-27 complete (root): HUD-free 4K game-renderer hero image, reflective three-quarter camera, 1080p WebP cover in README/public/images; local capture fixture tests/browser/hero-photo.html. Dimensions and image visually verified. No gameplay changes or deployment.
 
 POLISH-28 — root owns README, player/media/contributor guides, GitHub issue templates, metadata and publication. REVIEW-28 / Sol performed read-only accuracy review; obsolete controls moved to explicitly historical implementation notes. Hero and two actual-game stills are the public presentation.
+
+TRACE-29 — root: distinguish unfinished upper trace (violet) from traced/completed dots (mint green); retain lower amber path. Bypass scene tone mapping for guide colors. Verified the actual renderer at 63% (violet unfinished dots beside mint traced dots), and completed the interaction at 100%. All 25 engine test files, 61 syntax checks, 12 scene contracts, static build, and diff checks pass. v0.19.5.
