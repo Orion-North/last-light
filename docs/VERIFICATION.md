@@ -403,3 +403,30 @@ build pass. Root browser checked the simplified settings menu, continue from
 saved progress and in-game pause/resume; no captured browser warnings/errors.
 No OS preference emulation, fresh full playthrough or physical haptic output was
 performed for this small removal.
+
+
+## v0.15 — Opportunity's inner voice
+
+- One bottom terminal carries short imagined first-person thoughts, date and the
+  current action. No speaker labels or duplicate top story headings. The signal
+  diagram remains above; instrument use replaces thoughts with the working task.
+  Contact loss clears the voice, including restored Earth-side saves.
+- 132 engine tests pass, including reveal pause/rerender/cancellation, complete
+  accessible text, absence of post-contact voice, controller-only sending,
+  explicit missing/partial receipts and bounded audio lifecycle. All 46 JS
+  syntax checks, 12 scene/asset contracts and static build pass.
+- Root browser: fresh introduction, first camera/choice/send/receipt, manual
+  driving to Last Chance and tracing-tool entry; pause during a new thought,
+  mute and resume. Separate seeded final-image checkpoint checks Cross rejection,
+  actual two-trigger charge/release, partial receipt and loss of the inner voice,
+  Earth handover, recovery calls, archive and ending. Both test sessions had no
+  captured browser warnings/errors. These are targeted checks, not a new
+  full fresh playthrough or a new tool-completion regression.
+- Three Sol agents contributed content, audio and critique. Independent critique
+  reviewed source and the root 1280x720 receipt screenshot; it did not perform an
+  independent playthrough. Terminal covers some lower terrain/rover but keeps
+  the main subject and physical tracing paths visible in the checked views.
+- No physical actuator outputs or subjective soundtrack listening test. New
+  sounds are finite filtered-noise articulations, silent during transmissions,
+  expected reply intervals and explicit silence. Human playtesting must judge
+  emotional effect and the final audio balance.

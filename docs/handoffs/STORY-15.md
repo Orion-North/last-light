@@ -1,0 +1,15 @@
+# STORY-15 — Opportunity’s bottom terminal
+
+- Agent / owner: Sol narrative lane.
+- Branch / worktree: shared develop/v0.15 checkout, disjoint ownership assigned by Codex.
+- Allowed paths / changed files: `src/content/terminal-story.js`, this handoff.
+- Acceptance: one concise first-person Opportunity thought per pre-contact scene and state; preserve science, chosen first memory, and historical silence. User correction supersedes the earlier multi-speaker terminal approach.
+- Changes: pure `storyLine({scene, phase, travelling, investigating, toolStage, transmitting, selected, recalled})` returns `{speaker:'rover', channel:'OPPORTUNITY · imagined', text}`. Channel is internal metadata; do not render a speaker switching interface. Scene and selected are actual content objects; recalled is the stored first-morning memory. No runtime, DOM, sound, or state dependencies.
+- Delivery: first morning identifies Opportunity and its water-search purpose. Approach thoughts establish curiosity or relationship, rather than repeating step instructions. Ready thoughts connect each scientific result to what the people at home can learn. First-morning uses selected.shortReply verbatim. Smaller-world recalls the actual ground/horizon memory and why its presence on Earth matters. Received thoughts react to the actual existing Earth reply without directly quoting Earth. Active investigation, all act-three states, complete states, and partial-image received states return empty text. No invented post-contact rover voice.
+- Integration: keep the actual Earth handover and signal receipt outside this terminal. Empty text means omit the narrative terminal block. Travelling uses the scene thought; toolStage deliberately adds no competing instruction text.
+- Source review: used existing story.js observations, discoveries, mission ages, and replies. No new historical claims or assets.
+- Flow critique: the former presentation spread title, thought, objective, instrument hint, discovery, transmission meaning, and reply among several places. One voice can carry the emotional thread while the instrument carries its own task. Keep the causal bookends visible before and after investigation, and let operational Earth receipts remain visibly separate after contact ends. First-person scientific discovery and the stored first view connect the early mission to the darkening sky without another plot layer.
+- Checks actually run: explicit bundled Node assertions across 12 scenes × 5 phases × 2 transmitting states (120 combinations). Every output uses rover internally and stays <=140 characters. All act-three/complete/partial-received outputs are empty; active investigation is empty; first-choice exact shortReply and actual ground/horizon recall pass. Checks passed.
+- Unrun: browser, sound, controller, keyboard/touch, pause, complete playthrough, and integrated build; owned by integrator. Human playtesting is still needed for emotional pacing.
+- Commit / publication: none.
+- Next: integrate the revised Opportunity-only module, hiding the terminal when text is empty and retaining actual Earth-role handover/receipt in the signal display.

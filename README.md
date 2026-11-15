@@ -3,7 +3,7 @@
 A playable, real-time 3D story about NASA's Opportunity rover: discovery,
 attachment, a fading signal, and the things that remain.
 
-**Playable v0.14.1.** [Play on GitHub Pages](https://orion-north.github.io/last-light/). Built with parallel Codex agents. The game uses NASA's
+**Playable v0.15.** [Play on GitHub Pages](https://orion-north.github.io/last-light/). Built with parallel Codex agents. The game uses NASA's
 textured rover model, a navigable original Mars environment, an original adaptive
 score, and a complete three-act story. No account or AI API is needed by the game
 itself. A hosting provider may apply its own access gate.
@@ -51,13 +51,14 @@ Existing keyboard/touch fallbacks remain available.
 
 - Two brief, skippable passages carry the mission from 2004 to 2015 and 2018; mission-age captions and a subtle rover finish retain those years.
 - A skippable twelve-second in-engine opening introduces your identity, first camera action, water-search mission and chosen archive.
+- Opportunity is the only voice in the bottom terminal, without speaker labels. Short thoughts connect the action to discoveries and attachment; they stop at contact loss. The date and next action share the same reading area, with the animated Mars/Earth link above.
 - Scene meaning and the next action sit in the main composition. Close rover framing and a compact left-side glyph guide keep attention on the world.
 - Release both triggers to arm, squeeze L2 + R2 together to charge, then release both to send. The carrier steadies as both triggers charge; releasing launches a signal across the illustrated link. No touchpad click or cursor aiming. Controller sending requires both triggers; × cannot send. A button alternative is available when no controller is connected.
 - Controller-first: left stick drives during travel and selects in menus; right stick looks and aims. Keyboard/touch remain supported.
 - Follow six local observation markers. Drive manually with gentle acceleration and braking, a close chase camera and rover-relative steering guidance. Autodrive has been removed.
 - Drive, trace crossing layers, brush and compare two instrument readings, or survey the sky; then squeeze and release both triggers to send the discovery home. Geological targets are
   authored 3D reconstructions with readable layers and grains. There is no
-  photography system. Brief thoughts appear as centered cinematic captions; discovered science and
+  photography system. Opportunity’s brief imagined thoughts type into one bottom terminal with subtle mechanical sound; discovered science and
   memories remain available in the optional journal (J / □).
 - A visible signal receipt accompanies Earth's replies. Later calls go
   unanswered, including with sound off. Pause cancels pending sends safely.

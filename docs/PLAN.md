@@ -185,3 +185,13 @@ glyphs explain the action. Last Chance traces two opposing layer paths; Berry
 Bowl brushes and measures two surfaces. Tool UI keeps one instruction hierarchy.
 USB trigger vibration starts at maximum supported amplitude, with stronger
 sustained charged resistance; pressure thresholds stay accessible and unchanged.
+
+
+## Current target — v0.15
+
+Opportunity-only inner voice in a bottom terminal; no multi-speaker log. Brief
+first-person thoughts connect observation, discovery, sending and attachment.
+A quick text reveal and quiet mechanical articulation never delay controls.
+Remove competing top story headings and duplicate captions. At contact loss the
+voice falls silent; the explicit Earth handover, reversed signal and operational
+receipts carry the recovery ending. Science details stay in the journal.

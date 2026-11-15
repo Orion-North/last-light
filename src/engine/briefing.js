@@ -1,7 +1,7 @@
 export const briefingBeats = [
-  { label: 'MARS · 2004', title: 'You are Opportunity.', cue: 'Ninety Martian days planned. People on Earth waiting to see through you.' },
-  { label: 'YOUR MISSION', title: 'Was there water here?', cue: 'Use your cameras, brush away dust, then compare rock and grains.' },
-  { label: 'EXPLORE · INVESTIGATE · SEND', title: 'Bring a little of Mars home.', cue: 'Send your discoveries. Listen for the answer coming back.' },
+  { label: 'MARS · 2004', title: 'I am Opportunity.', cue: 'They built me for ninety days. Earth waits for my first view.' },
+  { label: 'THE FIRST MORNING', title: 'I came to find ancient water.', cue: 'My cameras, brush, and instruments can help me compare the rocks.' },
+  { label: 'THE FIRST MORNING', title: 'I can send my discoveries home.', cue: 'Somewhere, people will see them. I will listen for their answer.' },
 ];
 
 /** Presentation time only: pausing cannot advance the story or skip a shot. */

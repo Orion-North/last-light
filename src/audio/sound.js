@@ -40,6 +40,9 @@ export function createSound() {
   let endPlayed = false;
   const activeVoices = new Set();
   const pianoCache = new Map();
+  let textBuffer = null;
+  let lastTextTime = -Infinity;
+  let textPulses = 0;
   const doc = typeof document === 'undefined' ? null : document;
   let hidden = Boolean(doc?.hidden);
   const midi = note => 440 * Math.pow(2, (note - 69) / 12);
@@ -437,6 +440,49 @@ export function createSound() {
     playSignal(question);
   }
 
+  function textPulse({ speaker = 'rover', first = false } = {}) {
+    // These are local reading articulations, never radio receipts. Leave the
+    // learned signal and its missing answer completely exposed, including silence.
+    if (!canPlay() || section === 'silence' || transmission !== null || context.currentTime < signalHoldUntil) return;
+    const now = context.currentTime;
+    if (now - lastTextTime < .095) return;
+    if (first) textPulses = 0;
+    if (textPulses >= 16) return;
+    lastTextTime = now;
+    textPulses += 1;
+    if (!textBuffer) {
+      const rate = Math.min(context.sampleRate, 24000);
+      textBuffer = context.createBuffer(1, Math.ceil(rate * .065), rate);
+      const samples = textBuffer.getChannelData(0);
+      let seed = 1515;
+      for (let i = 0; i < samples.length; i++) {
+        seed = (seed * 1664525 + 1013904223) >>> 0;
+        samples[i] = seed / 4294967296 * 2 - 1;
+      }
+    }
+    // A dry, rounded key rather than a pitched beep: Earth is softer/warmer,
+    // archive records are duller still. No melody, echo, panning or answering pair.
+    const colour = { rover: [1150, .030, .025], earth: [760, .038, .022], record: [440, .044, .020] }[speaker]
+      || [1150, .030, .025];
+    const [cutoff, tail, level] = colour;
+    const duration = tail + (first ? .012 : 0);
+    const source = context.createBufferSource();
+    source.buffer = textBuffer;
+    const filter = context.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = cutoff;
+    filter.Q.value = .35;
+    const gain = context.createGain();
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(level * (first ? 1 : .7), now + .004);
+    gain.gain.exponentialRampToValueAtTime(.0001, now + duration);
+    gain.gain.setValueAtTime(0, now + duration + .002);
+    source.connect(filter).connect(gain).connect(master);
+    registerVoice([source], [source, filter, gain]);
+    source.start(now);
+    source.stop(now + duration + .003);
+  }
+
   function cancelTransmission() {
     if (transmission === null && (!context || signalHoldUntil <= context.currentTime)) return;
     transmission = null;
@@ -489,6 +535,7 @@ export function createSound() {
       applySection();
     },
     cue,
+    textPulse,
     beginTransmission,
     finishTransmission,
     cancelTransmission,
@@ -521,6 +568,7 @@ export function createSound() {
         try { source?.stop(); source?.disconnect(); } catch { /* Already stopped. */ }
       }
       pianoCache.clear();
+      textBuffer = null;
       if (context && context.state !== 'closed') context.close().catch(() => {});
     },
   };

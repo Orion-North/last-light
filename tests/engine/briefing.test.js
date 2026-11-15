@@ -42,6 +42,6 @@ test('opening establishes role, first action, science question and communication
   assert.match(briefingBeats[1].cue, /brush/);
   assert.match(briefingBeats[1].cue, /compare/);
   assert.match(briefingBeats[1].title, /water/);
-  assert.match(briefingBeats[2].cue, /Send your discoveries/);
-  assert.match(briefingBeats[2].cue, /answer coming back/);
+  assert.match(briefingBeats[2].title, /send my discoveries home/);
+  assert.match(briefingBeats[2].cue, /listen for their answer/);
 });

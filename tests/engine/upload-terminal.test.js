@@ -109,3 +109,16 @@ test('ready and receipt show the memory once without explanatory filler', () => 
   assert.equal((sending.match(/role="status"/g)||[]).length,1);
   assert.equal((sending.match(/Use &amp; hold/g)||[]).length,1);
 });
+
+test('integrated thoughts keep controller sending and silence receipts without duplicate story', () => {
+  const story='<section class="story-console">My thought</section>';
+  const ready=render('reply','ready',{story,input:'controller',meaning:'Duplicate meaning'});
+  assert.equal((ready.match(/My thought/g)||[]).length,1);
+  assert.doesNotMatch(ready,/Duplicate meaning|data-action="transmit"|upload-terminal__memory/);
+  assert.match(ready,/id="squeeze-hint"/);
+  const silence=render('silence','received',{story,voice:false,response:'No signal from Opportunity.'});
+  assert.match(silence,/NO REPLY/);assert.match(silence,/No signal from Opportunity\./);
+  assert.match(silence,/data-action="next"/);
+  assert.doesNotMatch(render('silence','received',{story,voice:false,response:'Earth’s call, imagined: This is home.'}), /imagined: This is home/);
+  assert.match(render('archive','ready',{story,voice:false}), /&lt;memory&gt;/);
+});

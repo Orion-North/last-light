@@ -1,0 +1,107 @@
+/* Narrative and the action it explains share one reading position. */
+body[data-screen="game"] .play-screen { min-height:100svh; }
+body[data-screen="game"] .play-heading { display:none; }
+body[data-screen="game"] .interaction-dock,
+body[data-screen="game"][data-upload="true"] .interaction-dock,
+body[data-screen="game"][data-tool="true"] .interaction-dock {
+  position:fixed;left:50%;right:auto;top:auto!important;bottom:32px!important;
+  transform:translateX(-50%)!important;width:min(850px,calc(100vw - 330px));
+  max-width:850px!important;max-height:calc(100svh - 100px);overflow:auto;
+  padding:0;border:0;background:none;box-shadow:none;text-align:left;
+}
+.story-shell { padding:20px 26px 16px;background:linear-gradient(115deg,#111c24f2,#101820ed);
+  border-top:1px solid #d2ad7266;border-bottom:1px solid #d2ad7226;
+  box-shadow:0 12px 48px #0004;position:relative;text-shadow:none; }
+.story-shell::before { content:'';position:absolute;left:0;top:0;width:42px;height:2px;background:#e6c18a; }
+.story-console { --terminal-ink:#efd0a2;color:#fff0d9; }
+.story-console__meta { display:flex;align-items:center;justify-content:space-between;gap:16px;
+  font:10px/1.5 var(--mono);letter-spacing:.07em;color:var(--terminal-ink); }
+.story-console__channel { display:flex;gap:9px;align-items:center;flex-shrink:0;text-transform:uppercase; }
+.story-console__channel i { width:5px;height:5px;background:currentColor;box-shadow:0 0 9px #e6c18a44; }
+.story-console__time { text-align:right;color:#b8c3c6;font-size:9px;letter-spacing:.02em; }
+.story-console__line { position:relative;margin:12px 0 0;font:400 clamp(15px,1.55vw,19px)/1.65 var(--mono);
+  text-align:left;letter-spacing:-.035em;min-height:3.3em;text-wrap:pretty; }
+.story-console__reserve { visibility:hidden; }
+.story-console__typed { position:absolute;inset:0; }
+.story-console.is-writing .story-console__typed::after { content:'▍';color:var(--terminal-ink);font-size:.85em; }
+.story-actions { margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap; }
+.story-actions .primary-button,.story-shell .upload-terminal__button { min-height:40px;padding:10px 16px;font:12px/1.35 var(--sans); }
+.story-actions .objective-line { display:flex;align-items:center;justify-content:space-between;gap:20px;width:100%;margin:0;font:12px/1.45 var(--sans); }
+.story-actions .objective-line strong { font-weight:500;color:#f1d5ae; }
+.story-actions #objective-distance { color:#c5d2d6;font:11px/1.45 var(--mono); }
+.story-shell .dock-footer { position:absolute;right:18px;bottom:17px; }
+.story-shell .dock-footer button { font-size:10px;min-height:32px;padding:6px; }
+.story-actions .choices { width:100%;margin:0; }
+.story-actions .choice { min-height:66px!important;padding-block:12px!important; }
+.story-actions .choice-label { font:14px/1.4 var(--sans); }
+.story-actions .choice-detail { font-size:11px; }
+.story-actions .geology-tool-panel,.story-actions .survey-instrument { width:100%; }
+.story-actions .tool-instruction,.story-actions .discovery-line { text-align:left;font:15px/1.5 var(--sans);margin:0 0 10px; }
+.story-actions .tool-actions { margin-top:10px; }
+.story-actions .sample-comparison { margin:6px 0; }
+.story-actions .sample-reading strong { font-size:14px; }
+.story-actions .survey-aim { position:fixed;left:calc(50% - 80px);bottom:42svh;margin:0;pointer-events:none; }
+.story-actions .survey-ticks { justify-content:flex-start; }
+.story-actions .pace-note { text-align:left;font:11px/1.5 var(--sans); }
+.story-actions .quiet-button[data-action="assist-observation"] { font-size:10px; }
+.story-shell .geology-tool-panel { text-align:left; }
+.story-shell .tool-readout { justify-content:flex-start; }
+.story-shell .tool-actions { justify-content:space-between; }
+/* The diagram remains in the world; all language returns to the terminal below. */
+.upload-terminal[data-presentation="story"] { padding:0; }
+.upload-terminal[data-presentation="story"] .upload-terminal__apparatus { padding:0 18px 20px; }
+.upload-terminal[data-presentation="story"] .signal-map { height:140px;max-width:630px; }
+.upload-terminal[data-presentation="story"] .signal-dialogue { margin-bottom:0; }
+.upload-terminal[data-presentation="story"] .upload-terminal__guidance { max-width:none;margin:14px 0 0;text-align:left; }
+.upload-terminal[data-presentation="story"] .signal-exciter { justify-content:flex-start;margin-top:12px; }
+.upload-terminal[data-presentation="story"][data-stage="received"] .signal-exciter,
+.upload-terminal[data-presentation="story"][data-stage="sending"] .signal-exciter { display:none; }
+.upload-terminal[data-presentation="story"] .upload-terminal__footer { justify-content:flex-end;min-height:40px;margin-top:12px; }
+.upload-terminal[data-presentation="story"] .upload-terminal__instruction { font:12px/1.4 var(--sans);color:#f1d5ae; }
+.upload-terminal[data-presentation="story"] .upload-terminal__guidance progress { width:100%;max-width:240px; }
+.story-receipt { margin:12px 0 0;color:#bfdce9;font:10px var(--mono);letter-spacing:.1em; }
+.story-receipt[data-mode="silence"],.story-receipt[data-mode="partial"] { color:#e3bf96; }
+/* Introductions and time jumps use exactly the same reading position. */
+.mission-briefing .briefing-console { position:absolute;left:50%;transform:translateX(-50%);bottom:32px;width:min(850px,calc(100vw - 100px)); }
+.briefing-console .briefing-skip { position:static;margin-left:auto;display:block;font-size:11px;padding:8px 12px; }
+.mission-briefing::before,.mission-briefing::after { height:0; }
+.handover-link { top:26%; }
+@media(max-width:1000px) {
+  body[data-screen="game"] .interaction-dock,body[data-screen="game"][data-upload="true"] .interaction-dock,body[data-screen="game"][data-tool="true"] .interaction-dock { left:auto;right:22px;transform:none!important;width:calc(100vw - 210px); }
+  .story-console__meta { align-items:flex-start;gap:10px; }
+  .story-console__time { max-width:50%; }
+  .story-shell { padding:16px 20px; }
+}
+@media(max-width:650px) {
+  body[data-screen="game"] .interaction-dock,body[data-screen="game"][data-upload="true"] .interaction-dock,body[data-screen="game"][data-tool="true"] .interaction-dock { left:12px;right:12px;bottom:100px!important;width:auto;max-height:calc(100svh - 180px); }
+  .story-shell { padding:14px 16px; }
+  .story-console__meta { flex-wrap:wrap;gap:4px; }
+  .story-console__time { max-width:none;text-align:left;font-size:8px; }
+  .story-console__line { font-size:14px;line-height:1.55; }
+  .story-actions .objective-line { align-items:flex-start;flex-direction:column;gap:5px; }
+  .mission-briefing .briefing-console { bottom:24px;width:calc(100vw - 28px); }
+  .upload-terminal[data-presentation="story"] .signal-map { height:115px; }
+  .upload-terminal[data-presentation="story"] .upload-terminal__apparatus { padding-bottom:14px; }
+}
+@media(max-height:620px) and (min-width:651px) {
+  .story-shell { padding-block:12px; }
+  .story-console__line { font-size:14px;min-height:3.1em;line-height:1.55;margin-top:7px; }
+  .story-actions { margin-top:8px; }
+  .upload-terminal[data-presentation="story"] .signal-map { height:100px; }
+  .upload-terminal[data-presentation="story"] .planet { width:52px;height:52px; }
+  .upload-terminal[data-presentation="story"] .planet--earth { width:43px;height:43px; }
+  .upload-terminal[data-presentation="story"] .upload-terminal__apparatus { padding-bottom:10px; }
+}
+
+.story-console__mark { font:12px var(--mono);color:#d7b681;letter-spacing:.12em; }
+.story-voice-absent .story-console__mark { visibility:hidden; }
+.story-voice-absent .story-console__line { display:none; }
+.story-handover { font:400 clamp(20px,2.5vw,30px)/1.45 var(--sans);margin:12px 0;color:#e0edf0; }
+.story-handover small { display:block;font:13px/1.5 var(--sans);color:#c6d2d7;margin-top:8px; }
+.story-operational { font:14px/1.5 var(--sans);color:#dbe5e9;margin:12px 0; }
+
+body[data-screen="game"] #world-controls { grid-template-columns:44px 44px 44px; }
+body[data-screen="game"] #journal-toggle[hidden] { display:none; }
+
+.world-status[data-state="ready"] { display:none; }
+.upload-terminal[data-presentation="story"][data-input="pointer"] .upload-terminal__guidance { display:none; }

@@ -1,6 +1,6 @@
 # Task board
 
-Phase: **v0.14.1 integrated and verified; publication owned by Codex**.
+Phase: **v0.15 story delivery integrated; final checks and publication owned by Codex**.
 Integrator: Codex. Claude and Antigravity are supported by shared instructions;
 Antigravity CLI critique has been verified.
 
@@ -554,3 +554,25 @@ retain ordinary pause/visibility behavior and skippable passages. No hardware ou
 MOTION-14 complete: setting and OS/stored overrides removed. Root reviewed Sol
 landscape changes, verified settings/pause/resume in browser, all engine files
 and source/asset/build checks pass. Publication owned by Codex.
+
+## STORY-15 — one bottom story terminal
+
+User requests clearer story delivery with fewer scattered details and suggests a
+bottom terminal with sound. Shared develop/v0.15, disjoint ownership:
+- STORY-15 / Sol: new src/content/terminal-story.js and own handoff; concise lines
+  by scene/phase, clear rover/Earth identity and causal narrative, source review.
+- SOUND-15 / Sol: src/audio/sound.js, related audio tests and own handoff; restrained
+  text start/pulse sounds with mute/pause cancellation, separate from signal motif.
+- CRITIC-15 / Sol: docs/reviews/STORY-15.md only; critical narrative/interaction
+  review, then integrated critique. No claimed browser playthrough without access.
+- Codex: presentation module/CSS, main integration, terminal renderer, briefing
+  presentation, docs/version, checks/browser QA and publication. Preserve game
+  mechanics, trigger-only sending, manual driving and historical outcome.
+
+User correction: the bottom terminal is exclusively Opportunity's imagined inner
+voice, with no speaker labels. STORY-15 content revised accordingly; no thoughts
+appear after contact loss. Earth operational receipts are not a second voice.
+Three Sol lanes complete: concise thoughts, bounded mechanical articulation,
+and critical source/screenshot review. Root integrated persistent reveal,
+pause/mute lifecycle, one bottom reading/action area, matching intro/passages,
+and pointer journal access.

@@ -1,6 +1,6 @@
 {
   "name": "last-light-desktop",
-  "version": "0.14.1",
+  "version": "0.15.0",
   "private": true,
   "type": "module",
   "description": "Portable Windows edition of Last Light with opt-in DualSense USB feedback.",

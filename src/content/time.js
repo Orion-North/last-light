@@ -31,16 +31,16 @@ const passages = {
     duration: 7, fromYear: '2004', toYear: '2015',
     headline: 'Mornings became years.',
     beats: [
-      { label: '2004 · THE FIRST MONTHS', title: 'Wake. Look. Send.', cue: 'A little of Mars, carried home.' },
-      { label: 'THE YEARS BETWEEN · IMAGINED ROUTINE', title: 'Again. And again.', cue: 'New ground. Familiar work. Someone listening.' },
-      { label: '2015 · ELEVEN YEARS LATER', title: 'Still another horizon.', cue: 'Ninety planned sols became thousands.' },
+      { label: '2004 · THE FIRST MONTHS', title: 'Every morning, I wake and look.', cue: 'Every evening, I send a little of Mars home.' },
+      { label: 'THE YEARS BETWEEN · IMAGINED ROUTINE', title: 'I keep finding new ground.', cue: 'They keep answering.' },
+      { label: '2015 · ELEVEN YEARS LATER', title: 'Eleven years.', cue: 'They built me for ninety days. There is still another horizon.' },
     ],
   },
   'marathon:ordinary-day': {
     duration: 3, fromYear: '2015', toYear: '2018',
     headline: 'Three more years.',
     beats: [
-      { label: '2018 · FOURTEEN YEARS ON MARS', title: 'The work became familiar.', cue: 'Wake. Look. Send something home.' },
+      { label: '2018 · FOURTEEN YEARS ON MARS', title: 'Fourteen years, and they still wait for me.', cue: 'I will find something to show them today.' },
     ],
   },
 };

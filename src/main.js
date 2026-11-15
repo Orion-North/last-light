@@ -1,4 +1,6 @@
 import { scenes, sources, credits, recordedChoice } from './content/story.js';
+import { storyLine } from './content/terminal-story.js';
+import { renderStoryConsole, createStoryWriter } from './ui/story-console.js';
 import { createState, transition } from './engine/game.js';
 import { createBriefing, briefingBeats } from './engine/briefing.js';
 import { missionTime, timePassage } from './content/time.js';
@@ -76,6 +78,7 @@ let inputContext = '';
 const transmissionWait = createInteractionWait();
 const sound = createSound();
 sound.setMuted(true);
+const storyWriter = createStoryWriter({ paused:()=>state.paused || document.hidden || exploring, pulse:options=>sound.textPulse?.(options) });
 const goals = {
   1: { x: 7, z: -7, label: 'Last Chance outcrop' },
   2: { x: -5, z: -10, label: 'Berry Bowl' },
@@ -115,6 +118,7 @@ function setWorld(environment, mode) {
 }
 
 function renderTitle() {
+  storyWriter.stop();
   cancelScan();
   stopBriefing();
   cancelTransmission();
@@ -135,6 +139,7 @@ function renderTitle() {
 }
 
 function stopBriefing() {
+  storyWriter.stop();
   cancelAnimationFrame(briefingFrame);briefingFrame=0;briefingActive=false;
   view?.setIntro?.(false);
   if(briefingPassage)view?.setPaused(state.paused);
@@ -160,8 +165,15 @@ function startBriefing(passage = null) {
   const handover=passage?.role==='earth';
   const fromAge=missionTime(scenes[state.sceneIndex-1]?.id)?.ageYears || 0;
   const toAge=missionTime(scenes[state.sceneIndex].id)?.ageYears || 0;
-  app.innerHTML=`<section class="mission-briefing ${passage?'time-passage':''} ${handover?'signal-handover':''}" aria-label="${passage?'Passage of mission time':'Mission introduction'}">${handover?'<div class="handover-link" aria-hidden="true"><span>OPPORTUNITY<small>MARS</small></span><i></i><strong>YOU<small>EARTH</small></strong></div>':''}${passage&&!handover?`<div class="passage-light" aria-hidden="true"></div><div class="passage-years"><span>${escape(passage.fromYear)}</span><i aria-hidden="true"></i><strong>${escape(passage.toYear)}</strong><p>${escape(passage.headline)}</p></div>`:''}<div class="briefing-caption"><p class="eyebrow" id="briefing-label">${escape(beat.label)}</p><h1 id="briefing-title">${escape(beat.title)}</h1><p id="briefing-cue">${escape(beat.cue)}</p><div class="briefing-steps" aria-hidden="true">${beats.map((_,i)=>`<i class="${i===0?'current':''}"></i>`).join('')}</div></div><button class="briefing-skip" data-action="skip-intro">${passage?'Continue':'Skip introduction'} <span aria-hidden="true">↗</span></button></section>`;
-  refreshControllerPrompts();focusContent('[data-action="skip-intro"]');announce(`${beat.title} ${beat.cue}`);
+  app.innerHTML=`<section class="mission-briefing ${passage?'time-passage':''} ${handover?'signal-handover':''}" aria-label="${passage?'Passage of mission time':'Mission introduction'}">${handover?'<div class="handover-link" aria-hidden="true"><span>OPPORTUNITY<small>MARS</small></span><i></i><strong>YOU<small>EARTH</small></strong></div>':''}${passage&&!handover?'<div class="passage-light" aria-hidden="true"></div>':''}<div class="briefing-console story-shell"><div class="briefing-reading"></div><button class="briefing-skip" data-action="skip-intro">${passage?'Continue':'Skip introduction'} <span aria-hidden="true">↗</span></button></div></section>`;
+  function showBeat(content,index) {
+    const line={speaker:'rover',text:`${content.title} ${content.cue}`};
+    app.querySelector('.briefing-reading').innerHTML=handover?`<div class="story-console__meta">${escape(content.label)}</div><p class="story-handover">${escape(content.title)}<small>${escape(content.cue)}</small></p>`:renderStoryConsole({line,time:content.label});
+    if(!handover)storyWriter.mount(app.querySelector('.story-console'),line,`${screen}:${passage?.toYear || 'intro'}:${index}`);
+    announce(`${content.title} ${content.cue}`);
+  }
+  showBeat(beat,0);
+  refreshControllerPrompts();focusContent('[data-action="skip-intro"]');
   const timeline=createBriefing({duration:passage?.duration || 12,beats:beats.length});let previous=performance.now(),lastBeat=0;
   function frame(now) {
     if(!briefingActive)return;
@@ -175,9 +187,7 @@ function startBriefing(passage = null) {
     }
     if(beat!==lastBeat) {
       lastBeat=beat;const content=beats[beat];
-      $('#briefing-label').textContent=content.label;$('#briefing-title').textContent=content.title;$('#briefing-cue').textContent=content.cue;
-      app.querySelectorAll('.briefing-steps i').forEach((el,i)=>el.classList.toggle('current',i===beat));
-      announce(`${content.title} ${content.cue}`);
+      showBeat(content,beat);
     }
     if(complete)finishBriefing();else briefingFrame=requestAnimationFrame(frame);
   }
@@ -199,7 +209,7 @@ function updateInputHint() {
   const row=(action,label,key,usePad=pad)=>`<span class="controller-hint" aria-label="${usePad?controllerButtonName(action,family):key}: ${label.toLowerCase()}">${usePad?controllerGlyph(action,family):`<kbd>${key}</kbd>`}<span>${label}</span></span>`;
   let hints;
   if(transmitting) hints='';
-  else if(contacting) hints=controllerConnected?`<span class="controller-hint" aria-label="Both triggers: squeeze">${controllerGlyph('reverse',family)}${controllerGlyph('forward',family)}<span class="sr-only">Squeeze</span></span>`:row('primary',transmissionProfile(scenes[state.sceneIndex]).mode==='silence'?'Call':transmissionProfile(scenes[state.sceneIndex]).mode==='archive'?'Keep':'Send','Enter',false);
+  else if(contacting) hints=controllerConnected?'':row('primary',transmissionProfile(scenes[state.sceneIndex]).mode==='silence'?'Call':transmissionProfile(scenes[state.sceneIndex]).mode==='archive'?'Keep':'Send','Enter',false);
   else if(geologyActive) hints=toolState?.stage==='compare'?row('primary','Compare','Enter'):row('look',toolState?.stage==='trace'?'Follow layer':'Move tool','↑↓←→')+row('forward',toolState?.stage==='trace'?'Trace':toolState?.stage==='brush'?'Brush':'Measure','Space');
   else if(investigating) hints=row('look','Look','↑↓←→')+'<span class="control-rest">Hold still to record</span>';
   else if(moving) hints=row('move','Drive','WASD')+row('look','Look','Drag');
@@ -222,6 +232,7 @@ function refreshControllerPrompts() {
   decorate($('#settings-toggle'),'pause');
   $('#camera-reset').innerHTML='<span class="camera-reset-mark" aria-hidden="true">↺</span><span class="sr-only">Recenter camera</span>';
   decorate($('#camera-reset'),'camera');
+  $('#journal-toggle').hidden=controllerConnected;
   document.querySelectorAll('dialog [data-close]').forEach(button=>decorate(button,'back'));
   const guide = [['move','Drive'],['forward','Forward'],['reverse','Reverse'],['look','Look'],['primary','Interact'],['select','Select'],['journal','Journal'],['camera','Camera'],['back','Back'],['pause','Pause']];
   $('#controller-guide').innerHTML = guide.map(([action,label])=>`<span class="controller-hint" aria-label="${controllerButtonName(action,family)}: ${label.toLowerCase()}">${controllerGlyph(action,family)}<span>${label}</span></span>`).join('');
@@ -255,6 +266,8 @@ function renderGame({ focus = false } = {}) {
   const recalled = scene.id==='smaller-world' ? state.memories.find(m=>m.sceneId==='first-morning') : null;
   const goal = goals[state.sceneIndex];
   const contact = transmissionProfile(scene);
+  const thought = storyLine({scene,phase:state.phase,travelling:!!goal&&!reached,investigating,toolStage:toolState?.stage,transmitting,selected:choice,recalled});
+  const consoleHTML = renderStoryConsole({line:thought,time:missionTime(scene.id)?.label || scene.sol});
   view?.setRemoteView?.(scene.signal===0);
   document.body.dataset.perspective=scene.signal===0?'earth':'rover';
   document.body.dataset.upload = ['transmit','received'].includes(state.phase) ? 'true' : 'false';
@@ -277,20 +290,22 @@ function renderGame({ focus = false } = {}) {
     content = survey ? `<div class="survey-instrument" aria-label="${escape(profile.title)}"><div class="survey-aim" aria-hidden="true"><span class="survey-center"></span><i id="survey-target"></i></div><div class="survey-ticks" aria-label="Observation views">${profile.steps.map((_,i)=>`<span data-survey-step="${i}">${String(i+1).padStart(2,'0')}</span>`).join('')}</div><p id="investigation-hint" class="discovery-line">${escape(profile.steps[0].hint)}</p><progress id="investigation-progress" max="1" value="0" aria-label="Observation recorded"></progress><p class="pace-note">Bring the amber bearing to the center. Hold still to record.</p></div>` : `<p id="investigation-hint" class="discovery-line">Look around the feature, then hold the view still.</p><progress id="investigation-progress" max="1" value="0" aria-label="Observation recorded"></progress>`;
     content += '<button class="quiet-button" data-action="assist-observation">Skip this observation</button>';
   } else if (state.phase === 'observe') {
-    content = `<p class="inner-voice">${escape(scene.subtitle || scene.thought)}</p>`;
-    if (goal && !reached) content += `<div class="objective-line"><span id="objective-distance">${graphicsError ? '3D unavailable on this device' : 'Follow the amber beacon'}</span>${graphicsError?'<button class="quiet-button" data-action="text-only">Continue story</button>':''}</div>`;
+    content = scene.signal===0 ? `<p class="story-operational">${escape(scene.subtitle)}</p>` : '';
+    if (goal && !reached) content += `<div class="objective-line"><strong>${escape(currentObjective({scene,phase:state.phase,goal,reached}))}</strong><span id="objective-distance">${graphicsError ? '3D unavailable on this device' : 'Follow the amber beacon'}</span>${graphicsError?'<button class="quiet-button" data-action="text-only">Continue story</button>':''}</div>`;
     else content += `<button class="primary-button" data-action="observe" ${scanning?'disabled':''}>${scanning?'Looking closely…':escape(scene.actionLabel || scene.objective)} <span aria-hidden="true">◇</span></button>`;
 
   } else if (state.phase === 'choose') {
-    content = `<p class="discovery-line">${escape(scene.discovery)}</p><p class="choice-purpose">${contact.mode==='archive'?'Choose what to carry forward':scene.signal===0?'Choose what this call will remember':'Choose your message for Earth'}</p><div class="choices compact-choices">${scene.choices.map(c=>`<button class="choice" data-action="choose" data-choice="${escape(c.id)}"><span class="choice-label">${escape(c.shortLabel || c.label)}</span><span class="choice-detail">${escape(c.detail)}</span></button>`).join('')}</div>`;
+    content = `<div class="choices compact-choices">${scene.choices.map(c=>`<button class="choice" data-action="choose" data-choice="${escape(c.id)}"><span class="choice-label">${escape(c.shortLabel || c.label)}</span><span class="choice-detail">${escape(c.detail)}</span></button>`).join('')}</div>`;
   } else if (state.phase === 'transmit' || state.phase === 'received') {
     content = renderUploadTerminal({title:recalled?`Remember: ${recalled.title}`:choice?.memory?.title || scene.title,mode:contact.mode,
       stage:state.phase==='received'?'received':transmitting?'sending':'ready',
       prompt:state.phase==='received'?'':transmitting?contact.waiting:contacting?uploadPrompt():contact.mode==='archive'?'Keep this moment in the mission archive.':'Send a call. Listen for a reply.',
-      response:scene.response || scene.transmission,meaning:recalled?'The first view you sent is still on Earth. The storm cannot take it back.':contact.mode==='partial'?'A sky full of dust. Send what light remains.':recordedChoice(scene,state)?scene.discovery:choice?.shortReply || '',input:controllerConnected?'controller':'pointer',family:controllerFamily(controllerId,settings.prompts)});
+      response:scene.response || scene.transmission,meaning:recalled?'The first view you sent is still on Earth. The storm cannot take it back.':contact.mode==='partial'?'A sky full of dust. Send what light remains.':recordedChoice(scene,state)?scene.discovery:choice?.shortReply || '',input:controllerConnected?'controller':'pointer',family:controllerFamily(controllerId,settings.prompts),story:consoleHTML,voice:!!thought.text});
   }
 
-  app.innerHTML = `<section class="play-screen"><header class="play-heading"><p class="eyebrow">${escape(missionTime(scene.id)?.label || scene.sol)}</p><h1 tabindex="-1">${escape(state.phase==='observe' ? scene.approachTitle || scene.title : scene.title)}</h1><aside class="mission-objective" aria-label="Current objective"><span>${state.phase==='observe'?'EXPLORE':state.phase==='choose'?'REMEMBER':state.phase==='transmit'?'CONNECT':'CONTINUE'}</span><strong>${escape(geologyActive?(toolState?.stage==='trace'?'Follow the crossing layers':toolState?.stage==='brush'?'Expose the surface with your brush':toolState?.stage==='compare'?'Compare the two readings':'Place the probe on each sample ring'):currentObjective({scene,phase:state.phase,goal,reached,investigating,transmitting}))}</strong></aside></header><article class="interaction-dock" aria-label="Current interaction" aria-busy="${scanning || transmitting}">${content}<div class="dock-footer"><button class="quiet-button" data-action="journal">Journal</button></div></article></section>`;
+  const upload = ['transmit','received'].includes(state.phase);
+  app.innerHTML = `<section class="play-screen"><h1 class="sr-only" tabindex="-1">${escape(scene.title)}</h1><article class="interaction-dock" aria-label="Current interaction" aria-busy="${scanning || transmitting}">${upload?content:`<div class="story-shell ${thought.text?'':'story-voice-absent'}">${consoleHTML}<div class="story-actions">${content}</div></div>`}</article></section>`;
+  storyWriter.mount(app.querySelector('.story-console'),thought,`${scene.id}:${state.phase}:${thought.text}`);
   setExploring(exploring);
   $('#world-controls').hidden = false;
   $('.drive-pad').hidden = state.phase!=='observe' || reached;
@@ -300,6 +315,7 @@ function renderGame({ focus = false } = {}) {
   if (focus) focusContent(state.phase==='choose' ? '.choice' : state.phase==='received' ? '[data-action="next"]' : state.phase==='transmit' ? '[data-action="transmit"]' : '[data-action="observe"]');
 }
 
+$('#journal-toggle').addEventListener('click',openJournal);
 function openJournal() {
   const scene = scenes[state.sceneIndex];
   const discoveries = discoveredScenes(state, scenes);
@@ -311,6 +327,7 @@ function openJournal() {
 }
 
 function renderEnding() {
+  storyWriter.stop();
   screen = 'ending';
   setExploring(false);
   setWorld('dawn', 'ending');
@@ -765,7 +782,7 @@ $('#adaptive-connect').addEventListener('click',()=>controller.connectAdaptiveTr
 $('#adaptive-disconnect').addEventListener('click',()=>controller.disconnectAdaptiveTriggers());
 window.addEventListener('blur',()=>{padInput={throttle:0,steer:0};pause();});
 window.addEventListener('focus',resume);
-window.addEventListener('pagehide',()=>{pause();controller.disconnectAdaptiveTriggers();});
+window.addEventListener('pagehide',()=>{storyWriter.stop();pause();controller.disconnectAdaptiveTriggers();});
 try { view=createLandscape(canvas); } catch(error) {
   graphicsError=true;
   $('.world').dataset.fallback='true';

@@ -546,3 +546,74 @@ test('explicit transaction cancellation releases indefinite hold without produci
     assert.equal(h.sources.length, silent, 'cancellation respects authored silence');
   });
 });
+
+test('terminal text uses bounded dry noise with distinct speaker colour and no signal melody', async () => {
+  await withMusic(async (sound, h) => {
+    sound.textPulse({ first: true });
+    assert.equal(h.contexts.length, 0, 'text never starts audio without user activation');
+    await sound.start();
+    const colours = [];
+    for (const speaker of ['rover', 'earth', 'record']) {
+      const before = h.sources.length;
+      sound.textPulse({ speaker, first: true });
+      const pulse = h.sources[before];
+      assert.equal(h.sources.length, before + 1, 'one noise source, no pitched or delayed answer');
+      assert.equal(pulse.kind, 'buffer');
+      assert.ok(pulse.stopped - pulse.started < .065);
+      assert.ok(pulse.buffer.getChannelData(0).some(sample => sample !== 0));
+      colours.push(pulse.connections[0].frequency.value);
+      sound.textPulse({ speaker, first: true });
+      assert.equal(h.sources.length, before + 1, 'duplicate line starts are throttled');
+      h.advance(.13);
+      assert.equal(pulse.connections.length, 0, 'ended text voices disconnect');
+    }
+    assert.ok(colours[0] > colours[1] && colours[1] > colours[2]);
+    sound.textPulse({ first: true });
+    for (let i = 0; i < 15; i++) { h.advance(.13); sound.textPulse(); }
+    const capped = h.sources.length;
+    h.advance(.13);
+    sound.textPulse();
+    assert.equal(h.sources.length, capped, 'a line has at most sixteen articulations');
+    sound.textPulse({ first: true });
+    assert.equal(h.sources.length, capped + 1, 'a fresh line can articulate again');
+  });
+});
+
+test('terminal articulation respects lifecycle gates and never fills missing replies', async () => {
+  await withMusic(async (sound, h) => {
+    await sound.start();
+    for (const gate of [
+      { stop: () => sound.setMuted(true), resume: () => sound.setMuted(false) },
+      { stop: () => sound.pause(), resume: () => sound.resume() },
+      { stop: () => h.setHidden(true), resume: () => h.setHidden(false) },
+      { stop: () => { h.contexts[0].state = 'suspended'; }, resume: () => sound.start() },
+    ]) {
+      h.advance(.13);
+      sound.textPulse({ first: true });
+      const pulse = h.sources.at(-1);
+      gate.stop();
+      const before = h.sources.length;
+      sound.textPulse({ first: true });
+      assert.equal(h.sources.length, before);
+      if (h.contexts[0].state === 'running') assert.ok(pulse.stopped <= h.contexts[0].currentTime);
+      await gate.resume();
+    }
+    h.advance(.13);
+    sound.beginTransmission();
+    let before = h.sources.length;
+    sound.textPulse({ first: true });
+    assert.equal(h.sources.length, before, 'outbound motif has no text percussion');
+    sound.finishTransmission();
+    before = h.sources.length;
+    sound.textPulse({ first: true });
+    assert.equal(h.sources.length, before, 'answer window remains clear');
+    sound.setNarrative(10, 'received');
+    h.advance(3);
+    before = h.sources.length;
+    sound.textPulse({ speaker: 'earth', first: true });
+    assert.equal(h.sources.length, before, 'explicit silence cannot acquire a surrogate reply');
+    sound.destroy();
+    sound.textPulse({ first: true });
+    assert.equal(h.sources.length, before);
+  });
+});
