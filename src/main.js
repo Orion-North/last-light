@@ -488,6 +488,7 @@ function cancelTransmission({preserveReply=false} = {}) {
   }
 }
 function cancelScan() {
+  controller?.setToolFeedback?.();
   view?.setToolMode?.(null);geologyActive=false;toolState=null;toolButtonHeld=false;toolPad={x:0,y:0,pressure:0};
   document.body.dataset.tool='false';
   view?.setSurvey?.(false);survey=null;surveyStep=0;
@@ -736,6 +737,10 @@ canvas.addEventListener('world-status',event=>{
   $('#world-status').dataset.state=status;
   if(status==='error') { $('.world').dataset.fallback='true'; announce(message); }
   if(screen==='game' && state.phase==='observe') renderGame();
+});
+canvas.addEventListener('tool-feedback',event=>{
+  const allowed=geologyActive && !state.paused && screen==='game' && !document.querySelector('dialog[open]');
+  controller?.setToolFeedback?.(allowed?event.detail:undefined);
 });
 canvas.addEventListener('tool-sample',event=>{
   if(!geologyActive || state.paused || screen!=='game')return;

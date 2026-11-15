@@ -507,6 +507,9 @@ export function createLandscape(canvas) {
       ring.material.color.set(state.samples.some(s => s.id === target.id) ? '#8be0bb' : '#ffd18b');
     });
   }
+  function emitToolFeedback(feedback = { active: false }) {
+    canvas.dispatchEvent(new CustomEvent('tool-feedback', { bubbles: true, detail: feedback }));
+  }
   function emitTool(state) {
     const { cleared, ...detail } = state;
     canvas.dispatchEvent(new CustomEvent('tool-sample', { bubbles: true, detail }));
@@ -514,6 +517,7 @@ export function createLandscape(canvas) {
   function setToolMode(sceneId, savedTool = null) {
     if (tool?.sceneId === sceneId) return true;
     if (tool) retainedTool = tool;
+    emitToolFeedback();
     tool?.stop(); toolPointer = null;
     const next = !savedTool && retainedTool?.sceneId === sceneId ? retainedTool : createGeologyTool(sceneId, savedTool);
     tool = next ? Object.assign(next, { sceneId }) : null;
@@ -532,6 +536,7 @@ export function createLandscape(canvas) {
   }
   function setEvidence(sceneId) {
     evidence = sceneId === 'blueberries' || sceneId === 'stone-ripples' ? sceneId : null;
+    if (evidence) emitToolFeedback();
     const source = tool?.sceneId === evidence ? tool : retainedTool?.sceneId === evidence ? retainedTool : null;
     toolGroup.visible = Boolean(tool || evidence && source);
     toolHead.visible = Boolean(tool && !evidence);
@@ -1583,6 +1588,9 @@ export function createLandscape(canvas) {
       updateContact(delta);
       if (tool && !evidence) {
         const state = tool.update(delta); updateToolVisual(state);
+        // Dot contacts can occur faster than the 10 Hz UI/save samples.
+        // Forward physical feedback on each simulation frame, without a queue.
+        emitToolFeedback(state.feedback);
         if (elapsed - toolSampleTime >= .1) { toolSampleTime = elapsed; emitTool(state); }
       } else if (!evidence) moveRover(delta);
       const speed = environment === 'storm' ? 6.0 : .35;

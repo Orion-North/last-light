@@ -38,6 +38,8 @@ The current implementation accepts the original DualSense USB descriptor only. B
 
 Sending requests resistance from the start of each trigger press, with a brief vibration at full charge before resistance resumes. Each side disengages when released. Maximum requested protocol strength is not a measured physical force; the current force tuning still needs hardware playtesting.
 
+Tracing the dotted layers gives short R2 resistance bumps as the probe crosses each dot, with relief between bumps. Brushing uses an irregular R2 texture that follows actual sweeping movement and dust. Holding still, leaving the trace, or releasing R2 stops these tool effects; L2 remains free. At very fast sweeps, close contacts blend/coalesce instead of playing a delayed queue. Without USB trigger access, supported controllers receive short ordinary rumble cues instead.
+
 Pausing, losing focus, disconnecting, or switching vibration off stops feedback. Software cleanup after a browser crash or physical unplug is best effort.
 
 ## For developers

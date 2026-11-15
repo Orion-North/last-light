@@ -26,6 +26,14 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
   let terrain = { moving: false, blocked: false, power: 1 }, lastPulse = -Infinity, terrainAt = -Infinity;
   let uplink = { active: false, progress: 0, charged: false, charge: 0, effort: 0, leftTrigger: 0, rightTrigger: 0 }, uplinkAt = -Infinity, lastChargePulse = -Infinity, chargedAt = -Infinity;
   const clearUplink = () => { uplink = { active: false, progress: 0, charged: false, charge: 0, effort: 0, leftTrigger: 0, rightTrigger: 0 }; uplinkAt = -Infinity; lastChargePulse = -Infinity; chargedAt = -Infinity; };
+  let tool = { active: false }, toolAt = -Infinity, toolBumpUntil = -Infinity, toolSequence = null, toolGrainAt = -Infinity, toolGrain = 0;
+  const clearTool = () => { tool = { active: false }; toolAt = toolBumpUntil = toolGrainAt = -Infinity; };
+  const toolHeld = () => active() && haptics && inputMode === 'inspect' && tool.active && button(pad, 7) > .03 && tool.pressure > .03 && clock() - toolAt < 180;
+  function toolRumble(duration, strength) {
+    if (!canRumble()) return;
+    const token = ++rumbleEpoch; rumbling = true; rumbleKind = 'tool'; rumblePriority = 1; rumbleUntil = clock() + duration;
+    try { Promise.resolve(actuator().playEffect('dual-rumble', { startDelay: 0, duration, strongMagnitude: strength * .65, weakMagnitude: strength })).catch(() => {}).finally(() => { if (token === rumbleEpoch) rumbling = false; }); } catch { stopRumble(); }
+  }
   let lastStatus = '', rumbling = false, rumbleUntil = -Infinity, rumblePriority = 0, rumbleKind = '', rumbleEpoch = 0;
   const active = () => enabled && !paused && !blurred && !doc?.hidden && !destroyed;
   const actuator = () => pad?.vibrationActuator;
@@ -89,7 +97,7 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
     // Mode 5 fully disengages and withdraws the trigger actuator.
     data[10] = data[21] = 5;
     const squeeze = inputMode === 'uplink' && uplink.active && clock() - uplinkAt < 400;
-    const ground = inputMode !== 'uplink' && terrain.moving && clock() - terrainAt < 400;
+    const ground = inputMode === 'drive' && terrain.moving && clock() - terrainAt < 400;
     if (active() && haptics && originalDualSense(pad) && !closing && (squeeze || ground)) {
       // Terrain retains the existing simple resistance; uplink uses zoned effects.
       const terrainStrength = terrain.blocked ? 60 : Math.round(clamp(24 + clamp(terrain.roughness, 0, 1) * 18 + clamp(terrain.slip, 0, 1) * 12 + (terrain.power < 0.3 ? 5 : 0), 0, 60));
@@ -113,6 +121,22 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
         if (vibrate) data[offset + 9] = Math.round(55 + end * 20 + uplink.effort * 10);
       }
     }
+    if (toolHeld() && originalDualSense(pad) && !closing) {
+      const bump = tool.mode === 'trace' && clock() < toolBumpUntil;
+      const brushing = tool.mode === 'brush' && tool.motion > 0;
+      if (bump || brushing) {
+        // The same documented ten-zone resistance/vibration encoding as uplink.
+        // Tool ownership is R2 only; L2 stays fully withdrawn.
+        const texture = tool.motion * tool.pressure * (.3 + .7 * tool.roughness);
+        const level = bump ? 8 : Math.max(1, Math.min(6, Math.ceil(texture * (3 + toolGrain % 4))));
+        let packed = 0;
+        for (let zone = 0; zone < 10; zone++) packed |= (level - 1) << (zone * 3);
+        data[10] = bump || toolGrain % 3 === 0 ? 0x21 : 0x26;
+        data[11] = 255; data[12] = 3;
+        for (let byte = 0; byte < 4; byte++) data[13 + byte] = (packed >>> (byte * 8)) & 255;
+        if (data[10] === 0x26) data[19] = 28 + (toolGrain * 17 % 49);
+      }
+    }
     return data;
   }
   function queueReport(force = false) {
@@ -132,7 +156,7 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
     }
     return writing;
   }
-  function cleanup() { clearUplink(); neutral(); releaseTouch(); stopRumble(); queueReport(true); }
+  function cleanup() { clearTool(); clearUplink(); neutral(); releaseTouch(); stopRumble(); queueReport(true); }
   function feedback(kind = 'observe') {
     if (!active() || !haptics || !canRumble() || (inputMode === 'uplink' && ['terrain', 'blocked'].includes(kind))) return false;
     if (kind === 'choose') kind = 'choice';
@@ -168,7 +192,7 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
       || pads.find(p => p && p.connected !== false && p.mapping === 'standard' && p.index === pad?.index)
       || pads.find(p => p && p.connected !== false && p.mapping === 'standard') || null;
     if (next?.index !== pad?.index || next?.id !== pad?.id) {
-      clearUplink(); stopRumble(); releaseTouch(); pad = next; latchButtons(); gateMenu(); neutral(); queueReport(true); status();
+      clearTool(); clearUplink(); stopRumble(); releaseTouch(); pad = next; latchButtons(); gateMenu(); neutral(); queueReport(true); status();
     } else pad = next;
     if (pad) {
       const current = {};
@@ -194,15 +218,20 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
         if (inputMode === 'uplink' && uplink.active && !uplink.charged && Math.max(uplink.leftTrigger, uplink.rightTrigger) > .03 && now - uplinkAt < 400 && now - lastChargePulse >= 160) {
           if (feedback('charge')) lastChargePulse = now;
         }
-        if (inputMode !== 'uplink' && terrain.moving && now - terrainAt < 400 && now - lastPulse >= 160 - clamp(terrain.roughness, 0, 1) * 50 - clamp(Math.abs(terrain.speed || 0) / 3, 0, 1) * 30) { feedback(terrain.blocked ? 'blocked' : 'terrain'); lastPulse = now; }
+        if (inputMode === 'drive' && terrain.moving && now - terrainAt < 400 && now - lastPulse >= 160 - clamp(terrain.roughness, 0, 1) * 50 - clamp(Math.abs(terrain.speed || 0) / 3, 0, 1) * 30) { feedback(terrain.blocked ? 'blocked' : 'terrain'); lastPulse = now; }
       }
+    }
+    if (tool.active && !toolHeld()) { clearTool(); if (rumbleKind === 'tool') stopRumble(); }
+    if (toolHeld() && tool.mode === 'brush' && tool.motion > 0 && now >= toolGrainAt) {
+      toolGrain++; toolGrainAt = now + 28 + (toolGrain * 13 % 25);
+      if (!device || outputFailed) toolRumble(26, Math.min(.65, tool.motion * tool.pressure * (.2 + tool.roughness * .45) * (.6 + (toolGrain % 3) * .2)));
     }
     queueReport();
     frame = win?.requestAnimationFrame?.(poll);
   }
   async function disconnectAdaptiveTriggers() {
     generation++;
-    clearUplink(); stopRumble(); neutral();
+    clearTool(); clearUplink(); stopRumble(); neutral();
     releaseTouch();
     if (!device || closing) return writing;
     closing = true;
@@ -225,7 +254,7 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
       }
       if (!selected.opened) await selected.open();
       if (token !== generation || destroyed) { await selected.close(); return false; }
-      clearUplink(); device = selected; device.addEventListener?.('inputreport', inputReport);
+      clearTool(); clearUplink(); device = selected; device.addEventListener?.('inputreport', inputReport);
       lastReport = ''; outputFailed = false; await queueReport(true);
       if (outputFailed) { await disconnectAdaptiveTriggers(); status('Adaptive trigger output unavailable.'); return false; }
       status('USB trigger feedback connected.'); return true;
@@ -250,12 +279,12 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
     rearmMenu() { gateMenu(); latchButtons(); },
     setInputMode(mode) {
       if (!['drive', 'menu', 'inspect', 'uplink'].includes(mode) || mode === inputMode) return;
-      clearUplink(); terrain.moving = false; stopRumble(); inputMode = mode; gateMenu(); neutral(); queueReport(true);
+      clearTool(); clearUplink(); terrain.moving = false; stopRumble(); inputMode = mode; gateMenu(); neutral(); queueReport(true);
     },
     setEnabled(value) { enabled = !!value; gateMenu(); latchButtons(); if (!enabled) cleanup(); else queueReport(); },
     setPaused(value) { paused = !!value; if (paused) { terrain.moving = false; cleanup(); } else queueReport(); },
     pause(value = true) { this.setPaused(value); },
-    setHaptics(value) { haptics = !!value; if (!haptics) { clearUplink(); stopRumble(); } queueReport(true); },
+    setHaptics(value) { haptics = !!value; if (!haptics) { clearTool(); clearUplink(); stopRumble(); } queueReport(true); },
     feedback,
     setUplink({ active: requested = false, progress = 0, charged = false, charge = 0, effort = 0, leftTrigger = 1, rightTrigger = 1 } = {}) {
       if (requested && Math.max(clamp(leftTrigger, 0, 1), clamp(rightTrigger, 0, 1)) > .03 && inputMode === 'uplink' && active() && haptics && pad) {
@@ -263,6 +292,22 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
         if (!charged) chargedAt = -Infinity;
         uplink = { active: true, progress: clamp(progress, 0, 1), charged: !!charged, charge: clamp(charge, 0, 1), effort: clamp(effort, 0, 1), leftTrigger: clamp(leftTrigger, 0, 1), rightTrigger: clamp(rightTrigger, 0, 1) }; uplinkAt = clock();
       } else { if (uplink.active) stopRumble(); clearUplink(); }
+      queueReport();
+    },
+    setToolFeedback({ active: requested = false, mode = 'trace', pulse = 0, motion = 0, pressure = 0, roughness = 0 } = {}) {
+      const sequence = Number.isSafeInteger(pulse) && pulse >= 0 ? pulse : 0;
+      const contact = toolSequence === null ? sequence === 1 : sequence > toolSequence;
+      toolSequence = sequence;
+      if (requested && ['trace', 'brush'].includes(mode) && inputMode === 'inspect' && active() && haptics && pad && button(pad, 7) > .03 && clamp(pressure, 0, 1) > .03) {
+        if (tool.mode !== mode) { clearTool(); if (rumbleKind === 'tool') stopRumble(); }
+        tool = { active: true, mode, motion: clamp(motion, 0, 1), pressure: clamp(pressure, 0, 1), roughness: clamp(roughness, 0, 1) }; toolAt = clock();
+        // Coalesce contacts inside the attack + relief window; never queue them.
+        if (mode === 'trace' && contact && tool.motion > 0 && clock() >= toolBumpUntil + 16) {
+          toolBumpUntil = clock() + 20;
+          if (!device || outputFailed) toolRumble(35, .65);
+        }
+        if (mode === 'brush' && !tool.motion && rumbleKind === 'tool') stopRumble();
+      } else { clearTool(); if (rumbleKind === 'tool') stopRumble(); }
       queueReport();
     },
     setTerrain(value) { terrain = { ...terrain, ...value }; terrainAt = clock(); queueReport(); },

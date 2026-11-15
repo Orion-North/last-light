@@ -712,3 +712,12 @@ UI-30 did not cover moving between multiple collapsed entries and did not fix th
 The camera collision tether was treating a survey gaze target as an orbit pivot, pulling the eye toward nearby rocks. Survey now uses endpoint/near-plane clearance only. Its transition resolves a reachable destination with matching aspect-dependent padding, and OrbitControls no longer clamps a survey transition. Normal driving/orbit collision behavior is unchanged.
 
 Added fixed-eye obstruction and endpoint-clearance regressions. The actual-renderer fixture recorded 67 survey samples with eye drift 0.0000 near Last Chance. The isolated production-game fixture completed ordinary-day after controller pause/resume, both marathon views and the skyward dust observation through simulated right-stick input. All 26 engine files, 64 JavaScript syntax checks, scene/asset checks and static build pass. Independent Sol review incorporated. This is targeted camera verification, not a complete playthrough or physical-controller test.
+
+
+## TOOLS-36 — v0.19.10 tactile geology
+
+Geology and controller agents implemented disjoint lanes; a third Sol review checked integration and identified a sequence-lifetime bug, now covered by new-tool/restart tests. Nearest-dot transitions are separate from visited-dot coverage; fast movement counts crossed contacts, while idle jitter/off-path motion stays quiet. Brush motion uses cursor displacement, including pointer movement and clamped-boundary stillness.
+
+Adaptive R2 uses documented zoned 0x21 resistance for 20ms dot attacks, with at least 16ms relief; high-rate contacts coalesce rather than queue. Brush varies documented 0x21/0x26 grains with movement, pressure and spatial texture. L2 stays disengaged. Standard rumble fallback is finite. Existing transmission behavior remains unchanged.
+
+`tests/browser/tool-feedback.html` runs the production game with isolated saves, a simulated Gamepad and fake USB output device. Verified 14 distinct tracing contacts, resistance requests, relief gaps, variable brush reports, L2 neutral, movement stop, trigger release and pause cleanup. Browser testing establishes integration/report timing only, not physical force or OS HID access. Unit regressions cover reverse/jitter/fast contacts, new producer/pause baselines, stale packets, interruptions, brush bounds and fallback. All 26 engine test files, 64 JavaScript syntax checks, scene/assets and static build pass.

@@ -1,0 +1,58 @@
+<!doctype html><meta charset="utf-8"><title>Tool feedback integration</title>
+<style>body{margin:0;background:#101820;color:#eee;font:14px system-ui}nav{padding:8px}button{padding:8px}output{display:block;white-space:pre-wrap}iframe{border:0;width:100vw;height:80vh}</style>
+<nav><select><option value="stone-ripples">Dotted layers</option><option value="blueberries">Brush surface</option></select><button id="load">Load</button><button id="run" disabled>Verify tool feedback</button><output>Loading</output><small>Simulated DualSense USB reports; no physical force measured.</small></nav><iframe title="Tool feedback game"></iframe>
+<script type="module">
+import {scenes} from '../../src/content/story.js';
+import {createGeologyTool} from '../../src/engine/geology-tool.js';
+import {restoreSession,serializeSession} from '../../src/session.js';
+import {installClock} from './showcase-clock.js';
+const frame=document.querySelector('iframe'),output=document.querySelector('output');
+const pad={id:'DualSense',index:0,mapping:'standard',connected:true,axes:[0,0,0,0],buttons:Array.from({length:17},()=>({value:0,pressed:false})),vibrationActuator:{effects:['dual-rumble'],playEffect:async()=>{},reset:async()=>{}}};
+let clock,id,seed,reports=[],feedback=[],toolSamples=[];
+const setPressure=v=>pad.buttons[7]={value:v,pressed:v>.5};
+window.installTools=win=>{
+ clock=installClock(win);const memory=new Map(Object.entries(seed));
+ const hid=new win.EventTarget();
+ const device=Object.assign(new win.EventTarget(),{vendorId:0x054c,productId:0x0ce6,opened:false,collections:[{usagePage:1,usage:5,inputReports:[{items:[{reportSize:8,reportCount:63}]}]}],async open(){this.opened=true;},async close(){this.opened=false;},async sendReport(report,data){reports.push({time:clock.now,report,right:data[10],left:data[21],bytes:Array.from(data)});}});
+ hid.requestDevice=async()=>[device];
+ Object.defineProperty(win.navigator,'hid',{value:hid});
+ Object.defineProperty(win.navigator,'getGamepads',{value:()=>[pad]});
+ Object.defineProperty(win,'localStorage',{value:{getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,String(v)),removeItem:k=>memory.delete(k)}});
+ win.addEventListener('DOMContentLoaded',()=>{
+  win.document.addEventListener('tool-feedback',e=>feedback.push({...e.detail,time:clock.now}));
+  win.document.addEventListener('tool-sample',e=>toolSamples.push(e.detail));
+  win.document.addEventListener('world-status',e=>{if(e.detail.state==='ready'){document.querySelector('#run').disabled=false;output.textContent='Ready: '+id;}});
+ });
+};
+async function ticks(n){for(let i=0;i<n;i++){clock.tick(1000/60);await Promise.resolve();if(i%12===0)await new Promise(r=>setTimeout(r,0));}}
+async function load(){
+ id=document.querySelector('select').value;document.querySelector('#run').disabled=true;pad.axes.fill(0);setPressure(0);reports=[];feedback=[];
+ const index=scenes.findIndex(s=>s.id===id),state=restoreSession(JSON.stringify({version:1,sceneIndex:index,phase:'observe',choices:scenes.slice(0,index).map(s=>s.choices[0].id)}),scenes);
+ const tool=createGeologyTool(id);if(id==='stone-ripples'){const p=tool.snapshot().paths[0].points[0];tool.setCursor(p.x,p.y);}else tool.setCursor(-.6,0);
+ seed={'last-light-settings':JSON.stringify({sound:false,haptics:true,touch:false,prompts:'playstation'}),'last-light-journey-v1':serializeSession(state,{sceneId:id,reached:true,position:{x:id==='blueberries'?-5:7,z:id==='blueberries'?-10:-7,heading:Math.PI},tool:tool.checkpoint()})};
+ const html=await(await fetch('../../index.html')).text();frame.srcdoc=html.replace('<head>','<head><base href="../../"><script>parent.installTools(window);<\/script>');
+}
+document.querySelector('#load').onclick=load;
+document.querySelector('#run').onclick=async()=>{
+ document.querySelector('#run').disabled=true;const checks=[],d=frame.contentDocument;
+ try{
+ frame.contentWindow.focus();d.querySelector('[data-action="begin"]').click();await ticks(90);
+ d.querySelector('#settings-toggle').click();await ticks(2);d.querySelector('#adaptive-connect').click();await ticks(4);
+ const dialog=d.querySelector('#settings-modal');
+ const closed=new Promise(resolve=>dialog.addEventListener('close',resolve,{once:true}));
+ dialog.querySelector('[aria-label="Close settings"]').click();await closed;
+ await ticks(10);reports=[];feedback=[];
+ setPressure(.7);pad.axes[2]=.6;pad.axes[3]=id==='stone-ripples'?-.306:0;await ticks(42);
+ const moving=reports.slice(),contacts=new Set(feedback.filter(f=>f.active).map(f=>f.pulse));
+ checks.push(`${moving.some(r=>r.right===(id==='stone-ripples'?0x21:0x26))?'PASS':'FAIL'} requested ${id==='stone-ripples'?'dot resistance':'brush vibration'}`);
+ checks.push(`${moving.every(r=>r.left===5)?'PASS':'FAIL'} L2 stays disengaged`);
+ if(id==='stone-ripples'){checks.push(`${contacts.size>=5?'PASS':'FAIL'} distinct dot contacts: ${contacts.size}`);checks.push(`${moving.some(r=>r.right===5)?'PASS':'FAIL'} relief between dots`);}
+ else checks.push(`${new Set(moving.filter(r=>r.right!==5).map(r=>r.bytes.slice(10,21).join(','))).size>2?'PASS':'FAIL'} varied brush texture`);
+ pad.axes.fill(0);await ticks(15);checks.push(`${reports.at(-1)?.right===5?'PASS':'FAIL'} stops when tool stops moving`);
+ setPressure(0);await ticks(3);checks.push(`${reports.at(-1)?.right===5?'PASS':'FAIL'} trigger release clears effect`);
+ setPressure(.7);pad.axes[2]=.6;await ticks(6);d.querySelector('#settings-toggle').click();await ticks(2);checks.push(`${reports.at(-1)?.right===5?'PASS':'FAIL'} pause clears effect`);
+ output.textContent=checks.join('\n')+'\nDiagnostic: '+JSON.stringify({reports:reports.length,feedback:feedback.length,active:feedback.filter(f=>f.active).length,last:toolSamples.at(-1)&&{cursor:toolSamples.at(-1).cursor,hint:toolSamples.at(-1).hint,operating:toolSamples.at(-1).operating,feedback:toolSamples.at(-1).feedback}});
+ }catch(error){output.textContent='FAIL '+error.message;}finally{pad.axes.fill(0);setPressure(0);}
+};
+await load();
+</script>

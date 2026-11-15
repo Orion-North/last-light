@@ -695,3 +695,116 @@ test('opening a modal inside an action callback consumes other held buttons in t
   assert.deepEqual(f.actions, ['journal', 'navDown']);
   await f.driver.destroy();
 });
+
+test('trace contacts push only R2 briefly, consume sequence once, and reject stale or synthetic pressure', async () => {
+  const f = fixture(), device = usb(); f.pads([f.pad]); f.tick();
+  f.hid.requestDevice = async () => [device]; await f.driver.connectAdaptiveTriggers();
+  f.driver.setInputMode('inspect');
+  const update = extra => f.driver.setToolFeedback({ active: true, mode: 'trace', pulse: 0, motion: .5, pressure: .8, ...extra });
+  const right = () => device.reports.at(-1).data[10];
+  update({ pulse: 0 }); await settle(); assert.equal(right(), 5);
+  f.pad.buttons[7].value = .8;
+  update({ pulse: 1 }); await settle();
+  assert.deepEqual(device.reports.at(-1).data.slice(10, 17), [0x21, 255, 3, 255, 255, 255, 63]);
+  assert.equal(device.reports.at(-1).data[21], 5); assert.equal(f.pulses.length, 0);
+  f.tick(48); update({ pulse: 1 }); await settle(); assert.equal(right(), 5);
+  update({ pulse: 2 }); await settle(); assert.equal(right(), 0x21);
+  f.tick(228); await settle(); assert.equal(right(), 5);
+  update({ pulse: 2 }); await settle(); assert.equal(right(), 5);
+  f.pad.buttons[7].value = 0; update({ pulse: 3 }); await settle(); assert.equal(right(), 5);
+  f.pad.buttons[7].value = 1; update({ pulse: 3 }); await settle(); assert.equal(right(), 5);
+  update({ pulse: 4 }); await settle(); assert.equal(right(), 0x21);
+  await f.driver.destroy();
+});
+
+test('brush texture changes bounded grains only while moving, fresh and physically held', async () => {
+  const f = fixture(), device = usb(); f.pads([f.pad]); f.tick();
+  f.hid.requestDevice = async () => [device]; await f.driver.connectAdaptiveTriggers();
+  f.driver.setInputMode('inspect'); f.pad.buttons[7].value = 1;
+  const update = extra => f.driver.setToolFeedback({ active: true, mode: 'brush', motion: 1, pressure: 1, roughness: 1, ...extra });
+  update(); const packets = [];
+  for (const time of [1, 55, 110, 165]) {
+    f.tick(time); update(); await settle(); const data = device.reports.at(-1).data;
+    packets.push(data.slice(10, 21).join(',')); assert.ok([0x21, 0x26].includes(data[10]));
+    assert.equal(data[21], 5); assert.equal(data[11] | data[12] << 8, 1023);
+    if (data[10] === 0x26) assert.ok(data[19] >= 28 && data[19] <= 76);
+  }
+  assert.ok(new Set(packets).size >= 3);
+  update({ motion: 0 }); await settle(); assert.equal(device.reports.at(-1).data[10], 5);
+  update(); f.tick(345); await settle(); assert.equal(device.reports.at(-1).data[10], 5);
+  update(); f.pad.buttons[7].value = 0; f.tick(346); await settle(); assert.equal(device.reports.at(-1).data[10], 5);
+  await f.driver.destroy();
+});
+
+test('tool cleanup withdraws R2 on every interruption and consumes contacts while inactive', async () => {
+  for (const interruption of ['pause', 'blur', 'hidden', 'disable', 'menu', 'haptics', 'gamepad', 'hid']) {
+    const f = fixture(), device = usb(); f.pads([f.pad]); f.tick();
+    f.hid.requestDevice = async () => [device]; await f.driver.connectAdaptiveTriggers();
+    f.driver.setInputMode('inspect'); f.pad.buttons[7].value = 1;
+    const update = pulse => f.driver.setToolFeedback({ active: true, mode: 'trace', pulse, motion: 1, pressure: 1 });
+    update(1); await settle(); assert.equal(device.reports.at(-1).data[10], 0x21, interruption);
+    if (interruption === 'pause') f.driver.setPaused(true);
+    if (interruption === 'blur') f.win.dispatchEvent(new Event('blur'));
+    if (interruption === 'hidden') { f.doc.hidden = true; f.doc.dispatchEvent(new Event('visibilitychange')); }
+    if (interruption === 'disable') f.driver.setEnabled(false);
+    if (interruption === 'menu') f.driver.setInputMode('menu');
+    if (interruption === 'haptics') f.driver.setHaptics(false);
+    if (interruption === 'gamepad') { f.pads([]); f.tick(1); }
+    if (interruption === 'hid') await f.driver.disconnectAdaptiveTriggers();
+    await settle(); assert.equal(device.reports.at(-1).data[10], 5, interruption);
+    f.driver.setPaused(false); f.doc.hidden = false; f.win.dispatchEvent(new Event('focus'));
+    f.driver.setEnabled(true); f.driver.setHaptics(true); f.driver.setInputMode('inspect'); f.pads([f.pad]); f.tick(2);
+    if (interruption === 'hid') await f.driver.connectAdaptiveTriggers();
+    update(1); await settle(); assert.equal(device.reports.at(-1).data[10], 5, interruption);
+    await f.driver.destroy();
+  }
+});
+
+test('standard gamepad tool fallback is granular and stops without replaying old contact sequences', async () => {
+  const f = fixture(); f.pad.id = 'Xbox'; f.pads([f.pad]); f.tick(); f.driver.setInputMode('inspect'); f.pad.buttons[7].value = 1;
+  const update = extra => f.driver.setToolFeedback({ active: true, mode: 'trace', pulse: 20, motion: 1, pressure: 1, ...extra });
+  update(); assert.equal(f.pulses.length, 0); // attaching to an old contact cannot replay twenty dots
+  update({ pulse: 21 }); assert.equal(f.pulses.length, 1); assert.equal(f.pulses[0][1].duration, 35);
+  update({ pulse: 21 }); assert.equal(f.pulses.length, 1);
+  update({ mode: 'brush' }); f.tick(1); assert.equal(f.pulses.at(-1)[1].duration, 26);
+  const count = f.pulses.length, resets = f.resets;
+  update({ mode: 'brush', motion: 0 }); assert.ok(f.resets > resets);
+  f.tick(60); assert.equal(f.pulses.length, count);
+  update({ mode: 'brush' }); f.tick(61); const moving = f.pulses.length;
+  f.pad.buttons[7].value = 0; f.tick(62); f.tick(120); assert.equal(f.pulses.length, moving);
+  await f.driver.destroy();
+});
+
+test('rapid trace contacts cannot extend an attack or queue a delayed bump', async () => {
+  const f = fixture(), device = usb(); f.pads([f.pad]); f.tick();
+  f.hid.requestDevice = async () => [device]; await f.driver.connectAdaptiveTriggers();
+  f.driver.setInputMode('inspect'); f.pad.buttons[7].value = 1;
+  const update = pulse => f.driver.setToolFeedback({ active: true, mode: 'trace', pulse, motion: 1, pressure: 1 });
+  update(0);
+  const modes = [];
+  for (let time = 0; time <= 160; time += 8) {
+    f.tick(time); update(time / 8 + 1); await settle(); modes.push(device.reports.at(-1).data[10]);
+  }
+  assert.ok(modes.includes(5)); assert.ok(modes.includes(0x21));
+  let consecutive = 0;
+  for (const mode of modes) { consecutive = mode === 0x21 ? consecutive + 1 : 0; assert.ok(consecutive <= 3); }
+  f.tick(200); await settle(); assert.equal(device.reports.at(-1).data[10], 5);
+  f.tick(220); await settle(); assert.equal(device.reports.at(-1).data[10], 5);
+  await f.driver.destroy();
+});
+
+test('a restarted tool sequence establishes a quiet baseline then emits its first new contact', async () => {
+  const f = fixture(), device = usb(); f.pads([f.pad]); f.tick();
+  f.hid.requestDevice = async () => [device]; await f.driver.connectAdaptiveTriggers();
+  f.driver.setInputMode('inspect'); f.pad.buttons[7].value = 1;
+  const update = (pulse, active = true) => f.driver.setToolFeedback({ active, mode: 'trace', pulse, motion: 1, pressure: 1 });
+  update(70); await settle(); assert.equal(device.reports.at(-1).data[10], 5);
+  update(71); await settle(); assert.equal(device.reports.at(-1).data[10], 0x21);
+  f.driver.setPaused(true); update(71); f.driver.setPaused(false);
+  update(71); await settle(); assert.equal(device.reports.at(-1).data[10], 5);
+  update(0, false); update(0); await settle(); assert.equal(device.reports.at(-1).data[10], 5);
+  update(1); await settle(); assert.equal(device.reports.at(-1).data[10], 0x21);
+  f.tick(40); update(0); await settle(); assert.equal(device.reports.at(-1).data[10], 5);
+  update(1); await settle(); assert.equal(device.reports.at(-1).data[10], 0x21);
+  await f.driver.destroy();
+});

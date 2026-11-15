@@ -16,6 +16,11 @@ export function createGeologyTool(sceneId, saved = null) {
   let cursor = { x: 0, y: 0 }, input = {}, stage = berry ? 'brush' : 'trace', samples = [], dwell = 0, holding = null, coverage = 0, needsRelease = true;
   const radius = .22, requiredCoverage = .56;
   let previousCursor = { ...cursor };
+  let pulse = 0, contact = null;
+  let feedback = { active: false, mode: berry ? 'brush' : 'trace', pulse, motion: 0, pressure: 0, roughness: 0 };
+  function quietFeedback() {
+    feedback = { ...feedback, active: false, pulse, motion: 0, pressure: 0, roughness: 0 };
+  }
   // Restore only durable work. Input, dwell and force always require a fresh release.
   if (saved?.sceneId === sceneId) {
     if (Array.isArray(saved.cleared) && saved.cleared.length === cleared.length)
@@ -42,30 +47,56 @@ export function createGeologyTool(sceneId, saved = null) {
     const traceProgress = paths.map(path => Math.min(1, path.points.filter(p => p.visited).length / (path.points.length * .8)));
     const target = targets.find(t => !samples.some(s => s.id === t.id) && Math.hypot(t.x - cursor.x, t.y - cursor.y) < .24) || null;
     return { mode: berry ? 'brush' : 'trace', paths: paths.map((path, i) => ({ ...path, progress: traceProgress[i], complete: samples.some(s => s.id === path.id), points: path.points.map(p => ({ ...p })) })), stage, coverage, requiredCoverage, progress: stage === 'trace' ? traceProgress.reduce((a, b) => a + b, 0) / 2 : stage === 'brush' ? Math.min(1, coverage / requiredCoverage) : stage === 'sample' ? dwell / .7 : stage === 'complete' ? 1 : 0,
-      operating: !needsRelease && (input.pressure > .15 || input.measure === true), toolMotion: Math.min(1, Math.hypot(finite(input.x), finite(input.y))),
+      feedback: { ...feedback },
+      operating: !needsRelease && (input.pressure > .15 || input.measure === true), toolMotion: feedback.motion,
       samples: samples.map(s => ({ ...s })), targets, target, cursor: { ...cursor }, complete: stage === 'complete',
       hint: stage === 'compare' ? berry ? 'Press × to compare the two readings' : 'Press × to compare the layer directions' : stage === 'complete' ? 'Comparison recorded' : needsRelease ? stage === 'trace' ? 'Release R2 to ready the tracing probe' : stage === 'brush' ? 'Release R2 to ready the brush' : 'Release R2, then move onto a sample ring' : stage === 'trace' ? 'Hold R2 and follow each dotted layer path' : stage === 'brush' ? 'Hold R2 and sweep across the dusty patch' : stage === 'sample' ? target ? `Stop moving, then hold R2 to read ${target.label.toLowerCase()}` : 'Move the probe onto an unread ring' : stage === 'compare' ? 'Press × to compare the two readings' : 'Comparison recorded',
       cleared };
   }
   return {
     snapshot, checkpoint,
-    setInput(value = {}) { input = { x: clamp(finite(value.x), -1, 1), y: clamp(finite(value.y), -1, 1), pressure: clamp(finite(value.pressure), 0, 1), measure: value.measure === true }; if (needsRelease && value.actualSample !== false && input.pressure <= .15 && !input.measure) needsRelease = false; },
+    setInput(value = {}) { input = { x: clamp(finite(value.x), -1, 1), y: clamp(finite(value.y), -1, 1), pressure: clamp(finite(value.pressure), 0, 1), measure: value.measure === true }; if (input.pressure <= .15) { contact = null; quietFeedback(); } if (needsRelease && value.actualSample !== false && input.pressure <= .15 && !input.measure) needsRelease = false; },
     setCursor(x, y) { if (Number.isFinite(x) && Number.isFinite(y)) cursor = { x: clamp(x, -.95, .95), y: clamp(y, -.95, .95) }; },
-    stop() { input = {}; dwell = 0; holding = null; needsRelease = true; previousCursor = { ...cursor }; },
-    compare() { if (stage !== 'compare') return false; stage = 'complete'; return true; },
+    stop() { input = {}; dwell = 0; holding = null; needsRelease = true; previousCursor = { ...cursor }; contact = null; quietFeedback(); },
+    compare() { if (stage !== 'compare') return false; stage = 'complete'; quietFeedback(); return true; },
     update(seconds, paused = false) {
       if (paused) { this.stop(); return snapshot(); }
-      if (needsRelease) { previousCursor = { ...cursor }; return snapshot(); }
+      if (needsRelease) { previousCursor = { ...cursor }; quietFeedback(); return snapshot(); }
       const dt = clamp(finite(seconds), 0, .05);
       cursor.x = clamp(cursor.x + finite(input.x) * dt * 1.15, -.95, .95);
       cursor.y = clamp(cursor.y + finite(input.y) * dt * 1.15, -.95, .95);
-      const cursorSpeed = dt > 0 ? Math.hypot(cursor.x - previousCursor.x, cursor.y - previousCursor.y) / dt : Infinity;
+      const movementStart = { ...previousCursor };
+      const displacement = Math.hypot(cursor.x - previousCursor.x, cursor.y - previousCursor.y);
+      const cursorSpeed = dt > 0 ? displacement / dt : 0;
+      const moving = dt > 0 && displacement > .00001;
+      quietFeedback();
+      const motion = moving ? clamp(cursorSpeed / 1.15, 0, 1) : 0;
       previousCursor = { ...cursor };
       if (stage === 'trace' && input.pressure > .15) {
         const path = paths.filter(p => !samples.some(s => s.id === p.id)).map(p => ({ path: p,
           distance: Math.min(...p.points.map(point => Math.hypot(point.x - cursor.x, point.y - cursor.y)))
         })).sort((a, b) => a.distance - b.distance)[0];
         if (path && path.distance < .12) {
+          // Coverage uses a forgiving brush radius; tactile contacts use only the
+          // nearest dot, with a small boundary margin to reject pointer jitter.
+          const steps = moving ? Math.max(1, Math.ceil(displacement / .01)) : 1;
+          for (let step = 1; step <= steps; step++) {
+            const position = moving ? { x: movementStart.x + (cursor.x - movementStart.x) * step / steps,
+              y: movementStart.y + (cursor.y - movementStart.y) * step / steps } : cursor;
+            const nearest = path.path.points.reduce((best, point, index) => {
+              const distance = Math.hypot(point.x - position.x, point.y - position.y);
+              return !best || distance < best.distance ? { index, distance } : best;
+            }, null);
+            if (nearest.distance >= .12) { contact = null; continue; }
+            const key = `${path.path.id}:${nearest.index}`;
+            const oldDistance = contact?.path === path.path.id
+              ? Math.hypot(path.path.points[contact.index].x - position.x, path.path.points[contact.index].y - position.y) : Infinity;
+            if (!contact || (moving && key !== contact.key && nearest.distance + .004 < oldDistance)) {
+              pulse++;
+              contact = { key, path: path.path.id, index: nearest.index };
+            }
+          }
+          feedback = { ...feedback, active: moving, pulse, motion, pressure: input.pressure, roughness: 0 };
           for (const point of path.path.points) if (Math.hypot(point.x - cursor.x, point.y - cursor.y) < .12) point.visited = true;
           coverage = paths.reduce((sum, p) => sum + p.points.filter(point => point.visited).length, 0) / 80;
           if (path.path.points.filter(point => point.visited).length >= 32) {
@@ -73,8 +104,19 @@ export function createGeologyTool(sceneId, saved = null) {
             needsRelease = true;
             if (samples.length === 2) stage = 'compare';
           }
-        }
+        } else contact = null;
       } else if (stage === 'brush' && input.pressure > .15) {
+        let dust = 0, touched = 0;
+        for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) {
+          if (Math.hypot(-1 + (i + .5) * 2 / size - cursor.x, -1 + (j + .5) * 2 / size - cursor.y) < radius) {
+            touched++; dust += 1 - cleared[j * size + i];
+          }
+        }
+        if (moving && touched) {
+          const grain = .5 + .5 * Math.sin(cursor.x * 137 + cursor.y * 211);
+          feedback = { ...feedback, active: true, motion, pressure: input.pressure,
+            roughness: clamp(.2 + .45 * grain + .35 * dust / touched, 0, 1) };
+        }
         for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) {
           if (Math.hypot(-1 + (i + .5) * 2 / size - cursor.x, -1 + (j + .5) * 2 / size - cursor.y) < radius) cleared[j * size + i] = 1;
         }
@@ -88,6 +130,7 @@ export function createGeologyTool(sceneId, saved = null) {
           if (dwell >= .7) { samples.push({ ...target }); dwell = 0; holding = null; needsRelease = true; if (samples.length === 2) stage = 'compare'; }
         } else { dwell = 0; holding = null; }
       }
+      if (needsRelease || !['trace', 'brush'].includes(stage)) quietFeedback();
       return snapshot();
     },
   };
