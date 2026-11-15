@@ -782,3 +782,16 @@ READ-23 complete: integrated Sol critique, enlarged mission/actions without
 shrinking them on short screens, fixed label wrapping, verified 120 profiles
 and actual travel/receipt views. Added dark shutter and visible photo feedback.
 User steering also replaced the header star with an original rover SVG. v0.19.2.
+
+## CLIP-24 — rocks, rover footprint and camera clearance
+
+Root owns landscape integration, collision helpers/tests, browser fixture and release.
+REVIEW-24 / Sol: read-only collision/camera review; report geometry mismatches,
+landmark approach and saved-position risks. No edits. Keep manual driving and
+observation reachability while preventing visible rock intersections.
+
+CLIP-24 complete: transformed geometry bounds, swept rover body/turning, nearby
+save recovery and camera clearance integrated. Sol review led to final uphill
+clearance recheck. Eight collision cases, all engine files, source/build checks
+and real-renderer landmark/reverse/save tests pass. Orbit/evidence views checked.
+Publishing v0.19.3 web release.

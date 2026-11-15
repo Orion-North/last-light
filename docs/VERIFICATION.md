@@ -640,3 +640,29 @@ closes/reopens the shutter, shows Photo downloaded, clears feedback, and leaves
 the receipt unchanged; Continue then progresses normally. No console errors.
 Source/assets checks and static build pass. No physical-controller or fresh full
 playthrough claim. Screenshot: outputs/last-light-readable-ui.jpg.
+
+
+## v0.19.3 — rover and camera rock clearance
+
+Replace undersized circular checks with the scaled model's rectangular footprint
+and transformed world bounds for rock instances, landmark meshes and talus.
+Substantial rubble participates; tiny decorative gravel stays traversable. Sweep
+translation and rotation together; blocked motion can reverse out. Embedded old
+saves find nearby clear ground. Camera tether checks expanded rock bounds with
+near-plane clearance, including a final uphill-ground clearance pass. This is
+conservative collision geometry, not a rigid-body wheel suspension simulation.
+
+Sol independently reviewed turning, save recovery, landmark approach and camera
+risks. Eight deterministic collision tests cover turning corners, thin obstacle
+sweeps, reversing, embedded saves, world edge, camera tether/height, evidence
+targets and uphill clearance. All 25 engine test files, source/assets check
+(58 JS files) and static build pass.
+
+Real renderer fixture tests/browser/rock-collision.html verifies both landmark
+approaches stop, remain within the arrival halo, reverse away and recover a save
+placed inside the landmark. Last Chance stops at z=-6.488 and Berry Bowl at
+z=-8.477 on the tested approaches. Fixture initially cleared its contact flag
+when calling stopDrive before reading it; corrected to retain the contact result.
+Orbit beside Last Chance and Berry Bowl evidence view visually inspected; no
+console errors. Targeted tests, not a fresh complete route or physical controller
+playthrough. Screenshot outside repo: outputs/last-light-rock-clearance.jpg.

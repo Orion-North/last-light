@@ -1,3 +1,4 @@
+import { clearRoverPose, sweepRover, clearCamera } from '../engine/rock-collision.js';
 import { createGeologyTool } from '../engine/geology-tool.js';
 import { createSky } from './sky.js';
 import { createDriveMotion } from '../engine/drive-motion.js';
@@ -177,7 +178,20 @@ export function createLandscape(canvas) {
     return field;
   });
   const dummy = new THREE.Object3D();
-  const collisions = [];
+  const collisions = [], cameraRocks = [];
+  const roverFootprint = { halfWidth:1.25, halfLength:1.25 };
+  function registerRock(bounds) {
+    const b={minX:bounds.min.x,maxX:bounds.max.x,minY:bounds.min.y,maxY:bounds.max.y,minZ:bounds.min.z,maxZ:bounds.max.z};
+    cameraRocks.push(b);
+    const x=(b.minX+b.maxX)/2,z=(b.minZ+b.maxZ)/2;
+    // Tiny surface gravel remains traversable. Substantial rubble gets the same
+    // collision coverage as boulders, using its scaled/rotated visible geometry.
+    if(Math.hypot(x,z)<24 && b.maxY-surfaceHeight(x,z)>.10)collisions.push(b);
+  }
+  function registerInstance(geometry,matrix) {
+    if(!geometry.boundingBox)geometry.computeBoundingBox();
+    registerRock(geometry.boundingBox.clone().applyMatrix4(matrix));
+  }
   for (let i = 0; i < rockCount; i += 1) {
     const angle = random() * Math.PI * 2;
     const radius = 4.5 + Math.pow(random(), 0.8) * 94;
@@ -199,7 +213,7 @@ export function createLandscape(canvas) {
     field.setMatrixAt(instance, dummy.matrix);
     field.setColorAt(instance, new THREE.Color().setHSL(0.065 + random() * 0.035,
       0.09 + random() * 0.12, 0.64 + random() * 0.16));
-    if (radius < 23 && size > 0.4) collisions.push({ x, z, radius: size * 1.05 });
+    registerInstance(field.geometry,dummy.matrix);
   }
   const pebbleGeometry = own(new THREE.IcosahedronGeometry(1, 0));
   const pebbles = new THREE.InstancedMesh(pebbleGeometry, rockMaterial, 1100);
@@ -326,7 +340,8 @@ export function createLandscape(canvas) {
   outcropBack.castShadow = outcropBack.receiveShadow = true;
   lastChance.add(outcropBack);
   scene.add(lastChance);
-  collisions.push({ x: 7, z: -8.9, radius: 1.5 });
+  lastChance.updateMatrixWorld(true);
+  registerRock(new THREE.Box3().setFromObject(lastChance));
   observationSites.push({ x: 7, z: -7,
     target: lastChance.position.clone().add(new THREE.Vector3(0, .67, .5)),
     normal: new THREE.Vector3(0, 0, 1), kind: 'layers',
@@ -534,6 +549,7 @@ export function createLandscape(canvas) {
       const length = Math.hypot(saved.x, saved.z), scale = length > 19 ? 19 / length : 1;
       vehicle.position.set(saved.x * scale, 0, saved.z * scale);
       heading = Number.isFinite(saved.heading) ? saved.heading : -.45;
+      recoverRoverPosition();
       stopDrive(); groundRover(); lastTrackPosition.copy(vehicle.position);
       focusRover(true);
     }
@@ -562,10 +578,12 @@ export function createLandscape(canvas) {
     dummy.rotation.set(talusRandom() * .5, angle, talusRandom() * .4);
     dummy.scale.set(size * 1.7, size * .45, size);
     dummy.updateMatrix(); talus.setMatrixAt(i, dummy.matrix);
+    registerInstance(talus.geometry,dummy.matrix);
   }
   talus.castShadow = talus.receiveShadow = true;
   scene.add(talus);
-  collisions.push({ x: -5, z: -11.8, radius: 1.3 });
+  berryBowl.updateMatrixWorld(true);
+  registerRock(new THREE.Box3().setFromObject(berryBowl));
   observationSites.push({ x: -5, z: -10,
     target: berryBowl.position.clone().add(new THREE.Vector3(0, .2, 0)),
     normal: new THREE.Vector3(0, 1, 0), kind: 'grains',
@@ -719,6 +737,8 @@ export function createLandscape(canvas) {
       model.updateMatrixWorld(true);
       bounds.setFromObject(model);
       const center = bounds.getCenter(new THREE.Vector3());
+      roverFootprint.halfWidth=(bounds.max.x-bounds.min.x)/2+.06;
+      roverFootprint.halfLength=(bounds.max.z-bounds.min.z)/2+.06;
       model.position.x -= center.x;
       model.position.z -= center.z;
       model.position.y -= bounds.min.y;
@@ -738,6 +758,7 @@ export function createLandscape(canvas) {
       });
       vehicle.add(model);
       modelReady = true;
+      recoverRoverPosition();
       contacts.visible = true;
       groundRover();
       status('ready', 'Opportunity is ready. Drag to look around; use WASD or arrow keys to explore.');
@@ -992,9 +1013,9 @@ export function createLandscape(canvas) {
       detail: { x: waypoint.x, z: waypoint.z, label: waypoint.label, distance } }));
   }
 
-  function blockedAt(x, z, margin = .8) {
-    return Math.hypot(x, z) > 19 || collisions.some((rock) =>
-      Math.hypot(x - rock.x, z - rock.z) < rock.radius + margin);
+  function recoverRoverPosition() {
+    const safe=clearRoverPose({x:vehicle.position.x,z:vehicle.position.z,heading},collisions,roverFootprint);
+    if(safe){vehicle.position.x=safe.x;vehicle.position.z=safe.z;heading=safe.heading;}
   }
 
   function setMissionAge(years) {
@@ -1382,16 +1403,16 @@ export function createLandscape(canvas) {
     wasMoving = moving;
     if (inspecting && moving) returnFromInspection();
     if (cameraTween && !cameraTween.follow) cameraTween = null;
-    heading += velocity.turnRate * delta;
+    const nextHeading=heading+velocity.turnRate*delta;
     const step = velocity.speed * delta;
-    const dx = Math.sin(heading) * step;
-    const dz = Math.cos(heading) * step;
-    const nx = vehicle.position.x + dx, nz = vehicle.position.z + dz;
-    const blocked = blockedAt(nx, nz);
-    if (!blocked) {
+    const from={x:vehicle.position.x,z:vehicle.position.z,heading};
+    const resolved=sweepRover(from,{x:from.x+Math.sin(nextHeading)*step,z:from.z+Math.cos(nextHeading)*step,heading:nextHeading},collisions,roverFootprint);
+    const blocked=resolved.blocked;
+    heading=resolved.heading;
+    {
       const old = vehicle.position.clone();
-      vehicle.position.x = nx;
-      vehicle.position.z = nz;
+      vehicle.position.x = resolved.x;
+      vehicle.position.z = resolved.z;
       // Compute the actual grounded position before moving the camera. Mixing
       // analytic and triangle-interpolated heights here accumulates camera drift.
       groundRover();
@@ -1402,10 +1423,10 @@ export function createLandscape(canvas) {
         cameraTween.position.add(shift);
         cameraTween.target.add(shift);
       }
-      distance += Math.abs(step);
+      distance += Math.hypot(resolved.x-from.x,resolved.z-from.z);
       addTracks();
     }
-    if (blocked && step) motion.reset();
+    if (blocked) motion.reset();
     groundRover();
     // Follow the direction the wheels travel, while preserving deliberate free look.
     if((forward || turn) && elapsed-lastManualLook>2.5 && !orbitGesture) {
@@ -1510,6 +1531,9 @@ export function createLandscape(canvas) {
     const targetGround = surfaceHeight(controls.target.x, controls.target.z);
     if (camera.position.y < ground + .85) camera.position.y = ground + .85;
     if (!survey && !evidence && controls.target.y < targetGround + .45) controls.target.y = targetGround + .45;
+    const nearClearance=Math.max(.24,camera.near*Math.sqrt(1+Math.tan(THREE.MathUtils.degToRad(camera.fov/2))**2*(1+camera.aspect**2))+.06);
+    const safeCamera=clearCamera(controls.target,camera.position,cameraRocks,nearClearance,surfaceHeight);
+    camera.position.set(safeCamera.x,safeCamera.y,safeCamera.z);
     camera.lookAt(controls.target);
     // Dedicated evidence close-ups omit the foreground rover that otherwise
     // blocks the near-side rock/grains. Restored on every other world view.

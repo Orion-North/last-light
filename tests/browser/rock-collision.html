@@ -1,0 +1,34 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Rock collision checks</title>
+<script type="importmap">{"imports":{"three":"../../vendor/three/three.module.js","three/addons/":"../../vendor/three/addons/"}}</script>
+<style>body{margin:0;background:#111;color:white;font:14px system-ui}canvas{width:100vw;height:calc(100vh - 150px);display:block}nav{padding:8px}button{padding:10px;margin:4px}pre{margin:4px;white-space:pre-wrap}</style></head><body>
+<canvas id="world"></canvas><nav><button id="run" disabled>Check landmark collisions</button><button id="orbit" disabled>Orbit nearby rocks</button><button id="evidence" disabled>Inspect Berry Bowl</button><output id="status">Loading rover</output><pre id="results"></pre></nav>
+<script type="module">
+import {createLandscape} from '../../src/ui/landscape.js';
+const canvas=document.querySelector('canvas'),status=document.querySelector('#status'),results=document.querySelector('#results');
+let blocked=false,arrived=false;
+canvas.addEventListener('world-status',e=>{status.textContent=e.detail.message;if(e.detail.state==='ready')document.querySelectorAll('button').forEach(b=>b.disabled=false);});
+canvas.addEventListener('world-drive',e=>{blocked=e.detail.blocked;});
+canvas.addEventListener('waypoint-reached',()=>{arrived=true;});
+const world=createLandscape(canvas);world.setMode('game');
+const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function driveToContact(){blocked=false;world.setDrive({forward:1});const start=performance.now();while(!blocked&&performance.now()-start<25000)await delay(50);const contact=blocked;world.stopDrive();return contact;}
+document.querySelector('#run').onclick=async()=>{
+ document.querySelectorAll('button').forEach(b=>b.disabled=true);status.textContent='Checking actual landmark geometry';const checks=[];
+ for(const site of [{name:'Last Chance',x:7,z:-5.6,wayZ:-7,insideZ:-8.9},{name:'Berry Bowl',x:-5,z:-8,wayZ:-10,insideZ:-11.8}]){
+  world.setEvidence(null);world.setWaypoint(null);world.restoreCheckpoint({position:{x:site.x,z:site.z,heading:Math.PI}});
+  const start=world.getCheckpoint().position,contact=await driveToContact(),end=world.getCheckpoint().position;
+  checks.push(`${contact&&end.z<start.z-.1?'PASS':'FAIL'} ${site.name}: ${contact?'blocked':'time limit'} at z=${end.z.toFixed(3)}, travelled ${(start.z-end.z).toFixed(3)}m`);
+  arrived=false;world.setWaypoint({x:site.x,z:site.wayZ});await delay(80);
+  checks.push(`${arrived?'PASS':'FAIL'} ${site.name}: observation arrival zone reachable`);world.setWaypoint(null);
+  world.setDrive({forward:-1});await delay(700);world.stopDrive();
+  const back=world.getCheckpoint().position;checks.push(`${back.z>end.z+.05?'PASS':'FAIL'} reverse away from ${site.name}`);
+  world.restoreCheckpoint({position:{x:site.x,z:site.insideZ,heading:Math.PI}});
+  const restored=world.getCheckpoint().position;checks.push(`${Math.hypot(restored.x-site.x,restored.z-site.insideZ)>.3?'PASS':'FAIL'} embedded save moved clear (${restored.x.toFixed(2)},${restored.z.toFixed(2)})`);
+  results.textContent=checks.join('\n');
+ }
+ world.restoreCheckpoint({position:{x:7,z:-5,heading:Math.PI}});
+ status.textContent=checks.some(s=>s.startsWith('FAIL'))?'FAIL':'PASS: both landmarks, reverse and embedded saves';document.querySelectorAll('button').forEach(b=>b.disabled=false);
+};
+document.querySelector('#orbit').onclick=async()=>{world.setEvidence(null);world.restoreCheckpoint({position:{x:7,z:-6,heading:Math.PI}});world.setLook({x:1});status.textContent='Orbiting near Last Chance';await delay(4500);world.setLook({});status.textContent='Orbit complete — inspect camera clearance';};
+document.querySelector('#evidence').onclick=()=>{world.setLook({});world.setEvidence('blueberries');status.textContent='Berry Bowl evidence close-up';};
+</script></body></html>
