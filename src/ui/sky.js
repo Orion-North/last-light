@@ -30,7 +30,7 @@ export function createSky(THREE, { own, sunDirection }) {
         sky = mix(sky, lower, smoothstep(0.0, 0.23, -elevation));
 
         // Low, broad dust layers add depth around the entire horizon. The
-        // modulation is deliberately soft and stationary, including in reduced motion.
+        // modulation is deliberately soft and stationary.
         float haze = exp(-abs(elevation - 0.035) * 12.0);
         float bands = sin(elevation * 45.0 + direction.x * 3.0)
                     * sin(elevation * 18.0 - direction.z * 2.0);

@@ -10,7 +10,7 @@ import { mergeVertices, mergeGeometries } from 'three/addons/utils/BufferGeometr
 /** A real, navigable Martian diorama. NASA's rover is loaded from a local GLB. */
 export function createLandscape(canvas) {
   const noop = () => {};
-  const empty = { setToolMode: () => false, setToolInput: noop, compareToolSamples: () => false, setMissionAge: noop, setScene: noop, setReducedMotion: noop, setPaused: noop,
+  const empty = { setToolMode: () => false, setToolInput: noop, compareToolSamples: () => false, setMissionAge: noop, setScene: noop, setPaused: noop,
     setMode: noop, setIntro: noop, previewMemory: noop, revealFirstView: noop, setRemoteView: noop, setDrive: noop, stopDrive: noop, setSurvey: noop, setInvestigation: noop, setContact: noop, setContactInput: noop, nudgeContact: noop, sendContact: noop, cancelContactPulse: noop, focusRover: noop, inspect: noop,
     setWaypoint: noop, setObservationTarget: noop, reset: noop, destroy: noop };
   const status = (state, message) => canvas?.dispatchEvent(new CustomEvent('world-status', {
@@ -39,7 +39,6 @@ export function createLandscape(canvas) {
 
   let disposed = false;
   let paused = false;
-  let reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || false;
   let mode = 'title';
   let environment = 'sunset';
   let frame = 0;
@@ -109,7 +108,7 @@ export function createLandscape(canvas) {
   controls.zoomSpeed = 0.7;
   controls.addEventListener('start', () => { cameraTween = null; orbitGesture = true; });
   controls.addEventListener('end', () => { orbitGesture = false; });
-  controls.addEventListener('change', () => { if (paused || reduced) render(); });
+  controls.addEventListener('change', () => { if (paused) render(); });
 
   // Smooth deterministic terrain, not a height-map illustration or flat backdrop.
   function heightAt(x, z) {
@@ -800,7 +799,7 @@ export function createLandscape(canvas) {
     let travel = returning ? 1 - THREE.MathUtils.clamp((time - .65) / .5, 0, 1)
       : THREE.MathUtils.clamp(time / .6, 0, 1);
     if (contactPulse.mode === 'partial') travel *= .78;
-    packet.position.copy(contactPulse.start).lerp(contactPulse.end, reduced ? 0 : travel);
+    packet.position.copy(contactPulse.start).lerp(contactPulse.end, travel);
     packetMaterial.color.set(returning ? '#c7e1de' : '#ffe1a9');
     const fade = returning ? 1 - THREE.MathUtils.smoothstep(time, 1.08, 1.2)
       : contactPulse.mode === 'reply' ? 1 : 1 - THREE.MathUtils.smoothstep(time, .5, 1.05);
@@ -853,12 +852,7 @@ export function createLandscape(canvas) {
     guideMaterial.color.set(options.mode === 'silence' ? '#cdd5db' : '#f7e7c9');
     contactVisual.visible = true;
     contactCamera = contactFrame();
-    if (reduced) {
-      camera.position.copy(contactCamera.position);
-      controls.target.copy(contactCamera.target);
-      cameraTween = null;
-      controls.update();
-    } else cameraTween = contactCamera;
+    cameraTween = contactCamera;
     updateContact(0);
     render();
   }
@@ -899,7 +893,7 @@ export function createLandscape(canvas) {
     const angle = Math.acos(THREE.MathUtils.clamp(aim.dot(contactDirection), -1, 1));
     const quality = 1 - THREE.MathUtils.smoothstep(angle, .1, .33);
     beamMaterial.opacity = .52 + quality * .33;
-    if (!reduced) guideMaterial.opacity = .88 + Math.sin(elapsed * 1.7) * .035;
+    guideMaterial.opacity = .88 + Math.sin(elapsed * 1.7) * .035;
     if (elapsed - contactSampleTime >= .095) {
       contactSampleTime = elapsed;
       canvas.dispatchEvent(new CustomEvent('contact-sample', { bubbles: true, detail: { quality } }));
@@ -963,7 +957,6 @@ export function createLandscape(canvas) {
     canDrive = !(state.power === 0 || state.signal === 0);
     if (!canDrive) stopDrive();
     planetState = palettes[environment];
-    if (reduced) applyPalette(1);
     render();
   }
   function applyPalette(blend) {
@@ -1050,7 +1043,7 @@ export function createLandscape(canvas) {
   // These are authored views of Mars, not a simulated Earth camera or photograph.
   function frameMemory(immediate = false) {
     const desired = desiredFrame(false);
-    if (reduced || immediate) {
+    if (immediate) {
       camera.position.copy(desired.position);
       controls.target.copy(desired.target);
       cameraTween = null;
@@ -1107,7 +1100,7 @@ export function createLandscape(canvas) {
     controls.minPolarAngle = .32;
     controls.maxPolarAngle = Math.PI * .475;
     const desired = desiredFrame(false);
-    if (immediate || reduced) {
+    if (immediate) {
       camera.position.copy(desired.position);
       controls.target.copy(desired.target);
       cameraTween = null;
@@ -1134,7 +1127,7 @@ export function createLandscape(canvas) {
     controls.minPolarAngle = .18;
     controls.maxPolarAngle = Math.PI * .46;
     cameraTween = desiredFrame(true);
-    if (reduced || immediate) {
+    if (immediate) {
       camera.position.copy(cameraTween.position);
       controls.target.copy(cameraTween.target);
       cameraTween = null;
@@ -1152,12 +1145,7 @@ export function createLandscape(canvas) {
     controls.minPolarAngle = .32;
     controls.maxPolarAngle = Math.PI * .475;
     const desired = desiredFrame(false);
-    if (reduced) {
-      camera.position.copy(desired.position);
-      controls.target.copy(desired.target);
-      cameraTween = null;
-      controls.update();
-    } else cameraTween = { ...desired, follow: true };
+    cameraTween = { ...desired, follow: true };
   }
 
   function setSurvey(active) {
@@ -1252,13 +1240,7 @@ export function createLandscape(canvas) {
     const desired = desiredFrame(true);
         // Begin with useful evidence already visible. Deliberate orbit reveals it;
     // the camera animation itself never counts as the player's investigation.
-    if (reduced) {
-      camera.position.copy(desired.position);
-      controls.target.copy(desired.target);
-      cameraTween = null;
-      controls.update();
-      render();
-    } else cameraTween = desired;
+    cameraTween = desired;
     samplePosition.copy(camera.position);
     camera.getWorldDirection(sampleDirection);
   }
@@ -1369,7 +1351,7 @@ export function createLandscape(canvas) {
         cameraTween.target.add(shift);
       }
       distance += Math.abs(step);
-      if (!reduced) addTracks();
+      addTracks();
     }
     if (blocked && step) motion.reset();
     groundRover();
@@ -1486,15 +1468,13 @@ export function createLandscape(canvas) {
         const state = tool.update(delta); updateToolVisual(state);
         if (elapsed - toolSampleTime >= .1) { toolSampleTime = elapsed; emitTool(state); }
       } else moveRover(delta);
-      if (!reduced) {
-        const speed = environment === 'storm' ? 6.0 : .35;
-        for (let i = 0; i < dustCount; i += 1) {
-          dustPositions[i * 3] += delta * speed;
-          if (dustPositions[i * 3] > 40) dustPositions[i * 3] -= 80;
-        }
-        dustGeometry.attributes.position.needsUpdate = true;
+      const speed = environment === 'storm' ? 6.0 : .35;
+      for (let i = 0; i < dustCount; i += 1) {
+        dustPositions[i * 3] += delta * speed;
+        if (dustPositions[i * 3] > 40) dustPositions[i * 3] -= 80;
       }
-      applyPalette(reduced ? 1 : 1 - Math.exp(-delta * .85));
+      dustGeometry.attributes.position.needsUpdate = true;
+      applyPalette(1 - Math.exp(-delta * .85));
       if (cameraTween) {
         const amount = 1 - Math.exp(-delta * 3.2);
         camera.position.lerp(cameraTween.position, amount);
@@ -1536,7 +1516,7 @@ export function createLandscape(canvas) {
       controls.update(); render();
       return;
     }
-    if (reduced || disposed || remoteView) return;
+    if (disposed || remoteView) return;
     if (!intro) {
       stopDrive(); look = { x: 0, y: 0 }; cameraTween = null;
       // Flush OrbitControls' last damping step before recording the return view.
@@ -1642,19 +1622,6 @@ export function createLandscape(canvas) {
     setLook(value={}) {
       if (tool || intro || remoteView) return;
       look={x:THREE.MathUtils.clamp(Number(value.x)||0,-1,1),y:THREE.MathUtils.clamp(Number(value.y)||0,-1,1)};
-    },
-    setReducedMotion(value) {
-      if (value && intro) setIntro(false);
-      reduced = Boolean(value);
-      controls.enableDamping = !reduced;
-      if (reduced && cameraTween) {
-        camera.position.copy(cameraTween.position);
-        controls.target.copy(cameraTween.target);
-        cameraTween = null;
-        controls.update();
-      }
-      applyPalette(1);
-      render();
     },
     setPaused(value) {
       paused = Boolean(value);

@@ -167,7 +167,7 @@ repeating the entire control mapping; the guide distinguishes stick hold, option
 USB touchpad swipe and the explicit button. Keyboard and touch retain readable
 alternatives. Gameplay and uplink stay close to the rover; geological inspection
 frames the current evidence. The twelve-second mission introduction is skippable,
-pauses with the game and uses a static view under reduced motion.
+pauses with the game.
 
 
 ## v0.9 charge, then release to send

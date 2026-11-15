@@ -56,7 +56,7 @@ interface changes go through the integrator before dependent work resumes.
 
 During setup, check links, whitespace, and the absence of accidental game code.
 Once tooling exists, PRs should include type/build checks and relevant behavior
-tests; browser changes need keyboard, touch, mute, and reduced-motion checks.
+tests; browser changes need keyboard, touch, mute, and pause checks.
 
 The entry files are provided for onboarding. Antigravity CLI delegation was
 subsequently verified with a read-only Gemini critique; see

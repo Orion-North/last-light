@@ -31,7 +31,7 @@ comes from care and accumulated memories, with a closing note of gratitude.
 Three acts in a compact real-time 3D Mars environment, with short drives to
 observations, one recurring discovery loop, and one personalized ending.
 Web link, phone and desktop, touch and keyboard, readable text, mute, captions,
-reduced motion, pause/restart. Use AI extensively for code, story iteration, art,
+pause/restart. Use AI extensively for code, story iteration, art,
 sound production where tools permit, and review. Use NASA’s textured rover model; target under 20 MB for this first 3D version.
 Keep the playable story short; use the speed gain for richer atmosphere and polish.
 Physical terrain, cinematic lighting, dust, and an original adaptive score belong

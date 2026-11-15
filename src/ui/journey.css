@@ -37,7 +37,6 @@ body[data-screen="game"] #world-controls .drive-pad { grid-column:1 / -1; }
 .passage-years p { flex-basis:100%;margin:0;font:12px var(--sans);letter-spacing:.08em;color:#e8e1d2; }
 .time-passage .briefing-caption h1 { font-size:clamp(30px,4vw,52px); }
 @media(max-height:550px) { .passage-years { top:15%;font-size:32px;gap:12px; }.passage-years p { display:none; }.time-passage .briefing-caption { bottom:20%; }.time-passage .briefing-caption h1 { font-size:28px;margin:8px 0; } }
-@media(prefers-reduced-motion:reduce) { .passage-light { display:none; } }
 
 /* Controller interaction uses focus and pressure; the mouse pointer returns on mouse movement. */
 body[data-input="controller"],body[data-input="controller"] * { cursor:none !important; }

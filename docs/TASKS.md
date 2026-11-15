@@ -1,6 +1,6 @@
 # Task board
 
-Phase: **v0.14 integrated and verified; publication owned by Codex**.
+Phase: **v0.14.1 integrated and verified; publication owned by Codex**.
 Integrator: Codex. Claude and Antigravity are supported by shared instructions;
 Antigravity CLI critique has been verified.
 
@@ -542,3 +542,15 @@ TEXT-14 and ICON-14 complete: repeated screen text removed; essential actions an
 story retained, original rover/sunset icon wired for web and Windows. 125 engine
 tests pass, independent Sol critique found no blocker, root targeted browser
 checks cover sending, receipt, navigation, tool instructions and title.
+
+## MOTION-14 — keep animations enabled
+
+User explicitly requests removing Reduce motion after it suppressed animations
+on CachyOS. Shared develop/v0.14.1, disjoint paths: Sol owns landscape.js removal
+of reduced-motion branches and its handoff; Codex owns main/HTML/CSS, current docs,
+versions, integration and publication. Remove OS and stored-preference overrides,
+retain ordinary pause/visibility behavior and skippable passages. No hardware output.
+
+MOTION-14 complete: setting and OS/stored overrides removed. Root reviewed Sol
+landscape changes, verified settings/pause/resume in browser, all engine files
+and source/asset/build checks pass. Publication owned by Codex.

@@ -38,7 +38,6 @@ summary:focus-visible { outline: 2px solid var(--amber); outline-offset: 4px; }
 .ending-screen { background: linear-gradient(90deg,#10161cf0,#10161ce0 75%,#10161cc9); }
 .noscript { position: fixed; inset: 30%; z-index: 20; padding: 30px; background: #111a21; color: white; }
 .save-note { color: var(--muted); font: 10px/1.6 var(--mono); }
-.reduced-motion *, .reduced-motion *::before, .reduced-motion *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 @media(max-width:850px) {
   .brand-subtitle,.brand-divider { display:none; }
   .world-controls { left: auto; right: 12px; bottom: 14px; transform: none; max-width: 370px; }

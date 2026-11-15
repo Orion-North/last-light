@@ -74,10 +74,6 @@ body[data-upload="true"][data-screen="game"] .play-screen{background:linear-grad
 @keyframes signal-partial{0%{left:0;opacity:0}12%,28%,44%,70%{opacity:1}32%,49%,74%{opacity:.1}100%{left:calc(100% - 10px);opacity:0}}
 @media(max-height:720px){.signal-map{height:145px}.upload-terminal__apparatus{padding-top:10px}.upload-terminal h2{font-size:33px;margin:8px 0}.upload-terminal__meaning{margin-bottom:10px}.upload-terminal__response p{font-size:14px}.upload-terminal{padding-block:3px}.signal-exciter{height:28px}}
 @media(max-width:600px){.upload-terminal{padding-inline:5px}.signal-world{width:85px}.signal-world small{font-size:6px}.planet{width:55px;height:55px}.planet--earth{width:43px;height:43px}.signal-map{height:155px}.upload-terminal h2{font-size:29px}.upload-terminal__meaning{font-size:14px}.upload-terminal__response p{font-size:14px}}
-@media(prefers-reduced-motion:reduce){.upload-terminal *{animation:none!important;transition:none!important}.upload-terminal[data-stage="sending"] .signal-packet{left:50%;opacity:1}.upload-terminal[data-stage="received"][data-mode="reply"] .signal-echo{left:0;opacity:1}}
-body.reduced-motion .upload-terminal *{animation:none!important;transition:none!important}
-body.reduced-motion .upload-terminal[data-stage="sending"] .signal-packet{left:50%;opacity:1}
-body.reduced-motion .upload-terminal[data-stage="received"][data-mode="reply"] .signal-echo{left:0;opacity:1}
 
 /* A learned question and answer, visible even with sound disabled. */
 .signal-dialogue{display:flex;justify-content:center;gap:38px;margin:-3px auto 19px;}

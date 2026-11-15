@@ -44,7 +44,7 @@ unsupported Web Audio. No network audio. Procedural restrained ambient sound.
 ## Visual export: src/ui/landscape.js and src/ui/style.css
 
 `createLandscape(canvas)` returns {setScene(environment, {power, signal}?),
-setReducedMotion(boolean), setPaused(boolean), destroy()}. Real Three.js/WebGL2 world, NASA rover GLB, driving and orbit controls.
+setPaused(boolean), destroy()}. Real Three.js/WebGL2 world, NASA rover GLB, driving and orbit controls.
 Additional API: setMode, setDrive, focusRover, inspect, setWaypoint, setObservationTarget, setSurvey,
 reset. Emits world-status, rover-move, waypoint-reached.
 Observation targets persist independently of the navigation marker. Set one on

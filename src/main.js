@@ -26,12 +26,11 @@ const storageKey = 'last-light-journey-v1';
 const padPreviewMuted = new URLSearchParams(location.search).get('controller') === 'off';
 let state = createState();
 let saved = null;
-let settings = { haptics: true, sound: false, motion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+let settings = { haptics: true, sound: false,
   touch: matchMedia('(any-pointer: coarse)').matches, prompts: 'auto' };
 try {
   saved = restoreSession(localStorage.getItem(storageKey), scenes);
   const storedSettings = JSON.parse(localStorage.getItem('last-light-settings'));
-  if (storedSettings && typeof storedSettings.motion === 'boolean') settings.motion = storedSettings.motion;
   if (storedSettings && typeof storedSettings.haptics === 'boolean') settings.haptics = storedSettings.haptics;
   if (storedSettings && typeof storedSettings.touch === 'boolean') settings.touch = storedSettings.touch;
   if (storedSettings && validPromptStyle(storedSettings.prompts)) settings.prompts = storedSettings.prompts;
@@ -170,7 +169,7 @@ function startBriefing(passage = null) {
     if(!state.paused && !document.hidden) {
       if(passage) {
         // Two quiet light/dark cycles suggest repeated days; the matched camera stays still.
-        if(!handover)app.querySelector('.passage-light').style.opacity=settings.motion?'0':String(.55*Math.sin(progress*Math.PI*(beats.length===3?2:1))**2);
+        if(!handover)app.querySelector('.passage-light').style.opacity=String(.55*Math.sin(progress*Math.PI*(beats.length===3?2:1))**2);
         view?.setMissionAge?.(fromAge+(toAge-fromAge)*progress);
       } else view?.setIntro?.(true,{progress});
     }
@@ -509,13 +508,10 @@ async function toggleSound(enabled) {
   $('#sound-toggle .button-label').textContent = settings.sound ? 'SOUND ON' : 'SOUND OFF';
   $('#sound-setting').checked = settings.sound;
 }
-function applyMotion() {
-  document.body.classList.toggle('reduced-motion',settings.motion);
+function applySettings() {
   document.body.classList.toggle('touch-controls',settings.touch);
-  $('#motion-setting').checked = settings.motion;
   $('#touch-setting').checked = settings.touch;
-  view?.setReducedMotion(settings.motion);
-  try { localStorage.setItem('last-light-settings',JSON.stringify({motion:settings.motion,haptics:settings.haptics,touch:settings.touch,prompts:settings.prompts})); } catch { /* Optional. */ }
+  try { localStorage.setItem('last-light-settings',JSON.stringify({haptics:settings.haptics,touch:settings.touch,prompts:settings.prompts})); } catch { /* Optional. */ }
 }
 
 function previewChoice(event) {
@@ -529,15 +525,14 @@ app.addEventListener('pointerover',previewChoice);
 $('#credits-content').innerHTML = `<p>${escape(credits)}</p><h3>Built to remember</h3><p>Original story and procedural sound. The interactive terrain is an artistic reconstruction, not a surveyed map. Rover model: NASA/JPL-Caltech. Ground and rock surfaces use CC0 terrestrial scans by Rob Tuytel, Dario Barresi and Dimitrios Savva / Poly Haven, artistically adapted for Mars. Rendering: Three.js (MIT). Generated poster art is used only if 3D graphics are unavailable.</p><p>This independent project is not affiliated with or endorsed by NASA. Inspiration: the scale of Journey, the curiosity of Outer Wilds, and the grounded science fiction of The Invincible.</p><h3>Primary mission sources</h3><ul class="sources-list">${sources.map(s=>`<li><a href="${escape(s.url)}" target="_blank" rel="noreferrer">${escape(s.title)} ↗</a>${s.credit ? `<small>${escape(s.credit)}</small>`:''}</li>`).join('')}<li><a href="https://science.nasa.gov/resource/spirit-and-opportunity-rover-3d-model/" target="_blank" rel="noreferrer">NASA/JPL-Caltech rover model ↗</a></li><li><a href="./vendor/three/LICENSE" target="_blank">Three.js MIT license ↗</a></li></ul>`;
 $('#sound-toggle').addEventListener('click',()=>{soundPreferenceSet=true;toggleSound(!settings.sound);});
 $('#sound-setting').addEventListener('change',event=>{soundPreferenceSet=true;toggleSound(event.target.checked);});
-$('#motion-setting').addEventListener('change',event=>{settings.motion=event.target.checked;applyMotion();});
 $('#touch-setting').addEventListener('change',event=>{
   settings.touch=event.target.checked;
   if (inputDevice==='touch' || inputDevice==='keyboard') inputDevice=settings.touch?'touch':'keyboard';
-  applyMotion();updateInputHint();
+  applySettings();updateInputHint();
 });
 document.querySelectorAll('[name="prompt-style"]').forEach(radio=>{
   radio.checked=radio.value===settings.prompts;
-  radio.addEventListener('change',()=>{settings.prompts=radio.value;applyMotion();refreshControllerPrompts();});
+  radio.addEventListener('change',()=>{settings.prompts=radio.value;applySettings();refreshControllerPrompts();});
 });
 $('#settings-toggle').addEventListener('click',()=>openModal('#settings-modal'));
 $('#credits-button').addEventListener('click',()=>{$('#settings-modal').close();openModal('#credits-modal');});
@@ -765,7 +760,7 @@ controller=createController({
 controller.setEnabled(!padPreviewMuted);
 controller.setHaptics(settings.haptics && !padPreviewMuted);
 $('#haptics-setting').checked=settings.haptics;
-$('#haptics-setting').addEventListener('change',event=>{settings.haptics=event.target.checked;controller.setHaptics(settings.haptics && !padPreviewMuted);applyMotion();});
+$('#haptics-setting').addEventListener('change',event=>{settings.haptics=event.target.checked;controller.setHaptics(settings.haptics && !padPreviewMuted);applySettings();});
 $('#adaptive-connect').addEventListener('click',()=>controller.connectAdaptiveTriggers());
 $('#adaptive-disconnect').addEventListener('click',()=>controller.disconnectAdaptiveTriggers());
 window.addEventListener('blur',()=>{padInput={throttle:0,steer:0};pause();});
@@ -778,5 +773,5 @@ try { view=createLandscape(canvas); } catch(error) {
   $('#world-status').dataset.state='error';
   console.error(error);
 }
-applyMotion();
+applySettings();
 renderTitle();

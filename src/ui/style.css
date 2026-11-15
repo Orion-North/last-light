@@ -374,11 +374,3 @@ h1.title {
   .modal-inner { padding: 22px; }
   .modal-header h2 { font-size: 29px; }
 }
-
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
-}
-body.reduced-motion *, body.reduced-motion *::before, body.reduced-motion *::after,
-body[data-reduced-motion="true"] *, body[data-reduced-motion="true"] *::before,
-body[data-reduced-motion="true"] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }

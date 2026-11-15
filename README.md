@@ -3,7 +3,7 @@
 A playable, real-time 3D story about NASA's Opportunity rover: discovery,
 attachment, a fading signal, and the things that remain.
 
-**Playable v0.14.** [Play on GitHub Pages](https://orion-north.github.io/last-light/). Built with parallel Codex agents. The game uses NASA's
+**Playable v0.14.1.** [Play on GitHub Pages](https://orion-north.github.io/last-light/). Built with parallel Codex agents. The game uses NASA's
 textured rover model, a navigable original Mars environment, an original adaptive
 score, and a complete three-act story. No account or AI API is needed by the game
 itself. A hosting provider may apply its own access gate.
@@ -50,7 +50,7 @@ Existing keyboard/touch fallbacks remain available.
 - Lighting follows the atmosphere; terrain contact and traveling shadows better anchor the rover and rocks. Desktop quality uses 2× pixel ratio cap, 2048 shadows and up to 8× surface anisotropy.
 
 - Two brief, skippable passages carry the mission from 2004 to 2015 and 2018; mission-age captions and a subtle rover finish retain those years.
-- A skippable twelve-second in-engine opening introduces your identity, first camera action, water-search mission and chosen archive. Reduced motion keeps the view still.
+- A skippable twelve-second in-engine opening introduces your identity, first camera action, water-search mission and chosen archive.
 - Scene meaning and the next action sit in the main composition. Close rover framing and a compact left-side glyph guide keep attention on the world.
 - Release both triggers to arm, squeeze L2 + R2 together to charge, then release both to send. The carrier steadies as both triggers charge; releasing launches a signal across the illustrated link. No touchpad click or cursor aiming. Controller sending requires both triggers; × cannot send. A button alternative is available when no controller is connected.
 - Controller-first: left stick drives during travel and selects in menus; right stick looks and aims. Keyboard/touch remain supported.
@@ -69,7 +69,7 @@ Existing keyboard/touch fallbacks remain available.
   Optional original DualSense USB effects begin at the start of each trigger press, independently, with maximum supported resistance through the squeeze and a brief charged vibration; connect them in Settings. Hardware
   feedback works on the user’s wired DualSense in Chrome; the resistance-first v0.14 tuning needs playtesting. See [controller support](docs/CONTROLLERS.md).
 - The original adaptive score has distinct geology, routine, storm, Earth-waiting and remembrance arrangements, with foreground sound ducking. Sound begins on entering the story unless you opt out; mute anytime.
-- Escape opens settings and pauses. Reduced motion, restart, and local progress
+- Escape opens settings and pauses. Restart and local progress
   saving are included. The ending contains your downloadable memory archive.
 
 The 10–15 minute target is provisional after reducing mandatory reading;

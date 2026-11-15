@@ -390,3 +390,16 @@ from different angles; it is not yet an interactive brushing/tool simulation.
   permission tests pass. Native executable packaging is verified by release CI.
 - Physical resistance and sound quality still require the user's playtest; this
   pass verifies bounded output commands, not measured force or sensory quality.
+
+## v0.14.1 — remove motion suppression
+
+User requested removing Reduce motion after confirming it caused missing effects.
+Removed the checkbox, stored preference handling, OS media queries and landscape
+suppression branches/API. Ordinary pause, hidden-document guards and explicit
+immediate camera cuts remain. Sol implemented/reviewed landscape changes; root
+reviewed integration. Current source/HTML has no motion-preference references.
+All 17 engine test files, 43 syntax checks, 12 scene/asset contracts and static
+build pass. Root browser checked the simplified settings menu, continue from
+saved progress and in-game pause/resume; no captured browser warnings/errors.
+No OS preference emulation, fresh full playthrough or physical haptic output was
+performed for this small removal.
