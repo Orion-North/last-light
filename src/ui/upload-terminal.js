@@ -18,6 +18,8 @@ export function renderUploadTerminal({ title, mode, stage, prompt, response, mea
       ? 'Call Opportunity. Then listen.' : 'Keep this memory in the mission archive.';
   const status = results[mode] || results.reply;
   const operationalResponse = /^Earth[’']s call, imagined:/i.test(response || '') ? 'No signal is received from Opportunity.' : response;
+  // An absent rover thought is authored silence, not a request for Earth dialogue.
+  const showOperationalResponse = !voice && (mode === 'silence' || mode === 'archive');
   const buttonLabel = upload ? 'Upload memory' : mode === 'silence' ? 'Call Opportunity' : 'Keep memory';
   const commitmentLabel = mode === 'silence' ? 'Call commitment' : mode === 'archive' ? 'Archive commitment' : 'Send commitment';
   const action = stage === 'ready' && !controller
@@ -41,8 +43,8 @@ export function renderUploadTerminal({ title, mode, stage, prompt, response, mea
     ${!story && stage === 'ready' && meaning ? `<p class="upload-terminal__meaning">${escapeHtml(meaning)}</p>` : ''}
     ${stage === 'ready' ? `<div class="upload-terminal__guidance"><p id="squeeze-hint" class="upload-terminal__instruction">${instruction}</p><progress id="upload-progress" max="1" value="0" aria-label="${commitmentLabel}" style="--upload-progress:0"></progress></div>` : ''}
     ${!story && stage === 'sending' ? `<p class="upload-terminal__prompt" role="status">${escapeHtml(prompt)}</p>` : ''}
-    ${story && stage === 'received' ? `<p class="story-receipt" data-mode="${escapeHtml(mode)}">${status}</p>${!voice?`<p class="story-operational">${escapeHtml(operationalResponse)}</p>`:''}`:''}
-    ${story && !voice && stage==='sending'?`<p class="story-operational" role="status">${escapeHtml(prompt)}</p>`:''}
+    ${story && stage === 'received' ? `<p class="story-receipt" data-mode="${escapeHtml(mode)}">${status}</p>${showOperationalResponse?`<p class="story-operational">${escapeHtml(operationalResponse)}</p>`:''}`:''}
+    ${story && !voice && mode==='silence' && stage==='sending'?`<p class="story-operational" role="status">${escapeHtml(prompt)}</p>`:''}
     ${!story && stage === 'received' ? `<div class="upload-terminal__response" role="status"><span>${status}</span><p>${escapeHtml(response)}</p></div>` : ''}
     ${action?`<footer class="upload-terminal__footer">${action}</footer>`:''}
     ${story?'</div>':''}

@@ -122,3 +122,34 @@ test('integrated thoughts keep controller sending and silence receipts without d
   assert.doesNotMatch(render('silence','received',{story,voice:false,response:'Earth’s call, imagined: This is home.'}), /imagined: This is home/);
   assert.match(render('archive','ready',{story,voice:false}), /&lt;memory&gt;/);
 });
+
+test('silent rover departures and receipts never fall back to response prose', () => {
+  const story='<section class="story-console" aria-label="Mission time"></section>';
+  for (const [mode,status] of [['reply','REPLY RECEIVED'],['partial','PARTIAL IMAGE RECEIVED']]) {
+    const extra={story,voice:false,response:'Earth says: We see you.',prompt:'New departure prose'};
+    const sending=render(mode,'sending',extra);
+    assert.doesNotMatch(sending,/Earth says|New departure prose|story-operational/);
+    assert.match(sending,/signal-packet/);
+    assert.doesNotMatch(sending,/data-action=/);
+    const received=render(mode,'received',extra);
+    assert.ok(received.includes(status));
+    assert.doesNotMatch(received,/Earth says|New departure prose|story-operational/);
+    assert.match(received,/data-action="next"/);
+    assert.equal(received.includes('NO ANSWER'),mode==='partial');
+  }
+});
+
+test('silent Earth operations retain recovery and archive information', () => {
+  const story='<section class="story-console"></section>';
+  const extra={story,voice:false};
+  const call=render('silence','sending',{...extra,prompt:'CALLING · LISTENING'});
+  assert.match(call,/role="status">CALLING · LISTENING/);
+  const quiet=render('silence','received',{...extra,response:'No signal is received.'});
+  assert.match(quiet,/NO REPLY/);
+  assert.match(quiet,/story-operational">No signal is received\./);
+  const archive=render('archive','received',{...extra,response:'Added to the archive.'});
+  assert.match(archive,/MEMORY KEPT/);
+  assert.match(archive,/story-operational">Added to the archive\./);
+  assert.match(render('archive','ready',extra),/story-operational">&lt;memory&gt;/);
+  assert.doesNotMatch(render('archive','sending',extra),/Use &amp; hold/);
+});

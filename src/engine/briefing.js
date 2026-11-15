@@ -1,7 +1,7 @@
 export const briefingBeats = [
-  { label: 'MARS · 2004', title: 'I am Opportunity.', cue: 'They built me for ninety days. Earth waits for my first view.' },
-  { label: 'THE FIRST MORNING', title: 'I came to find ancient water.', cue: 'My cameras, brush, and instruments can help me compare the rocks.' },
-  { label: 'THE FIRST MORNING', title: 'I can send my discoveries home.', cue: 'Somewhere, people will see them. I will listen for their answer.' },
+  { label: 'MARS · 2004', title: 'I am Opportunity.', cue: '' },
+  { label: 'THE FIRST MORNING', title: 'I came to look for ancient water.', cue: '' },
+  { label: 'THE FIRST MORNING', title: 'Earth is waiting for my first view.', cue: '' },
 ];
 
 /** Presentation time only: pausing cannot advance the story or skip a shot. */

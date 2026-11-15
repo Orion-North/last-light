@@ -23,24 +23,22 @@ const passages = {
     role: 'earth', duration: 7, fromYear: '2018', toYear: '2018',
     headline: 'The other end of the signal.',
     beats: [
-      { label: 'MARS · CONTACT LOST', title: 'Opportunity falls silent.', cue: 'Dust blocks the sunlight that powers the rover.' },
-      { label: 'EARTH · THE RECOVERY EFFORT', title: 'Now you are the ones listening.', cue: 'Call Opportunity from Earth. Stay with the people who kept trying.' },
+      { label: 'MARS · CONTACT LOST', title: 'Contact with Opportunity has been lost.', cue: 'June 10, 2018.' },
+      { label: 'EARTH · THE RECOVERY EFFORT', title: 'You are now on Earth.', cue: 'Send a recovery command. Listen for Opportunity.' },
     ],
   },
   'blueberries:marathon': {
     duration: 7, fromYear: '2004', toYear: '2015',
     headline: 'Mornings became years.',
     beats: [
-      { label: '2004 · THE FIRST MONTHS', title: 'Every morning, I wake and look.', cue: 'Every evening, I send a little of Mars home.' },
-      { label: 'THE YEARS BETWEEN · IMAGINED ROUTINE', title: 'I keep finding new ground.', cue: 'They keep answering.' },
-      { label: '2015 · ELEVEN YEARS LATER', title: 'Eleven years.', cue: 'They built me for ninety days. There is still another horizon.' },
+      { label: '2015 · ELEVEN YEARS LATER', title: 'Eleven years.', cue: 'Still another place to look.' },
     ],
   },
   'marathon:ordinary-day': {
     duration: 3, fromYear: '2015', toYear: '2018',
     headline: 'Three more years.',
     beats: [
-      { label: '2018 · FOURTEEN YEARS ON MARS', title: 'Fourteen years, and they still wait for me.', cue: 'I will find something to show them today.' },
+      { label: '2018 · FOURTEEN YEARS ON MARS', title: 'Fourteen years.', cue: 'What shall I show them today?' },
     ],
   },
 };

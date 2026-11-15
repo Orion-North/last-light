@@ -588,3 +588,48 @@ Use the existing full-screen atmospheric gradient and text shadow for contrast.
 FRAME-15 complete: transparent story and ending presentation, unfilled actions
 and corner controls, underline focus. Root verified bright-terrain choices,
 send/receipt and keyboard focus; Sol read-only review found no blocker.
+
+## WRITE-16 — writers' room on narrative delivery
+
+User requests a writing team to rethink delivery. Shared checkout; separate files:
+- VOICE-16 / Sol owns docs/reviews/VOICE-16.md: critical Opportunity voice review
+  and concrete replacement lines, restrained and responsive to player action.
+- DELIVERY-16 / Sol owns docs/reviews/DELIVERY-16.md: pacing, trigger timing,
+  repetition, silent intervals and story comprehension through gameplay.
+- STORY-16 / Sol owns docs/reviews/STORY-16.md: causal/emotional arc, opening,
+  contact loss and Earth handover; adversarial review of proposals.
+- Root owns docs/NARRATIVE-DIRECTION.md and task-board integration. Review and
+  draft only for this task; no gameplay code or mechanics changes by writers.
+All writers read the shipped source, exchange criticism, distinguish source
+review from playthrough, and keep each review under 650 words. Preserve the
+unboxed single inner voice, manual/controller play, actual science and fixed
+historical outcome. Deliver a short agreed treatment with concrete beats.
+
+WRITE-16 complete: three independent source reviews, peer challenges and agreed
+root treatment in docs/NARRATIVE-DIRECTION.md. Physical finding precedes send;
+one qualified geology interpretation follows receipt. Routine sends are quiet,
+voice avoids advance knowledge of the ending, and Earth handover remains explicit.
+Story editor checked final synthesis with no blocker. Document links/whitespace
+verified; no new playthrough, runtime changes or publication in this writing pass.
+
+## IMPLEMENT-16 — deliver the writers' room draft
+
+User approved trying WRITE-16. Shared develop/v0.16, disjoint paths:
+- VOICE-16 implementation / Sol: src/content/terminal-story.js and new
+  tests/engine/narrative-delivery.test.js only; sparse event-specific thoughts,
+  travel/tool/send silence and science meaning on receipt. Add purposeKnown input
+  (default false) for first-morning: root tracks uninterrupted intro completion.
+- DELIVERY-16 implementation / Sol: src/ui/upload-terminal.js and its existing
+  tests/engine/upload-terminal.test.js only; blank thoughts must never resurrect
+  Earth dialogue or duplicate prose; keep explicit partial/no-reply/archive states.
+- STORY-16 review / Sol: docs/reviews/IMPLEMENT-16.md only; critique integrated
+  draft, identify regressions and validate writing against treatment, source only.
+- Root: main integration, briefing/time/story content, relevant tests, docs,
+  versions, browser QA and publication. Preserve controller/haptic mechanics.
+
+IMPLEMENT-16 complete: three Sol lanes handed back implementation/review; root
+integrated purpose-aware intro, short passages, factual Earth transition and
+sparse delivery. 141 engine tests and source/asset/build checks pass. Browser
+coverage includes actual Last Chance tracing/comparison plus seeded controller
+and contact-loss checkpoints; limits recorded in VERIFICATION.md. Publication
+owned by root for web and Windows v0.16.

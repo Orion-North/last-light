@@ -41,6 +41,7 @@ let screen = 'title';
 let briefingFrame = 0;
 let briefingActive = false;
 let briefingPassage = false;
+let purposeKnown = false;
 let view;
 let controller;
 let padInput = { throttle: 0, steer: 0 };
@@ -145,9 +146,10 @@ function stopBriefing() {
   if(briefingPassage)view?.setPaused(state.paused);
   briefingPassage=false;
 }
-function finishBriefing() {
+function finishBriefing({ skipped = false } = {}) {
   if(!briefingActive || state.paused)return;
   const wasPassage=briefingPassage;
+  if(!wasPassage)purposeKnown=!skipped;
   pressed.clear();padInput={throttle:0,steer:0};
   stopBriefing();lastScene=null;renderGame({focus:true});
   announce(wasPassage ? `${missionTime(scenes[state.sceneIndex].id)?.label}. ${scenes[state.sceneIndex].subtitle}` : 'First, look through your cameras. Choose a view to send to Earth.');
@@ -156,7 +158,7 @@ function startBriefing(passage = null) {
   stopBriefing();cancelScan();cancelTransmission();stopContact();
   pressed.clear();padInput={throttle:0,steer:0};
   screen=passage?'passage':'intro';briefingActive=true;briefingPassage=!!passage;setExploring(false);
-  if(!passage)setWorld('dawn','game');
+  if(!passage) {purposeKnown=false;setWorld('dawn','game');}
   document.body.dataset.screen=screen;document.body.dataset.upload='false';
   $('#world-controls').hidden=true;$('#waypoint-hud').hidden=true;
   view?.stopDrive?.();view?.setLook?.({x:0,y:0});
@@ -167,7 +169,7 @@ function startBriefing(passage = null) {
   const toAge=missionTime(scenes[state.sceneIndex].id)?.ageYears || 0;
   app.innerHTML=`<section class="mission-briefing ${passage?'time-passage':''} ${handover?'signal-handover':''}" aria-label="${passage?'Passage of mission time':'Mission introduction'}">${handover?'<div class="handover-link" aria-hidden="true"><span>OPPORTUNITY<small>MARS</small></span><i></i><strong>YOU<small>EARTH</small></strong></div>':''}${passage&&!handover?'<div class="passage-light" aria-hidden="true"></div>':''}<div class="briefing-console story-shell"><div class="briefing-reading"></div><button class="briefing-skip" data-action="skip-intro">${passage?'Continue':'Skip introduction'} <span aria-hidden="true">↗</span></button></div></section>`;
   function showBeat(content,index) {
-    const line={speaker:'rover',text:`${content.title} ${content.cue}`};
+    const line={speaker:'rover',text:`${content.title} ${content.cue}`.trim()};
     app.querySelector('.briefing-reading').innerHTML=handover?`<div class="story-console__meta">${escape(content.label)}</div><p class="story-handover">${escape(content.title)}<small>${escape(content.cue)}</small></p>`:renderStoryConsole({line,time:content.label});
     if(!handover)storyWriter.mount(app.querySelector('.story-console'),line,`${screen}:${passage?.toYear || 'intro'}:${index}`);
     announce(`${content.title} ${content.cue}`);
@@ -181,7 +183,7 @@ function startBriefing(passage = null) {
     if(!state.paused && !document.hidden) {
       if(passage) {
         // Two quiet light/dark cycles suggest repeated days; the matched camera stays still.
-        if(!handover)app.querySelector('.passage-light').style.opacity=String(.55*Math.sin(progress*Math.PI*(beats.length===3?2:1))**2);
+        if(!handover)app.querySelector('.passage-light').style.opacity=String(.55*Math.sin(progress*Math.PI*(passage.fromYear==='2004'?2:1))**2);
         view?.setMissionAge?.(fromAge+(toAge-fromAge)*progress);
       } else view?.setIntro?.(true,{progress});
     }
@@ -266,7 +268,7 @@ function renderGame({ focus = false } = {}) {
   const recalled = scene.id==='smaller-world' ? state.memories.find(m=>m.sceneId==='first-morning') : null;
   const goal = goals[state.sceneIndex];
   const contact = transmissionProfile(scene);
-  const thought = storyLine({scene,phase:state.phase,travelling:!!goal&&!reached,investigating,toolStage:toolState?.stage,transmitting,selected:choice,recalled});
+  const thought = storyLine({scene,phase:state.phase,travelling:state.phase==='observe'&&!!goal&&!reached,purposeKnown,investigating,toolStage:toolState?.stage,transmitting,selected:choice,recalled});
   const consoleHTML = renderStoryConsole({line:thought,time:missionTime(scene.id)?.label || scene.sol});
   view?.setRemoteView?.(scene.signal===0);
   document.body.dataset.perspective=scene.signal===0?'earth':'rover';
@@ -461,7 +463,7 @@ function act(action) {
   if (cue) { sound.cue(cue); controller?.feedback(cue); }
   if (action.type === 'OBSERVE') {
     if([1,2].includes(state.sceneIndex))view?.inspect?.();
-    view?.setWaypoint?.(null);announce(scenes[state.sceneIndex].discovery);
+    view?.setWaypoint?.(null);announce('Observation recorded. Ready to send.');
     const record=recordedChoice(scenes[state.sceneIndex],state);
     if(record)state=transition(state,{type:'CHOOSE',choiceId:record.id},scenes);
   }
@@ -567,7 +569,7 @@ app.addEventListener('click',event=>{
   if (!button || button.disabled) return;
   switch(button.dataset.action) {
     case 'begin': { const fresh=!saved;if(!soundPreferenceSet)toggleSound(true); state=saved || createState(); state={...state,paused:false}; lastScene=null;if(fresh)startBriefing();else renderGame({focus:true});save();break; }
-    case 'skip-intro': finishBriefing();break;
+    case 'skip-intro': finishBriefing({skipped:true});break;
     case 'observe': scan(); break;
     case 'assist-observation': cancelScan();act({type:'OBSERVE'});break;
     case 'compare-samples': view?.compareToolSamples?.();break;
@@ -706,7 +708,7 @@ function controllerAction(action) {
   const dialog=document.querySelector('dialog[open]');
   if(action==='pause') { if(dialog) dialog.close(); else openModal('#settings-modal'); return; }
   if(action==='back') { if(dialog) dialog.close(); else if(exploring) setExploring(false); else openModal('#settings-modal'); return; }
-  if(briefingActive && !dialog) {if(action==='primary')finishBriefing();return;}
+  if(briefingActive && !dialog) {if(action==='primary')finishBriefing({skipped:true});return;}
   if(action==='journal') { if(dialog?.id==='journal-modal') dialog.close(); else if(!dialog && screen!=='title') openJournal(); return; }
   if(action==='camera' && !dialog) {if(contacting)resetUpload();else if(geologyActive){view?.setToolInput?.({});}else if(survey){survey=createSurvey(surveyProfiles[scenes[state.sceneIndex].id]);surveyStep=0;view?.setSurvey?.(true);}else if(investigating)view?.setInvestigation?.(true);else view?.focusRover?.();return;}
   const targets=menuTargets();

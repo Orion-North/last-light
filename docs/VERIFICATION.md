@@ -440,3 +440,27 @@ Root checked the opening, camera choice, keyboard selection, send/receipt and
 icon-only keyboard focus at 1280×720; no captured browser warnings/errors.
 Source/asset checks and static build pass. Independent Sol source review found
 no blocker. This CSS-only pass did not repeat a full journey or hardware test.
+
+## v0.16 — delivery from the writers' room
+
+Three Sol lanes implemented/reviewed the accepted treatment: sparse arrival
+thoughts, physical comparison before sending, one geology interpretation after
+receipt, wordless routine replies/departures, restrained final view and explicit
+Earth recovery. Skipped/restored first observation retains the mission purpose;
+completed introduction avoids repeating it. No panel or control mechanic added.
+
+141 engine tests, 47 JS syntax checks, 12 scene/asset contracts and static build
+pass. Tests cover silent travel/tool/departure/post-contact states, restored
+ready/receipt phases, comparison-versus-interpretation ordering and renderer
+fallback suppression. Source review: docs/reviews/IMPLEMENT-16.md.
+
+Root browser verified skipped and uninterrupted intro, first choice/send/reply,
+manual drive to Last Chance, actual tracing of both paths and comparison,
+physical-result preparation, wordless departure and water interpretation receipt.
+Seeded controller checkpoints verified Berry Bowl result/trigger charge-release/
+receipt, single-thought eleven-year passage, wordless ordinary receipt, partial
+last image, muted/skipped Earth handover and recovery call/NO REPLY. Earth receipt
+restores without resurrecting the rover voice. No captured browser warnings or
+errors. This is targeted verification, not a fresh complete playthrough; Berry
+Bowl tool completion, soundtrack listening and physical actuator feel were not
+retested. Emotional effect still requires the user's playtest.

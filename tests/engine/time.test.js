@@ -13,7 +13,7 @@ test('chronology jumps and the Earth handover have explicit passages', () => {
     ['blueberries', 'marathon'], ['marathon', 'ordinary-day'], ['last-image', 'earth-listens'],
   ]);
   assert.deepEqual(found.map(([, , p]) => [p.duration, p.fromYear, p.toYear, p.beats.length]), [
-    [7, '2004', '2015', 3], [3, '2015', '2018', 1], [7, '2018', '2018', 2],
+    [7, '2004', '2015', 1], [3, '2015', '2018', 1], [7, '2018', '2018', 2],
   ]);
   for (const [, , p] of found) {
     assert.ok(p.headline);

@@ -125,7 +125,7 @@ export const scenes = [
       fact: 'Opportunity was in Perseverance Valley when contact was lost during the 2018 dust storm.', sourceId: 'N1',
     },
     choices: [
-      { id: 'light', shortLabel: 'Send sunlight on stone', shortReply: 'An ordinary bright edge of stone. A day worth sending home.', label: 'Send sunlight on stone', detail: 'A small warmth, before the sky changes.', memory: { title: 'An ordinary afternoon', text: 'Sunlight reached the stones. For a while, that was enough.' }, reply: 'You choose a bright edge of stone. It is not a new discovery. It is simply here.' },
+      { id: 'light', shortLabel: 'Send sunlight on stone', shortReply: 'An ordinary bright edge of stone. A day worth sending home.', label: 'Send sunlight on stone', detail: 'Sunlight on the edge of a stone.', memory: { title: 'An ordinary afternoon', text: 'Sunlight reached the stones. For a while, that was enough.' }, reply: 'You choose a bright edge of stone. It is not a new discovery. It is simply here.' },
       { id: 'shadow', shortLabel: 'Send my mast’s shadow', shortReply: 'My mast casts a small shape. I am here, looking for them.', label: 'Send my mast’s shadow', detail: 'A small shape that means you are here.', memory: { title: 'A small presence', text: 'On a wide and quiet world, something had come to look.' }, reply: 'You notice the shape cast by your mast. For a moment, the landscape contains a companion.' },
     ],
     transmission: 'Earth, imagined: Received. We will be here for the next one.',
@@ -198,7 +198,7 @@ export const scenes = [
   },
   {
     id: 'earth-listens', receiptMode: 'silence', act: 3, chapter: 'III · On the other side',
-    subtitle: 'Now you are on Earth, with the people trying to reach Opportunity.',
+    subtitle: 'Contact with Opportunity has been lost. You are now on Earth.',
     objective: 'Call Opportunity from Earth',
     discovery: 'Now on Earth, you send a recovery command across the same distance. This time, you are waiting for Opportunity.',
     response: 'Earth’s call, imagined: Opportunity, this is home. No answer arrives.',
@@ -206,7 +206,7 @@ export const scenes = [
     text: 'The story moves to Earth.\n\nA screen holds the last information that arrived. Outside the room, ordinary days continue. Inside, people watch the weather on another planet and work on ways to hear from a familiar machine.\n\nOpportunity does not answer. They call again.',
     thought: 'The silence on one world is a room full of people on another.',
     environment: 'earth', power: 0, signal: 0,
-    actionLabel: 'Join the people listening',
+    actionLabel: 'Send a recovery command from Earth',
     observation: {
       title: 'An unanswered channel',
       text: 'There is a difference between losing contact and giving up. Engineers tried to restore communication. The rover’s response was unknown; its recovery could not be promised.\n\nThe sound you hear in this experience is an imagined score. It is not a recording from Opportunity. You can remain here for a moment, or continue whenever you are ready.',
@@ -264,7 +264,7 @@ export const scenes = [
   },
   {
     id: 'what-remains', act: 3, chapter: 'III · On the other side',
-    subtitle: 'Your chosen memories are here on Earth. The light did not all stay on Mars.',
+    subtitle: 'The observations you sent are here on Earth.',
     objective: 'Open your archive',
     discovery: 'Built for 90 sols, Opportunity travelled 45.16 kilometres. Its last contact came on sol 5,111.',
     response: 'The mission ended. What it helped us see remains.',

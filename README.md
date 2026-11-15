@@ -3,7 +3,7 @@
 A playable, real-time 3D story about NASA's Opportunity rover: discovery,
 attachment, a fading signal, and the things that remain.
 
-**Playable v0.15.1.** [Play on GitHub Pages](https://orion-north.github.io/last-light/). Built with parallel Codex agents. The game uses NASA's
+**Playable v0.16.** [Play on GitHub Pages](https://orion-north.github.io/last-light/). Built with parallel Codex agents. The game uses NASA's
 textured rover model, a navigable original Mars environment, an original adaptive
 score, and a complete three-act story. No account or AI API is needed by the game
 itself. A hosting provider may apply its own access gate.
@@ -50,8 +50,8 @@ Existing keyboard/touch fallbacks remain available.
 - Lighting follows the atmosphere; terrain contact and traveling shadows better anchor the rover and rocks. Desktop quality uses 2× pixel ratio cap, 2048 shadows and up to 8× surface anisotropy.
 
 - Two brief, skippable passages carry the mission from 2004 to 2015 and 2018; mission-age captions and a subtle rover finish retain those years.
-- A skippable twelve-second in-engine opening introduces your identity, first camera action, water-search mission and chosen archive.
-- Opportunity’s thoughts sit directly over the scene at the bottom, without a panel or speaker labels. Short thoughts connect the action to discoveries and attachment; they stop at contact loss. The date and next action share the same reading area, with the animated Mars/Earth link above.
+- A skippable twelve-second opening establishes identity, the ancient-water mission and Earth in three short beats. Skipping keeps the purpose in the first playable thought.
+- Opportunity’s thoughts sit directly over the scene at the bottom, without a panel or speaker labels. Thoughts appear at discoveries, not during driving, tools or sending. Geological results come first; their ancient-water interpretation appears once after receipt. Routine replies are wordless; the voice stops at contact loss. The date and next action share the same reading area, with the animated Mars/Earth link above.
 - Scene meaning and the next action sit in the main composition. Close rover framing and a compact left-side glyph guide keep attention on the world.
 - Release both triggers to arm, squeeze L2 + R2 together to charge, then release both to send. The carrier steadies as both triggers charge; releasing launches a signal across the illustrated link. No touchpad click or cursor aiming. Controller sending requires both triggers; × cannot send. A button alternative is available when no controller is connected.
 - Controller-first: left stick drives during travel and selects in menus; right stick looks and aims. Keyboard/touch remain supported.
