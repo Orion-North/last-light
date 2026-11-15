@@ -1,7 +1,5 @@
 /* A spatial link, not a message box: excite the carrier, release it across space. */
-body[data-upload="true"][data-screen="game"] .interaction-dock,
-body.touch-controls[data-upload="true"][data-screen="game"] .interaction-dock,
-body.controller-connected[data-upload="true"][data-screen="game"] .interaction-dock {
+body[data-upload="true"][data-screen="game"] .interaction-dock {
  position:absolute;left:50%;right:auto;top:53%;bottom:auto;transform:translate(-50%,-50%);
  width:min(1000px,calc(100vw - 48px));max-height:calc(100svh - 120px);overflow:auto;
  padding:0;border:0;background:none;box-shadow:none;pointer-events:auto;text-align:center;
@@ -127,20 +125,6 @@ body[data-upload="true"][data-screen="game"] .play-screen{background:linear-grad
 @media(max-height:720px){.upload-terminal[data-input="controller"][data-stage="ready"] .signal-exciter{height:40px;margin-bottom:8px}.signal-exciter .controller-glyph{width:31px;height:31px}}
 @media(max-width:600px){.upload-terminal__half i{width:55px}}
 
-/* A small signal instrument leaves the photographed work in view. */
-.upload-terminal .signal-world { width:92px;gap:9px; }
-.upload-terminal .planet,.upload-terminal .planet--earth,
-.upload-terminal[data-mode="archive"] .planet--earth {
-  width:9px;height:9px;background:#f3c590;box-shadow:0 0 8px #ffc57899;
-}
-.upload-terminal .planet--earth,.upload-terminal[data-mode="archive"] .planet--earth { background:#c3e6f4;box-shadow:0 0 10px #a2dcff88; }
-.upload-terminal .planet::before,.upload-terminal .planet::after { display:none; }
-.upload-terminal .signal-world::after { width:30px;height:30px;left:calc(50% - 15px);top:-11px; }
-.upload-terminal .signal-world>span { font-size:9px;letter-spacing:.16em; }
-.upload-terminal .signal-world small { font-size:6px;margin-top:5px; }
-.upload-terminal .signal-path { height:28px;margin-top:-33px; }
-.upload-terminal .signal-dialogue { gap:30px;margin:0 auto 6px; }
-.upload-terminal .signal-phrase span { font-size:7px; }
 .recovery-trace {display:flex;justify-content:center;gap:36px;list-style:none;padding:0;margin:0 0 18px;font:8px var(--mono);letter-spacing:.12em;color:#b4bcc2;}
 .recovery-trace li {display:flex;align-items:center;gap:8px;opacity:.28;}
 .recovery-trace li[data-reached="true"] {opacity:1;}

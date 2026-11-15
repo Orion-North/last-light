@@ -715,3 +715,16 @@ lane also updated obsolete music expectations and added tail-path regressions.
 14 real browser renders exposed and verified a fix for an onset gain spike.
 All 23 engine test files, source/asset checks and static build pass. Human mix and
 emotional judgment remain with listening; preview exported for review. Web-only.
+
+## UI-19 — sending layout repair
+
+User screenshot shows disconnected trigger controls and a faint miniature signal
+map over the rover. Root owns upload-terminal.js/css, story-console.css, browser
+fixture and visual verification/publication. REVIEW-19 (Sol) reads CSS cascade and
+controller-responsive layout; read-only, report concrete conflicts and test sizes.
+
+
+UI-19 complete: independent reviewer confirmed specificity conflict and the
+intentional tiny-dot/left-alignment rules. Root repaired cascade and instrument
+composition; 99 real-browser responsive combinations and simulated controller
+send/receipt pass. Engine/source/build checks pass. Publishing v0.18.1 web hotfix.

@@ -532,3 +532,24 @@ Reproduce with tests/browser/audio.html on the local server (excluded from stati
 build). Workspace outputs retain last-light-v18-audio-measurements.jsonl and a
 29-second stereo discovery WAV/MP3 preview. The preview uses production score,
 instruments, room and master processing, with wind/tool/radio sounds omitted.
+
+
+## v0.18.1 — repair controller sending layout
+
+User screenshot and independent Sol CSS review identified competing upload-dock
+selectors: controller/touch rules kept left:50% and a wide dock after the narrow
+story breakpoint removed its translation. Removed those redundant input-specific
+position overrides so the canonical responsive story layout wins consistently.
+Restored readable planet endpoints and path contrast; grouped the trigger gauges
+and live instruction with the signal rather than left-aligning them under the
+rover thought. The thought remains unboxed below the instrument.
+
+Verification: all 23 engine test files, 54 JS syntax/asset/story checks and static
+build pass. New local tests/browser/sending-layout.html measures 99 combinations:
+11 viewport sizes (including 944x453, both sides of 1000/650px breakpoints and
+844x390), three input classes and ready/sending/received. All dock bounds remain
+inside the viewport without horizontal overflow; trigger and map centers align;
+thoughts do not overlap the map. Real game simulated-controller check progressed
+ready → full squeeze → charged → release → sending → reply received, with no
+console errors. Physical haptics were not tested. Screenshot retained outside the
+repository as outputs/last-light-v18-1-sending.png.

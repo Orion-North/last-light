@@ -3,7 +3,7 @@
 A playable, real-time 3D story about NASA's Opportunity rover: discovery,
 attachment, a fading signal, and the things that remain.
 
-**Playable v0.18.** [Play on GitHub Pages](https://orion-north.github.io/last-light/). Built with parallel Codex agents. The game uses NASA's
+**Playable v0.18.1.** [Play on GitHub Pages](https://orion-north.github.io/last-light/). Built with parallel Codex agents. The game uses NASA's
 textured rover model, a navigable original Mars environment, an original adaptive
 score, and a complete three-act story. No account or AI API is needed by the game
 itself. A hosting provider may apply its own access gate.

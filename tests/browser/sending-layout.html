@@ -1,0 +1,39 @@
+<!doctype html><meta charset="utf-8"><title>Sending layout checks</title>
+<style>body{background:#181b20;color:white;font:14px system-ui;margin:12px}button{padding:10px;margin:6px}iframe{border:1px solid #777;display:block}pre{white-space:pre-wrap}</style>
+<button id="verify">Check responsive layouts</button><button id="preview">Preview controller sending</button><output id="status">Ready</output><pre id="results"></pre><iframe title="Sending layout"></iframe>
+<script type="module">
+import {renderUploadTerminal} from '../../src/ui/upload-terminal.js';
+const frame=document.querySelector('iframe'), status=document.querySelector('#status');
+const css=['style','integration','play','controller-glyphs','upload-terminal','journey','story-console'];
+const thought='<section class="story-console"><div class="story-console__meta"><span class="story-console__mark">&gt;_</span><span class="story-console__time">2004 · FIRST MORNING · SOL 01</span></div><p class="story-console__line">Soil beneath my wheels. I made it.</p></section>';
+async function show(w,h,input,stage,mode='reply') {
+  frame.style.width=w+'px';frame.style.height=h+'px';
+  const terminal=renderUploadTerminal({story:thought,title:'First morning',input:input==='touch'?'pointer':input,stage,mode,prompt:'Calling',response:'No reply'});
+  const loaded=new Promise(resolve=>frame.onload=resolve);
+  frame.srcdoc=`<!doctype html><html><head><base href="../../">${css.map(n=>`<link rel="stylesheet" href="src/ui/${n}.css">`).join('')}<style>body{background:#3c3026 url(public/images/mars-landscape.png) center/cover}</style></head><body data-screen="game" data-upload="true" class="${input==='controller'?'controller-connected':input==='touch'?'touch-controls':''}"><main class="play-screen"><div class="interaction-dock">${terminal}</div></main></body></html>`;
+  await loaded;
+  return frame.contentDocument;
+}
+document.querySelector('#preview').onclick=async()=>{await show(1000,650,'controller','ready');status.textContent='Controller preview';};
+document.querySelector('#verify').onclick=async()=>{
+  const failures=[];let count=0;
+  for(const [w,h] of [[1440,900],[1024,768],[1001,700],[1000,700],[944,453],[768,1024],[651,844],[650,844],[390,844],[844,390],[1024,600]]) {
+    for(const input of ['pointer','controller','touch']) for(const stage of ['ready','sending','received']) {
+      const doc=await show(w,h,input,stage);count++;
+      const dock=doc.querySelector('.interaction-dock'),r=dock.getBoundingClientRect();
+      if(r.left<0||r.right>w+.5||r.top<0||r.bottom>h+.5||dock.scrollWidth>dock.clientWidth+1) failures.push(`${w}x${h} ${input}/${stage}: dock overflow ${JSON.stringify({left:r.left,right:r.right,top:r.top,bottom:r.bottom,scroll:dock.scrollWidth,width:dock.clientWidth})}`);
+      const map=doc.querySelector('.signal-map').getBoundingClientRect();
+      const shell=doc.querySelector('.story-shell').getBoundingClientRect();
+      if(map.bottom>shell.top+1)failures.push(`${w}x${h} ${input}/${stage}: diagram overlaps thought`);
+      if(input==='controller'&&stage==='ready'){
+        const controls=doc.querySelector('.signal-controls').getBoundingClientRect();
+        const exciter=doc.querySelector('.signal-exciter').getBoundingClientRect();
+        if(Math.abs((exciter.left+exciter.right-map.left-map.right)/2)>2||controls.bottom>shell.top+1) failures.push(`${w}x${h}: triggers detached`);
+      }
+    }
+    status.textContent=`Checked ${count}`;
+  }
+  document.querySelector('#results').textContent=failures.join('\n')||'All docks stay within viewport without horizontal overflow; signal and triggers align; thoughts do not overlap the diagram.';
+  status.textContent=failures.length?`FAIL: ${failures.length}/${count}`:`PASS: ${count} responsive layouts`;
+};
+</script>
