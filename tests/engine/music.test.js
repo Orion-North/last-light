@@ -52,11 +52,12 @@ function musicHarness() {
     createBiquadFilter() { return node('filter'); }
     createStereoPanner() { return node('panner'); }
     createDynamicsCompressor() { return node('compressor'); }
+    createConvolver() { return node('convolver'); }
     createOscillator() { const source = node('oscillator'); sources.push(source); return source; }
     createBufferSource() { const source = node('buffer'); sources.push(source); return source; }
     createBuffer(channels, length, sampleRate) {
       const data = Array.from({ length: channels }, () => new Float32Array(length));
-      return { sampleRate, getChannelData: channel => data[channel] };
+      return { sampleRate, numberOfChannels: channels, getChannelData: channel => data[channel] };
     }
     async resume() { this.state = 'running'; }
     async close() { this.state = 'closed'; }
@@ -110,13 +111,13 @@ function musicHarness() {
 
   return {
     sources, nodes, timers, contexts, listeners, advance,
-    notes: () => sources.filter(source => !source.loop && source.started !== undefined && source.stopped !== undefined),
+    notes: () => sources.filter(source => source.started !== undefined && Number.isFinite(source.stopped)),
     assertCanceled() {
       assert.equal(timers.size, 0, 'no scheduler runs while sound is inactive');
       assert.ok(this.notes().every(source => source.stopped <= now), 'active and future notes are canceled');
     },
     assertAmbienceSilent() {
-      for (const source of sources.filter(source => source.loop)) {
+      for (const source of sources.filter(source => source.loop && !Number.isFinite(source.stopped))) {
         assert.ok(source.stopped <= now || hasSilentGain(source), 'looping ambience must also be muted');
       }
     },
@@ -156,7 +157,9 @@ test('score starts on demand and schedules non-silent musical buffers through on
     const musicalBuffers = h.notes().filter(source => source.kind === 'buffer');
     assert.ok(musicalBuffers.length > 1, 'music contains a phrase, not only looping wind');
     assert.ok(musicalBuffers.some(source => source.buffer.getChannelData(0).some(sample => Math.abs(sample) > 0.01)), 'synthesized instruments contain non-zero samples');
-    assert.ok(h.notes().some(source => source.kind === 'oscillator'), 'the opening supports its melody with a sustained layer');
+    assert.ok(musicalBuffers.filter(source => source.loop).length >= 6, 'opening layers sustained harmony and bass under the melody');
+    assert.ok(musicalBuffers.every(source => source.buffer.numberOfChannels === 2), 'ensemble instruments are stereo');
+    assert.ok(musicalBuffers.some(source => source.started < 1), 'music enters in the first second');
     await sound.start();
     await sound.resume();
     h.advance(30);
@@ -266,21 +269,26 @@ test('interaction cues distinguish investigation, transmission, and an Earth rep
   });
 });
 
-test('long exploration alternates orchestration and includes audible breathing room', async () => {
+test('long exploration thins the ensemble while preserving harmonic support and breathing room', async () => {
+  const { phrase } = await import('../../src/audio/score.js');
   await withMusic(async (sound, h) => {
     await sound.start();
-    h.advance(30);
-    const before = h.notes().length;
-    h.advance(7);
-    const solo = h.notes().slice(before);
-    assert.ok(solo.length > 0);
-    assert.ok(solo.every(source => source.kind === 'buffer'), 'second statement leaves the sustained layer out');
-    h.advance(9);
+    h.advance(1);
+    const openingLoops = h.notes().filter(s => s.loop && s.started < 1).length;
+    assert.ok(openingLoops >= 4);
+    const first = phrase('discovery');
+    // Opening begins at .35s; finish the first phrase before its composed gap.
+    const lastOnset = Math.max(...first.events.map(e => e.at)) * .48 + .35;
+    h.advance(lastOnset + .5 - h.contexts[0].currentTime);
     const resting = h.notes().length;
-    h.advance(15);
-    assert.equal(h.notes().length, resting, 'long composed rest avoids a constant loop');
-    h.advance(8);
-    assert.ok(h.notes().length > resting, 'next variation returns after the rest');
+    h.advance(3);
+    assert.equal(h.notes().length, resting, 'phrase-end breath schedules no filler');
+    const secondStart = .35 + first.seconds;
+    h.advance(secondStart + 1 - h.contexts[0].currentTime);
+    const returning = h.notes().filter(s => s.started >= secondStart - .1);
+    assert.ok(returning.some(s => s.loop), 'thin return keeps harmonic support');
+    assert.ok(returning.filter(s => s.loop).length < openingLoops, 'return uses fewer sustained voices');
+    assert.ok(returning.some(s => !s.loop), 'home melody returns above the support');
   });
 });
 
@@ -400,12 +408,12 @@ test('authored chapters change musical material, not only gain or tempo', async 
   for (const name of ['discovery', 'geology', 'amber', 'storm', 'fading', 'waiting', 'remembrance']) {
     for (let n = 0; n < 4; n++) {
       const p = phrase(name, n);
-      assert.ok(p.events.length <= 22, 'bounded chamber orchestration');
+      assert.ok(p.events.length <= 60, 'bounded cinematic orchestration');
       assert.ok(p.events.every(e => e.volume > 0 && e.duration > 0 && e.note >= 31 && e.note <= 88));
       assert.ok(p.seconds > Math.max(...p.events.map(e => e.at)) * .48);
     }
   }
-  assert.deepEqual(phrase('discovery', 1).events.map(e => [e.note, e.at]), HOME, 'solo return preserves the exact identity');
+  assert.deepEqual(phrase('discovery', 1).events.filter(e => e.instrument === 'pluck').map(e => [e.note, e.at]), HOME, 'thinner accompanied return preserves the exact identity');
 });
 
 test('chapter changes discard future material and Earth cannot produce a received cue', async () => {
@@ -438,7 +446,8 @@ test('foreground cues duck score and recover without ducking the cue bus', async
     await sound.start();
     h.advance(3);
     const note = h.notes().find(s => s.kind === 'buffer');
-    const bus = note.connections[0].connections[0].connections[0];
+    const input = note.connections[0].connections[0];
+    const bus = input.connections.find(n => n.kind === 'gain' && n.gain.value === .88).connections[0];
     assert.equal(bus.gain.target, 1);
     const before = h.sources.length;
     sound.cue('transmit');
@@ -615,5 +624,42 @@ test('terminal articulation respects lifecycle gates and never fills missing rep
     sound.destroy();
     sound.textPulse({ first: true });
     assert.equal(h.sources.length, before);
+  });
+});
+
+
+test('transmission, pause and explicit silence replace reverb processors without stale tail paths', async () => {
+  await withMusic(async (sound, h) => {
+    await sound.start();
+    h.advance(3);
+    const current = () => h.nodes.filter(n => n.kind === 'convolver').at(-1);
+    const assertFlushed = old => {
+      assert.notEqual(current(), old, 'a fresh processor replaces the stored reverb tail');
+      assert.equal(old.connections.length, 0, 'old processor cannot reach the output');
+      assert.ok(!h.nodes.some(n => n.connections.includes(old)), 'no source/filter can feed the old processor');
+      assert.ok(current().buffer.getChannelData(0).some(sample => sample !== 0), 'replacement retains the original room impulse');
+    };
+    let old = current();
+    assert.ok(old.connections.length > 0, 'room is connected during ordinary music');
+    sound.beginTransmission();
+    assertFlushed(old);
+    sound.cancelTransmission();
+    h.advance(3);
+    old = current();
+    sound.pause();
+    assertFlushed(old);
+    h.assertCanceled();
+    await sound.resume();
+    h.advance(3);
+    old = current();
+    sound.setNarrative(7, 'received');
+    assertFlushed(old);
+    h.assertCanceled();
+    h.assertAmbienceSilent();
+    const silentCount = h.notes().length;
+    h.advance(10);
+    assert.equal(h.notes().length, silentCount, 'no new source re-excites the empty room during silence');
+    sound.destroy();
+    assert.equal(current().connections.length, 0, 'destroy removes the final reverb output');
   });
 });

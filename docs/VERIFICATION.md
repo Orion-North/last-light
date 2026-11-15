@@ -499,3 +499,36 @@ inventory was unavailable; root performed the browser checks. Physical haptics,
 subjective audio and emotional effectiveness remain human playtest limits.
 Screenshots are retained in the workspace outputs as last-light-v17-discovery.jpg,
 last-light-v17-survey.jpg and last-light-v17-ending.jpg; they are not web assets.
+
+
+## v0.18 — layered cinematic score
+
+Three Sol lanes composed richer material, built stereo instruments and reviewed
+firsthand space-film scoring accounts. Root integrated and checked the real
+browser output. Original notes and foreground signal contracts are preserved.
+
+- All 23 engine test files pass. New checks cover connected polyphonic voicings,
+  chapter contrast, bounded events/voices, seamless stereo buffer wraps, cache
+  limits, asynchronous no-voice preparation, silent initial gain, finite looping
+  source cancellation and reverb processor replacement at narrative/lifecycle stops.
+- 54 JS syntax checks, story/asset contracts, static build and git diff checks pass.
+- OfflineAudioContext in Chromium rendered seven chapter families, full and thin
+  variations (14 renders), through the production instruments, room and compressor.
+  All samples finite; nonzero stereo differences; peaks 0.05298–0.13418, no clipping.
+  Discovery RMS 0.02096; storm 0.01027; fading 0.00363. These values describe this
+  score-only render, not the complete score/effects mix or subjective loudness.
+- Browser rendering caught a reproducible one-frame sunset onset spike (1.42856
+  peak). Isolating dry instrument families located it at simultaneous note starts:
+  a default-unity gain could briefly precede its scheduled zero. Explicit silent
+  initial gains remove it; sunset now peaks 0.11236. This issue was invisible in
+  the fake audio graph tests. The browser fixture retains isolation diagnostics.
+- Local game smoke: sound enable, settings pause, close/resume and mute; no browser
+  warning/error logs. Saved journey was not restarted or progressed by this check.
+- No human listening or fresh complete game playthrough is claimed. The critic
+  flags intimate Earth balance, pulse repetition and natural lead decay for the
+  user's listening pass. This is synthesized original music, not sampled orchestra.
+
+Reproduce with tests/browser/audio.html on the local server (excluded from static
+build). Workspace outputs retain last-light-v18-audio-measurements.jsonl and a
+29-second stereo discovery WAV/MP3 preview. The preview uses production score,
+instruments, room and master processing, with wind/tool/radio sounds omitted.

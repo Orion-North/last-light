@@ -1,8 +1,10 @@
+import { createInstrumentBank } from './instruments.js';
+import { createScoreSpace } from './space.js';
 import { SECTIONS as sections, phrase, SIGNAL_QUESTION, SIGNAL_ANSWER, ANSWER_WINDOW } from './score.js';
 
 /**
  * LAST LIGHT / "Something to show them"
- * Original adaptive chamber score, synthesized locally with Web Audio.
+ * Original adaptive cinematic score, synthesized locally with Web Audio.
  * No soundtrack samples, copied melodies, live AI, or network requests.
  * Composition and implementation notes: docs/SOUNDTRACK.md.
  */
@@ -39,7 +41,8 @@ export function createSound() {
   const lastCueTimes = new Map();
   let endPlayed = false;
   const activeVoices = new Set();
-  const pianoCache = new Map();
+  let instruments = null;
+  let scoreSpace = null;
   let textBuffer = null;
   let lastTextTime = -Infinity;
   let textPulses = 0;
@@ -108,6 +111,7 @@ export function createSound() {
     if (timer !== null) clearTimeout(timer);
     timer = null;
     queue = [];
+    instruments?.prepare([]);
     stopVoices(stopForeground ? null : 'accompaniment');
   }
 
@@ -115,6 +119,7 @@ export function createSound() {
     transmission = null;
     signalHoldUntil = 0;
     stopScheduler();
+    scoreSpace?.clear();
     updateVolume();
   }
 
@@ -142,45 +147,11 @@ export function createSound() {
       // Continue may change the score while Earth is still answering. Only
       // authored silence (or an explicit lifecycle stop) cuts foreground voices.
       stopScheduler(section === 'silence');
+      if (section === 'silence') scoreSpace?.clear();
       phraseNumber = 0;
       // Silence is explicit rather than an almost-inaudible drone.
       if (section !== 'silence') restartScheduler(section === 'remembrance' ? 1.8 : 0.7);
     }
-  }
-
-  // A small original felt-piano/harp hybrid: damped, slightly inharmonic partials.
-  // Each note has its own cached waveform, with an unobtrusive felt-like attack.
-  function pianoBuffer(note, timbre = 'pluck') {
-    const key = `${timbre}:${note}`;
-    if (pianoCache.has(key)) return pianoCache.get(key);
-    const rate = Math.min(context.sampleRate, 24000);
-    const length = Math.ceil(rate * 6.5);
-    const buffer = context.createBuffer(1, length, rate);
-    const samples = buffer.getChannelData(0);
-    const frequency = midi(note);
-    const harmonics = timbre === 'reed' ? [1, .08, .23, .025, .07] : [1, .32, .13, .055, .018];
-    let noise = 43 + note;
-    for (let i = 0; i < length; i += 1) {
-      const t = i / rate;
-      const attack = 1 - Math.exp(-t * 110);
-      let value = 0;
-      for (let h = 1; h <= harmonics.length; h += 1) {
-        const partial = frequency * h * (1 + 0.00011 * h * h);
-        const decay = Math.exp(-t * (0.66 + h * 0.23));
-        value += Math.sin(2 * Math.PI * partial * t) * harmonics[h - 1] * decay;
-      }
-      noise = (noise * 1664525 + 1013904223) >>> 0;
-      const felt = (noise / 4294967296 - 0.5) * 0.045 * Math.exp(-t * 130);
-      if (timbre === 'glass') {
-        value = Math.sin(2 * Math.PI * frequency * t) * Math.exp(-t * 1.3)
-          + .32 * Math.sin(2 * Math.PI * frequency * 2.756 * t) * Math.exp(-t * 2.7)
-          + .12 * Math.sin(2 * Math.PI * frequency * 5.404 * t) * Math.exp(-t * 4);
-      }
-      const onset = timbre === 'reed' ? (1 - Math.exp(-t * 9)) : attack;
-      samples[i] = Math.tanh((value * onset + (timbre === 'pluck' ? felt : 0)) * .8) * .7;
-    }
-    pianoCache.set(key, buffer);
-    return buffer;
   }
 
   function registerVoice(sources, nodes, group = 'foreground') {
@@ -194,52 +165,6 @@ export function createSound() {
       };
     }
     return voice;
-  }
-
-  function pluck(note, when, volume, duration = 5.8, timbre = 'pluck') {
-    const source = context.createBufferSource();
-    const gain = context.createGain();
-    source.buffer = pianoBuffer(note, timbre);
-    gain.gain.setValueAtTime(volume, when);
-    gain.gain.setValueAtTime(volume, when + Math.max(0.02, duration - 0.18));
-    gain.gain.linearRampToValueAtTime(0, when + duration);
-    const pan = context.createStereoPanner?.();
-    if (pan) {
-      pan.pan.value = note < 50 ? 0 : -0.14 + ((note % 5) * 0.06);
-      source.connect(gain).connect(pan).connect(musicBus);
-    } else source.connect(gain).connect(musicBus);
-    registerVoice([source], [source, gain, ...(pan ? [pan] : [])], 'accompaniment');
-    source.start(when);
-    source.stop(when + duration + 0.02);
-  }
-
-  function stringNote(note, when, volume, duration) {
-    const envelope = context.createGain();
-    const filter = context.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 680;
-    filter.Q.value = 0.4;
-    envelope.gain.setValueAtTime(0, when);
-    envelope.gain.linearRampToValueAtTime(volume, when + 1.4);
-    envelope.gain.setValueAtTime(volume * 0.8, when + Math.max(1.5, duration - 1.8));
-    envelope.gain.linearRampToValueAtTime(0, when + duration);
-    const pan = context.createStereoPanner?.();
-    if (pan) {
-      pan.pan.value = note % 2 ? 0.32 : -0.32;
-      filter.connect(envelope).connect(pan).connect(musicBus);
-    } else filter.connect(envelope).connect(musicBus);
-    const oscillators = [0].map(detune => {
-      const oscillator = context.createOscillator();
-      oscillator.type = 'triangle';
-      oscillator.frequency.value = midi(note) * (1 + detune);
-      oscillator.connect(filter);
-      return oscillator;
-    });
-    registerVoice(oscillators, [...oscillators, filter, envelope, ...(pan ? [pan] : [])], 'accompaniment');
-    for (const oscillator of oscillators) {
-      oscillator.start(when);
-      oscillator.stop(when + duration + 0.03);
-    }
   }
 
   function composePhrase(start) {
@@ -272,8 +197,8 @@ export function createSound() {
     while (queue.length && queue[0].when <= now + 0.35) {
       const event = queue.shift();
       if (event.when < now - 0.08) continue;
-      if (event.instrument !== 'string') pluck(event.note, Math.max(now, event.when), event.volume, event.duration, event.instrument);
-      else stringNote(event.note, Math.max(now, event.when), event.volume, event.duration);
+      const voice = instruments.play(event, Math.max(now, event.when), scoreSpace.input);
+      registerVoice(voice.sources, voice.nodes, 'accompaniment');
     }
     timer = setTimeout(tick, 80);
     // Node-based lifecycle tests should not be kept alive by the browser scheduler.
@@ -285,6 +210,7 @@ export function createSound() {
     if (timer !== null) return;
     queue = [];
     nextPhrase = context.currentTime + delay;
+    instruments.prepare(phrase(section, phraseNumber).events);
     tick();
   }
 
@@ -294,6 +220,8 @@ export function createSound() {
     musicBus = context.createGain();
     musicBus.gain.value = 1;
     musicBus.connect(master);
+    instruments = createInstrumentBank(context);
+    scoreSpace = createScoreSpace(context, musicBus);
     const compressor = context.createDynamicsCompressor();
     compressor.threshold.value = -18;
     compressor.knee.value = 18;
@@ -401,6 +329,7 @@ export function createSound() {
     for (const [note, delay, duration, volume] of patterns[kind] || []) {
       const oscillator = context.createOscillator();
       const gain = context.createGain();
+      gain.gain.value = 0;
       const when = now + delay;
       oscillator.type = kind === 'investigate' ? 'triangle' : 'sine';
       oscillator.frequency.value = midi(note);
@@ -419,6 +348,7 @@ export function createSound() {
     for (const [note, delay, duration, volume] of pattern) {
       const oscillator = context.createOscillator();
       const gain = context.createGain();
+      gain.gain.value = 0;
       const when = now + delay;
       oscillator.type = 'sine';
       oscillator.frequency.value = midi(note);
@@ -436,6 +366,7 @@ export function createSound() {
     if (!canPlay() || transmission) return;
     // Clear sustained accompaniment so its tail cannot fill the missing reply.
     stopVoices();
+    scoreSpace?.clear();
     transmission = mode;
     signalHoldUntil = Infinity;
     smooth(musicBus.gain, 0, .025);
@@ -476,6 +407,7 @@ export function createSound() {
     filter.frequency.value = cutoff;
     filter.Q.value = .35;
     const gain = context.createGain();
+    gain.gain.value = 0;
     gain.gain.setValueAtTime(0, now);
     gain.gain.linearRampToValueAtTime(level * (first ? 1 : .7), now + .004);
     gain.gain.exponentialRampToValueAtTime(.0001, now + duration);
@@ -570,7 +502,8 @@ export function createSound() {
       for (const source of [windSource, motorSource, gritSource]) {
         try { source?.stop(); source?.disconnect(); } catch { /* Already stopped. */ }
       }
-      pianoCache.clear();
+      instruments?.clear();
+      scoreSpace?.destroy();
       textBuffer = null;
       if (context && context.state !== 'closed') context.close().catch(() => {});
     },

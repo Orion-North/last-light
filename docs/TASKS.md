@@ -692,3 +692,26 @@ Three Sol implementation/review lanes; root browser QA completed all five survey
 from seeded arrivals and consecutive final-sky-through-ending sequence. Physical
 hardware/audio perception and a fresh uninterrupted playthrough remain unverified.
 All 21 engine test files, source/assets and static build pass; publishing web only.
+
+## SCORE-18 — cinematic exploration soundtrack
+
+User asks for a richer soundtrack inspired by space films. Shared develop/v0.18;
+three Sol lanes with disjoint ownership, no agent commits/publication:
+- COMPOSE-18: src/audio/score.js and new tests/engine/score-arrangement.test.js.
+  Rich harmonic beds, layered rhythmic motion and evolving original orchestration;
+  retain learned signal melody and explicit narrative silence.
+- TIMBRE-18: new src/audio/instruments.js and tests/engine/instruments.test.js.
+  Bounded reusable stereo instrument synthesis and music-voice graph for browser
+  and offline audition. No external samples or imitated film melodies.
+- CRITIQUE-18: docs/reviews/SCORE-18.md. Research composer/performer accounts of
+  space-film scoring; critically review musical pacing, texture and mix proposals.
+- Root: sound runtime integration, lifecycle tests, audition export/browser QA,
+  score documentation/asset ledger, build and web-only publication.
+
+
+SCORE-18 integrated: connected ensemble score, stereo finite voice bank, bounded
+async preparation, room/tail lifecycle and original protocol preserved. Compose
+lane also updated obsolete music expectations and added tail-path regressions.
+14 real browser renders exposed and verified a fix for an onset gain spike.
+All 23 engine test files, source/asset checks and static build pass. Human mix and
+emotional judgment remain with listening; preview exported for review. Web-only.

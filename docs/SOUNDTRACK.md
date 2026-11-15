@@ -6,7 +6,7 @@ Opportunity needs a recognizable identity before its routine breaks. The score
 moves from curiosity to familiarity, then loses its ability to complete a phrase.
 Earth's music remembers the rover without pretending it has answered. The ending
 holds both the discoveries and the machine in the same ensemble. This is original
-procedural chamber music, with authored pitches/rhythms, no borrowed recordings,
+procedural cinematic music, with authored pitches/rhythms, no borrowed recordings,
 no external samples, no network requests and no runtime AI.
 
 ## Themes and dramatic arrangement
@@ -14,37 +14,49 @@ no external samples, no network requests and no runtime AI.
 The home call is **D4–A4–E4–F♯4–D4**, at eighth-note positions **0, 3, 5, 8, 12**.
 The upward fifth reaches outward; the ninth and third find a tentative home.
 The answer ends through B3 toward D4. Slow 6/8 gives the rover a walking breath.
-Four returns include a full call/answer, unaccompanied call, changed answer and
+Four returns include a full call/answer, thinner accompanied call, changed answer and
 answer-led recollection. Long composed rests let place and player action lead.
 
 | Scene family | Composition and orchestration |
 | --- | --- |
-| First wonder | Felt/harp home theme, open D/add9, B-minor, G and A colors; isolated low roots and a brief filtered triangle harmonic. |
+| First wonder | Felt/harp home theme, open D/add9, B-minor, G and A colors; connected organ triads, moving string dyads, sustained low roots and a restrained uneven pulse. |
 | Geology (indices 1–2) | Separate **D5–E5–A5–F♯5–E5–D5** strata cell at positions 1,4,7,13,17,21. Inharmonic glass makes close observation sparkle. A quiet descending felt counterline answers later; open fifth/ninth voicings leave room for detail. |
 | Lived routine / sunset | **A3–D4–F♯4–E4** rocks in repeated groups, later rising to A4. The reaching call has become practiced middle-register work. Harmony shifts under it without a big cinematic swell. |
 | Storm | Home pitches return displaced to positions 0,4,9,17,28; F♯ becomes F and the final note falls to C♯ instead of resolving home. Alternating returns omit that ending entirely. Low D/B♭/A harmony contains a close semitone; no bright glass counterline. Wind occupies more space as the ensemble withdraws. |
-| Fading | Only D4 and E4 remain, eleven eighths apart, with no bass or sustained layer. Unfinished is the point. |
+| Fading | Only D4 and E4 remain, eleven eighths apart, above three faint remnants of the former harmony. Unfinished is the point. |
 | Earth waits | A different reed timbre descends **A3–F♯3–E3–D3**. B/G roots and suspended inner voices keep this human recollection distinct from the rover call. Martian wind is absent. |
 | Narrative silence | Indices 7 and 10 at `received` cancel all scheduled/active voices, wind and mechanical sound. No replacement drone or success sound. |
 | Remembrance | Complete home identity returns after 1.8 seconds. The first answer opens toward D5 rather than closing down; high glass recalls the geological cell within the same phrase. It acknowledges the discoveries without a triumphant fanfare. |
 
-Ordinary phrases occupy eight bars (48 eighths), followed by 7–25 seconds of
+Ordinary phrases occupy eight bars (48 eighths), followed by 5–20 seconds of
 additional space depending on section/return. The second statement ends early
 and rests longer. Exploration can therefore remain unhurried without a constant
 melodic loop. Authored score data is in `src/audio/score.js`.
 
 ## Instrument and sound design
 
-Three cached mono instrument families render locally at up to 24 kHz:
+The score uses cached stereo instruments generated locally at up to 24 kHz:
 
-- Felt/harp: five slightly inharmonic decaying partials, faster high-partial decay,
-  a deterministic short felt transient and a softened onset.
-- Glass: fundamental plus 2.756× and 5.404× partials with independent damping;
-  a shorter scored duration and a restrained level keep sparkle from becoming UI.
-- Reed: odd-partial emphasis and a slower breath onset in the middle/low register.
+- Organ: eight harmonics, three subtly detuned voices and breathing sidebands.
+- Strings and pads: independently phased harmonic ensembles with staggered entries.
+- Bass: centered low harmonic foundation, finite release and no permanent drone.
+- Felt/harp, inharmonic glass and reed: decaying foreground colors for the authored
+  home, geology and Earth themes; pulse is a softer, shorter accompanying figure.
 
-A filtered triangle harmonic supports occasional chords. This deliberately small
-synthetic ensemble does not claim to be recorded piano or orchestral strings.
+Sustains use seamless periodic buffers around 2.35 seconds, each played by one
+finite source. Decaying colors last 2.4 seconds; written durations bound voices
+but do not make a naturally decayed note sustain. The LRU cache holds 48 buffers,
+about 22 MiB at its maximum rate. Asynchronous preparation warms one buffer per
+task during a section's opening breath, without starting voices. It cancels on
+replacement and lifecycle stops. This is a synthetic ensemble, not sampled
+orchestral performance.
+
+A 2.6-second stereo convolution room supplies restrained depth. Both dry and wet
+returns pass through the score gate; transmission, silence, pause, hidden tabs
+and mute discard the room tail instead of letting it reappear after a hold.
+Foreground cues remain close and dry. Firsthand space-film references and the
+critical listening priorities are recorded in [SCORE-18](reviews/SCORE-18.md).
+
 The three persistent environmental/activity sources remain wind, wheel/carrier
 triangle and filtered grit. Terrain updates allocate no new voices. Investigation
 suppresses wheels. Pressure builds late with the held-charge fraction, then falls
@@ -70,7 +82,7 @@ recovery restores space after the cue. Environmental/mechanical/cue routes bypas
 the score duck and share the conservative master/compressor. This establishes:
 
 1. Action feedback: low investigation latch, short charge confirmation, rising
-   three-pulse departure, slower lower-register real receipt.
+   four-note departure, slower lower-register real receipt.
 2. Score: identity and dramatic structure, yielding while the player sends.
 3. Place/activity: restrained terrain, carrier and wind, with Earth free of Mars wind.
 
@@ -102,7 +114,7 @@ brightness, low reed audibility and the dramatic duration of rests.
 Foreground sending now has its own short authored melody, repeated unchanged in
 ordinary discoveries: D5–A5–E5–F♯5, at 0/.24/.48/.84 seconds. A real receipt replies
 A4–F♯4–E4–D4 with the same rhythm, settling home. These are original short phrases,
-separate from the preserved chamber score. The final partial send stops after E5;
+separate from the cinematic score. The final partial send stops after E5;
 it never plays the answer. Earth recovery attempts retain the full recognizable
 question, now voiced by the human side, followed by an empty 2.2-second answer
 window. No failure beep substitutes for the missing voice.
@@ -135,3 +147,21 @@ breath. Idle cancellation is harmless. Runtime navigation/title cancellation
 must call this even when the audio context itself remains active. Ordinary and
 Earth-call travel should share the same 2.4-second result time, establishing a
 fixed place where the learned answer appears or goes missing.
+
+
+## v0.18 — cinematic ensemble and measured browser audition
+
+The arrangement now connects four harmonic changes with organ triads, moving
+string dyads and low roots, plus restrained irregular pulse. Alternate statements
+retain open harmony instead of exposing a lone tone. Earth removes the pulse;
+storm progressively loses notes, sustain and energy; fading has only five events.
+Explicit silence stays empty. The new score keeps the exact learned send/reply
+melodies and clears room tails before their expected answer window.
+
+Seven families were rendered in full and thin variations through the real browser
+OfflineAudioContext (14 checks). Finite samples, stereo variation and peak bounds
+passed; a fractional-onset default-gain spike was found and fixed in that process.
+The local audition page exports production-graph WAVs. Structural and signal
+checks do not establish emotional quality or perceived balance. Listen especially
+for the Earth reed against sustained harmony and the repeated pulse's restraint.
+See VERIFICATION.md for metrics and reviews/SCORE-18.md for research and critique.
