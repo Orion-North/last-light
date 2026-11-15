@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createController } from '../../src/input/controller.js';
 
-function fixture() {
+function fixture(onAction = () => {}) {
   const win = new EventTarget(), doc = new EventTarget(), hid = new EventTarget();
   doc.hidden = false;
   let timeNow = 0;
@@ -15,7 +15,7 @@ function fixture() {
     vibrationActuator: { effects: ['dual-rumble'], playEffect: async (...args) => pulses.push(args), reset: async () => { resets++; } } };
   const nav = { getGamepads: () => pads, hid };
   const driver = createController({ navigator: nav, window: win, document: doc, now: () => timeNow,
-    onInput: value => inputs.push(value), onAction: value => actions.push(value), onStatus: value => statuses.push(value),
+    onInput: value => inputs.push(value), onAction: value => { actions.push(value); onAction(value); }, onStatus: value => statuses.push(value),
     onTouch: value => touches.push(value), onScroll: value => scrolls.push(value) });
   return { win, doc, hid, pad, driver, inputs, actions, statuses, pulses, nav, touches, scrolls,
     tick: (time = 0) => { timeNow = time; raf(time); }, pads: value => { pads = value; }, get resets() { return resets; }, get cancelled() { return cancelled; } };
@@ -646,4 +646,52 @@ test('uplink right stick scrolls reading text without moving the rover or mast',
   f.pad.axes[3]=-1;f.tick(100);assert.ok(f.scrolls.at(-1)<0);
   const count=f.scrolls.length;f.driver.setPaused(true);f.tick(150);
   assert.equal(f.scrolls.length,count);await f.driver.destroy();
+});
+
+
+test('Triangle has no gameplay action while Square, Cross and Circle remain mapped', async () => {
+  const f = fixture(); f.pads([f.pad]); f.tick();
+  for (const [index, action] of [[3, null], [2, 'journal'], [0, 'primary'], [1, 'back']]) {
+    const count = f.actions.length;
+    f.pad.buttons[index].pressed = true; f.tick(); f.tick();
+    assert.equal(f.actions.length, count + (action ? 1 : 0));
+    if (action) assert.equal(f.actions.at(-1), action);
+    f.pad.buttons[index].pressed = false; f.tick();
+  }
+  await f.driver.destroy();
+});
+
+test('modal context rearm requires fresh face and directional button presses', async () => {
+  const f = fixture(); f.pads([f.pad]); f.tick();
+  f.driver.setInputMode('menu'); f.driver.setPaused(true);
+  // A context change can happen between polls, with other buttons already held.
+  f.pad.buttons[0].pressed = true; f.pad.buttons[1].pressed = true; f.pad.buttons[13].pressed = true;
+  f.driver.rearmMenu(); f.tick(50); f.tick(100);
+  assert.deepEqual(f.actions, []); assertNeutral(f.inputs.at(-1));
+  for (const index of [0, 1, 13]) f.pad.buttons[index].pressed = false;
+  f.tick(150);
+  f.pad.buttons[0].pressed = true; f.tick(200);
+  assert.deepEqual(f.actions, ['primary']);
+  f.pad.buttons[1].pressed = true; f.tick(250);
+  assert.deepEqual(f.actions, ['primary', 'back']);
+  await f.driver.destroy();
+});
+
+
+test('opening a modal inside an action callback consumes other held buttons in that sample', async () => {
+  let f;
+  f = fixture(action => {
+    if (action === 'journal') {
+      f.driver.setPaused(true); f.driver.setInputMode('menu'); f.driver.rearmMenu();
+    }
+  });
+  f.pads([f.pad]); f.tick();
+  f.pad.buttons[2].pressed = true; f.pad.buttons[9].pressed = true; f.pad.buttons[13].pressed = true;
+  f.tick(50);
+  assert.deepEqual(f.actions, ['journal']);
+  f.tick(100); assert.deepEqual(f.actions, ['journal']);
+  f.pad.buttons[9].pressed = false; f.pad.buttons[13].pressed = false; f.tick(150);
+  f.pad.buttons[13].pressed = true; f.tick(200);
+  assert.deepEqual(f.actions, ['journal', 'navDown']);
+  await f.driver.destroy();
 });

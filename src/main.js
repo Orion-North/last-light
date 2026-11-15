@@ -77,6 +77,7 @@ const squeeze = createSqueeze();
 let uploadInputAt = 0;
 
 let restoreSendFocus = false;
+const modalReturnFocus = new WeakMap();
 let inputDevice = settings.touch ? 'touch' : 'keyboard';
 let controllerConnected = false;
 let controllerId = '';
@@ -235,7 +236,7 @@ function startBriefing(passage = null) {
 }
 
 function syncInputMode() {
-  const mode = inputMode({screen, phase:state.phase, modal:!!document.querySelector('dialog[open]'), investigating, contacting, travelling:!reached});
+  const mode = inputMode({screen, phase:state.phase, modal:!!document.querySelector('dialog[open]'), investigating:investigating && toolState?.stage!=='compare', contacting, travelling:!reached});
   controller?.setInputMode?.(mode);
   const context = `${screen}:${state.sceneIndex}:${state.phase}:${document.querySelector('dialog[open]')?.id || ''}:${investigating}`;
   if(context!==inputContext) {inputContext=context;controller?.rearmMenu?.();}
@@ -254,9 +255,9 @@ function updateInputHint() {
   else if(investigating) hints=row('look','Look','↑↓←→')+'<span class="control-rest">Hold still to record</span>';
   else if(moving) hints=row('move','Drive','WASD')+row('look','Look','Drag');
   else hints=screen==='game' && state.phase!=='choose'?'':row('move','Select','Tab')+row('primary','Confirm','Enter');
-  if(!contacting && !investigating && !transmitting)hints+=row('journal','Memories','J');
+  if(screen==='game')hints+=row('journal','Memories','J');
   if(settings.touch&&!pad) hints=contacting?'<span class="controller-hint"><kbd>·</kbd>Tap Send</span>':investigating?'<span class="controller-hint"><kbd>↔</kbd>Drag to look</span><span class="control-rest">Hold still to record</span>':moving?'<span class="controller-hint"><kbd>↔</kbd>Drag to look</span>':'<span class="controller-hint"><kbd>·</kbd>Tap to choose</span>';
-  if(controllerConnected && !investigating && controllerScrollTarget(app)) hints+=row('look','Read more','Scroll');
+  if(controllerConnected && (!investigating || toolState?.stage==='compare') && controllerScrollTarget(app)) hints+=row('look','Read more','Scroll');
   $('#input-hint').innerHTML=hints;
 }
 
@@ -271,12 +272,16 @@ function refreshControllerPrompts() {
   app.querySelectorAll('[data-action]').forEach(button=>{if(button.dataset.action!=='transmit')decorate(button,button.dataset.action==='journal'?'journal':'primary');});
   for(const [side,action] of [['left','reverse'],['right','forward']]){const icon=app.querySelector(`[data-trigger="${side}"]`);if(icon)icon.innerHTML=controllerGlyph(action,family);}
   decorate($('#settings-toggle'),'pause');
-  $('#camera-reset').innerHTML='<span class="camera-reset-mark" aria-hidden="true">↺</span><span class="sr-only">Recenter camera</span>';
-  decorate($('#camera-reset'),'camera');
   $('#journal-toggle').hidden=controllerConnected;
-  document.querySelectorAll('dialog [data-close]').forEach(button=>decorate(button,'back'));
-  const guide = [['move','Drive'],['forward','Forward'],['reverse','Reverse'],['look','Look'],['primary','Interact'],['select','Select'],['journal','Journal'],['camera','Camera'],['back','Back'],['pause','Pause']];
+  document.querySelectorAll('dialog [data-close]').forEach(button=>{
+    if(button.classList.contains('close-button'))button.innerHTML=show?'':'<span aria-hidden="true">×</span>';
+    decorate(button,'back');
+  });
+  const guide = [['move','Drive'],['forward','Forward'],['reverse','Reverse'],['look','Look'],['primary','Interact'],['select','Select'],['journal','Memories'],['back','Back'],['pause','Pause']];
   $('#controller-guide').innerHTML = guide.map(([action,label])=>`<span class="controller-hint" aria-label="${controllerButtonName(action,family)}: ${label.toLowerCase()}">${controllerGlyph(action,family)}<span>${label}</span></span>`).join('');
+  const journalHints=$('#journal-controls');
+  journalHints.hidden=!controllerConnected;
+  journalHints.innerHTML=[['select','Select entry'],['primary','Open / close entry'],['look','Scroll'],['back','Close']].map(([action,label])=>`<span class="controller-hint" aria-label="${controllerButtonName(action,family)}: ${label.toLowerCase()}">${controllerGlyph(action,family)}<span>${label}</span></span>`).join('');
   updateInputHint();
   syncInputMode();
 }
@@ -338,7 +343,7 @@ function renderGame({ focus = false } = {}) {
   } else if (state.phase === 'observe') {
     content = scene.signal===0 ? `<p class="story-operational">${escape(scene.subtitle)}</p>` : '';
     if (goal && !reached) content += `<div class="objective-line"><strong>${escape(currentObjective({scene,phase:state.phase,goal,reached}))}</strong><span id="objective-distance">${graphicsError ? '3D unavailable on this device' : 'Follow the amber beacon'}</span>${graphicsError?'<button class="quiet-button" data-action="text-only">Continue story</button>':''}</div>`;
-    else content += `<button class="primary-button" data-action="observe" ${scanning?'disabled':''}>${scanning?'Looking closely…':escape(scene.actionLabel || scene.objective)} <span aria-hidden="true">◇</span></button>`;
+    else content += `<button class="primary-button" data-action="observe" ${scanning?'disabled':''}>${scanning?'Looking closely…':escape(scene.actionLabel || scene.objective)}</button>`;
 
   } else if (state.phase === 'choose') {
     content = `<div class="choices compact-choices">${scene.choices.map(c=>`<button class="choice" data-action="choose" data-choice="${escape(c.id)}"><span class="choice-label">${escape(c.shortLabel || c.label)}</span><span class="choice-detail">${escape(c.detail)}</span></button>`).join('')}</div>`;
@@ -380,7 +385,7 @@ function renderEnding() {
   view?.setWaypoint?.(null);
   controller?.setTerrain({moving:false,blocked:false,power:0});
   const scene = scenes.at(-1);
-  app.innerHTML = `<section class="ending-screen brief-ending"><p class="eyebrow">OPPORTUNITY · 2004–2018</p><h1 class="ending-title" tabindex="-1">You were here.</h1><p class="inner-voice">${escape(scene.subtitle)}</p><div class="mission-numbers"><div><strong>90</strong><span>SOLS PLANNED</span></div><div><strong>5,111</strong><span>SOLS TO LAST CONTACT</span></div><div><strong>${state.memories.length}</strong><span>MEMORIES WITH YOU</span></div></div><ul class="memory-echoes" aria-label="Moments you observed and chose">${endingMemories(state.memories).map(m=>`<li>${escape(m.title)}${m.sceneId==='months'?`<p class="archive-choice-echo">${escape(m.text)}</p>`:''}</li>`).join('')}</ul><p class="ending-fact">Opportunity revealed evidence of ancient water on Mars. NASA declared the mission complete on February 13, 2019.</p><div class="ending-actions"><button class="primary-button" data-action="journal">Open your memories ◇</button><button class="secondary-button" data-action="download">Keep them ↓</button><button class="quiet-button" data-action="restart">Begin again</button></div></section>`;
+  app.innerHTML = `<section class="ending-screen brief-ending"><p class="eyebrow">OPPORTUNITY · 2004–2018</p><h1 class="ending-title" tabindex="-1">You were here.</h1><p class="inner-voice">${escape(scene.subtitle)}</p><div class="mission-numbers"><div><strong>90</strong><span>SOLS PLANNED</span></div><div><strong>5,111</strong><span>SOLS TO LAST CONTACT</span></div><div><strong>${state.memories.length}</strong><span>MEMORIES WITH YOU</span></div></div><ul class="memory-echoes" aria-label="Moments you observed and chose">${endingMemories(state.memories).map(m=>`<li>${escape(m.title)}${m.sceneId==='months'?`<p class="archive-choice-echo">${escape(m.text)}</p>`:''}</li>`).join('')}</ul><p class="ending-fact">Opportunity revealed evidence of ancient water on Mars. NASA declared the mission complete on February 13, 2019.</p><div class="ending-actions"><button class="primary-button" data-action="journal">Open your memories</button><button class="quiet-button" data-action="restart">Begin again</button></div></section>`;
   refreshControllerPrompts();
   focusContent();
 }
@@ -432,12 +437,6 @@ function updateUploadProgress(result) {
   const releaseAction=mode==='silence'?'call':mode==='archive'?'keep this memory':'send';
   const hints={release:'Release both triggers',ready:'Squeeze both triggers',pressing:'Keep squeezing…',charged:`Release both triggers to ${releaseAction}`,latched:'Released'};
   if(hint && controllerConnected)hint.textContent=result.stage!=='release' && result.stage!=='charged' && Math.max(result.left||0,result.right||0)>.03 && Math.min(result.left||0,result.right||0)<=.03 ? 'Squeeze the other trigger too' : hints[result.stage] || hints.release;
-  const glyphHint=$('#input-hint .controller-hint');
-  if(controllerConnected && glyphHint) {
-    const label=result.stage==='charged'||result.stage==='release'?'Release':'Squeeze';
-    glyphHint.setAttribute('aria-label',`Both triggers: ${label.toLowerCase()}`);
-    const text=glyphHint.querySelector('span:last-child');if(text)text.textContent=label;
-  }
   controller?.setUplink?.({active:result.stage!=='release' && !result.commit && (Math.max(result.left||0,result.right||0)>.03 || result.stage==='charged'),leftTrigger:result.left||0,rightTrigger:result.right||0,progress:result.progress,charge:result.charge || 0,charged:result.stage==='charged',effort});
   if(result.cue)controller?.feedback(result.cue);
   const audible=['reply','partial'].includes(mode);
@@ -547,9 +546,32 @@ function resume() {
   if(screen==='game' && state.phase==='transmit')renderGame();
   syncInputMode();
 }
-function openModal(id) { pause(); $(id).showModal(); syncInputMode(); }
+function openModal(id) {
+  if(document.querySelector('dialog[open]'))return;
+  const focused=document.activeElement?.matches('button,input,summary,a[href],[tabindex]')?document.activeElement:null;
+  const dialog=$(id),previousDialog=focused?.closest('dialog');
+  modalReturnFocus.set(dialog,modalReturnFocus.get(previousDialog) || {element:focused,action:focused?.dataset?.action});
+  pause();
+  dialog.showModal();dialog.scrollTop=0;
+  const initial=id==='#journal-modal'?dialog.querySelector('summary') : null;
+  (initial || dialog.querySelector('[data-close],button,input'))?.focus({preventScroll:true});
+  syncInputMode();
+}
+function closeModal(event) {
+  const savedFocus=modalReturnFocus.get(event.currentTarget);
+  modalReturnFocus.delete(event.currentTarget);
+  if(document.querySelector('dialog[open]'))return;
+  resume();
+  requestAnimationFrame(()=>{
+    if(document.querySelector('dialog[open]'))return;
+    const target=savedFocus?.element?.isConnected && savedFocus.element.getClientRects().length && !savedFocus.element.closest('dialog:not([open])')?savedFocus.element:
+      savedFocus?.action?app.querySelector(`[data-action="${CSS.escape(savedFocus.action)}"]`):null;
+    (target || app.querySelector('[data-action="transmit"],[data-action="next"],[data-action="observe"]') || app.querySelector('h1'))?.focus({preventScroll:true});
+    updateInputHint();
+  });
+}
 document.querySelectorAll('dialog').forEach(dialog=>{
-  dialog.addEventListener('close', resume);
+  dialog.addEventListener('close', closeModal);
   dialog.querySelectorAll('[data-close]').forEach(button=>button.addEventListener('click',()=>dialog.close()));
 });
 
@@ -641,7 +663,6 @@ $('#confirm-restart').addEventListener('click',()=>{
 });
 $('.brand').addEventListener('click',event=>{event.preventDefault();if(screen==='game')save();cancelScan();renderTitle();window.scrollTo(0,0);});
 $('#explore-toggle').addEventListener('click',()=>setExploring(!exploring));
-$('#camera-reset').addEventListener('click',()=>{if(contacting)resetUpload();else if(geologyActive){view?.setToolInput?.({});}else if(survey){survey.pause();view?.setSurvey?.(false);view?.setSurvey?.(true);}else if(investigating)view?.setInvestigation?.(true);else view?.focusRover?.();});
 
 app.addEventListener('click',event=>{
   const button=event.target.closest('[data-action]');
@@ -659,11 +680,7 @@ app.addEventListener('click',event=>{
     case 'journal': openJournal(); break;
     case 'restart': openModal('#restart-modal'); break;
     case 'text-only': reached=true;renderGame({focus:true});break;
-    case 'download': {
-      const text=['LAST LIGHT — The things I carried home','An imagined archive of NASA’s Opportunity mission.','',...state.memories.map(m=>`${m.title}\n${m.text}\n`),'',credits,'',...sources.map(s=>`${s.title}\n${s.url}`)].join('\n');
-      const url=URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'}));
-      const a=document.createElement('a');a.href=url;a.download='last-light-my-memories.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);break;
-    }
+
   }
 });
 
@@ -791,9 +808,8 @@ function controllerAction(action) {
   const dialog=document.querySelector('dialog[open]');
   if(action==='pause') { if(dialog) dialog.close(); else openModal('#settings-modal'); return; }
   if(action==='back') { if(dialog) dialog.close(); else if(exploring) setExploring(false); else openModal('#settings-modal'); return; }
-  if(briefingActive && !dialog) {if(action==='primary')finishBriefing({skipped:true});return;}
   if(action==='journal') { if(dialog?.id==='journal-modal') dialog.close(); else if(!dialog && screen!=='title') openJournal(); return; }
-  if(action==='camera' && !dialog) {if(contacting)resetUpload();else if(geologyActive){view?.setToolInput?.({});}else if(survey){survey.pause();view?.setSurvey?.(false);view?.setSurvey?.(true);}else if(investigating)view?.setInvestigation?.(true);else view?.focusRover?.();return;}
+  if(briefingActive && !dialog) {if(action==='primary')finishBriefing({skipped:true});return;}
   const targets=menuTargets();
   if(action.startsWith('nav')) {
     if(exploring) setExploring(false);
@@ -803,7 +819,11 @@ function controllerAction(action) {
     targets[next]?.focus({preventScroll:false}); return;
   }
   if(action==='primary') {
-    if(geologyActive && !dialog && toolState?.stage==='compare'){view?.compareToolSamples?.();return;}
+    if(geologyActive && !dialog && toolState?.stage==='compare'){
+      if(document.activeElement?.dataset.action==='assist-observation')document.activeElement.click();
+      else view?.compareToolSamples?.();
+      return;
+    }
     if(contacting && !dialog) {
       announce(uploadPrompt());
       return;
@@ -813,7 +833,7 @@ function controllerAction(action) {
       if(investigating && document.activeElement?.dataset.action==='assist-observation') document.activeElement.click();
       return;
     }
-    if(exploring) {setExploring(false);return;}
+    if(exploring && !dialog) {setExploring(false);return;}
     const focused=targets.includes(document.activeElement)?document.activeElement:null;
     const fallback=dialog ? targets[0] : app.querySelector('[data-action="observe"]:not([disabled]),[data-action="next"],.choice,[data-action="begin"],[data-action="journal"]');
     (focused || fallback)?.click();
@@ -822,6 +842,7 @@ function controllerAction(action) {
 controller=createController({
   onInput(input) {
     if(input.actualSample && [input.steer,input.throttle,input.lookX,input.lookY,input.leftTrigger,input.rightTrigger].some(v=>Math.abs(v)>.15))document.body.dataset.input='controller';
+    if(state.paused || document.querySelector('dialog[open]')) {padInput={throttle:0,steer:0};return;}
     padInput={throttle:input.throttle,steer:input.steer};drive();
     if(geologyActive) {
       toolPad={x:input.actualSample?input.lookX:0,y:input.actualSample?input.lookY:0,pressure:input.actualSample?input.rightTrigger:0};syncToolInput(input.actualSample===true);return;

@@ -8,11 +8,11 @@ export function controllerFamily(id = '', override = 'auto') {
   return 'generic';
 }
 
-const faceActions = ['primary', 'back', 'journal', 'camera'];
+const faceActions = ['primary', 'back', 'journal'];
 const faceLabels = {
-  playstation: ['Cross', 'Circle', 'Square', 'Triangle'],
-  xbox: ['A', 'B', 'X', 'Y'],
-  generic: ['Bottom face button', 'Right face button', 'Left face button', 'Top face button'],
+  playstation: ['Cross', 'Circle', 'Square'],
+  xbox: ['A', 'B', 'X'],
+  generic: ['Bottom face button', 'Right face button', 'Left face button'],
 };
 
 export function controllerButtonName(action, family = 'generic') {
@@ -30,8 +30,7 @@ export function controllerGlyph(action, family = 'generic') {
   let shape;
   if (face >= 0 && family === 'playstation') {
     const marks = ['<path d="m10 10 12 12m0-12L10 22"/>',
-      '<circle cx="16" cy="16" r="7.5"/>', '<rect x="9" y="9" width="14" height="14" rx=".5"/>',
-      '<path d="m16 8 9 16H7Z"/>'];
+      '<circle cx="16" cy="16" r="7.5"/>', '<rect x="9" y="9" width="14" height="14" rx=".5"/>'];
     shape = `<circle cx="16" cy="16" r="14.5" opacity=".45"/>${marks[face]}`;
   } else if (face >= 0 && family === 'xbox') {
     shape = `<circle cx="16" cy="16" r="14"/><text x="16" y="21" text-anchor="middle" fill="currentColor" stroke="none" font-size="15" font-family="sans-serif" font-weight="600">${faceLabels.xbox[face]}</text>`;

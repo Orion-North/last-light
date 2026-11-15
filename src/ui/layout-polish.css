@@ -1,0 +1,105 @@
+/* Final placement rules. Keep the sending map anchored to the viewport; only
+   reading areas share the lower safe edge and the space beside the control rail. */
+body {
+  --layout-edge:clamp(20px,2.5vw,32px);
+  --layout-bottom:max(24px,env(safe-area-inset-bottom,0px));
+}
+body:is([data-screen="game"],[data-screen="ending"],[data-screen="intro"],[data-screen="passage"]) .topbar {
+  padding-inline:max(var(--layout-edge),env(safe-area-inset-left,0px)) max(var(--layout-edge),env(safe-area-inset-right,0px));
+}
+body[data-screen="game"] #world-controls {
+  grid-template-columns:44px 44px;
+  left:max(var(--layout-edge),env(safe-area-inset-left,0px));
+  bottom:var(--layout-bottom);
+}
+body[data-screen="game"] #input-hint { min-width:0; }
+#input-hint .controller-hint { align-items:center; }
+#input-hint .controller-hint > .controller-glyph { flex-shrink:0; }
+body[data-screen="game"]:not([data-upload="true"]) .interaction-dock {
+  bottom:var(--layout-bottom)!important;
+  overscroll-behavior:contain;
+  scroll-padding-block:16px;
+}
+.upload-terminal[data-presentation="story"] > .story-shell {
+  bottom:var(--layout-bottom);
+  overscroll-behavior:contain;
+  scroll-padding-block:16px;
+}
+.story-actions > *, .story-console__meta > *, .sample-comparison > * { min-width:0; }
+.story-actions .objective-line { flex-wrap:wrap;gap:6px 20px; }
+.story-actions #objective-distance { flex-shrink:0; }
+.story-actions .tool-actions { flex-wrap:wrap;gap:8px 20px; }
+.story-actions .choices { max-width:none; }
+.story-actions .choice { overflow-wrap:anywhere; }
+.story-actions .sample-comparison { gap:20px; }
+.story-actions .tool-readout { flex-wrap:wrap; }
+.story-actions .tool-readout progress { max-width:100%; }
+
+/* Dialog itself is the one scroll surface used by pointer and controller.
+   Prevent intrinsic long content from widening it or squeezing the close action. */
+.modal {
+  max-height:min(800px,calc(100svh - 2 * var(--layout-edge)));
+  overflow-y:auto;overflow-x:hidden;
+  overscroll-behavior:contain;scrollbar-gutter:stable;
+  scroll-padding-block:24px;
+}
+.modal-inner { min-width:0; }
+.modal-header { align-items:flex-start; }
+.modal-header h2 { min-width:0;overflow-wrap:anywhere; }
+.modal-header .close-button { flex:0 0 44px; }
+.modal :is(p,li,a,summary) { overflow-wrap:anywhere; }
+.modal .prompt-options { flex-wrap:wrap; }
+.modal :is(button,summary,input) { scroll-margin-block:24px; }
+.brief-ending {
+  left:var(--layout-edge);bottom:var(--layout-bottom);
+  max-height:calc(100svh - 110px - var(--layout-bottom));
+  overscroll-behavior:contain;scroll-padding-block:24px;
+}
+.brief-ending .mission-numbers { flex-wrap:wrap;gap:16px 30px; }
+.mission-briefing .briefing-console {
+  bottom:var(--layout-bottom);max-height:calc(100svh - 120px);
+  overflow:auto;overscroll-behavior:contain;
+}
+
+/* The legacy 1000px breakpoint put text into the left control legend. Reserve
+   that lane explicitly, including for the independently scrolling receipts. */
+@media (min-width:651px) and (max-width:1100px) {
+  body[data-screen="game"]:not([data-upload="true"]) .interaction-dock {
+    left:auto;right:var(--layout-edge);width:calc(100vw - 250px);
+    transform:none!important;
+  }
+  .upload-terminal[data-presentation="story"] > .story-shell {
+    left:auto;right:var(--layout-edge);width:calc(100vw - 250px);
+    transform:none;
+  }
+  body[data-screen="game"] #world-controls { max-width:180px; }
+}
+@media (max-height:620px) and (min-width:651px) {
+  body { --layout-bottom:max(12px,env(safe-area-inset-bottom,0px)); }
+  body[data-screen="game"]:not([data-upload="true"]) .interaction-dock {
+    max-height:calc(100svh - 100px - var(--layout-bottom));
+  }
+  .brief-ending { max-height:calc(100svh - 100px - var(--layout-bottom)); }
+}
+@media (max-width:650px) {
+  body { --layout-edge:12px;--layout-bottom:max(20px,env(safe-area-inset-bottom,0px)); }
+  body[data-screen="game"]:not([data-upload="true"]) .interaction-dock {
+    bottom:max(110px,calc(96px + env(safe-area-inset-bottom,0px)))!important;
+  }
+  .story-actions .choices { grid-template-columns:1fr; }
+  .modal-inner { padding:22px; }
+}
+
+/* Keep the ending below the header even on a 480px-high window. */
+body[data-screen="ending"] .brief-ending {
+  max-height:calc(100svh - 100px - var(--layout-bottom));
+}
+.journal-controls:not([hidden]) {
+  display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;
+  margin:0 0 20px;padding:0;
+  color:#ead9bd;font:14px/1.5 var(--sans);
+}
+.journal-controls .controller-hint { margin:0; }
+
+/* Programmatic reading focus should not frame the ending title like a control. */
+.brief-ending .ending-title:focus { outline:none; }

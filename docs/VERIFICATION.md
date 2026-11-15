@@ -692,3 +692,12 @@ saves. Last Chance now passes the old false stop at z=-5.091 and reaches z=-7.10
 Berry Bowl reaches z=-9.736 on the tested approach. No console errors. Targeted
 regression testing only, not an exhaustive terrain traversal or physical-pad run.
 Screenshot: outputs/last-light-tight-hitboxes.jpg.
+
+
+## UI-30 — v0.19.6 placement and controller journal
+
+- Three Sol agents reviewed layout, controller input and integration. Corrected a held-button/context leak; added three engine regressions.
+- Actual production game in private-save `tests/browser/ui-review.html`: simulated Square opens/closes memories; Cross expands entry; D-pad selects entries/links; right stick scrolls long journals; Circle closes and restores useful game focus. Tool comparison resumes after closing journal. Settings → restart → cancel preserves controls and labels. Triangle has no action; no Triangle glyph or Keep them export remains.
+- Visual checks: tools at 1280×720 and 960×540, centered send plus journal at 960×540, scrollable ending below header at 960×480, journal/settings at 1440×900. No overlaps in these views.
+- All 25 engine test files, 62 JS syntax checks, 12 scene contracts, static build and diff whitespace check passed. Hardware vibration and physical-controller feel are not established by the simulated Gamepad.
+- During rapid test-fixture scene replacements, aborted old GLB loads logged texture errors; one premature Start click in the fixture also failed before the ready guard was added. Completed scene checks rendered successfully.

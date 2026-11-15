@@ -16,7 +16,6 @@ Connect a controller by USB or Bluetooth, then press a button. Last Light uses t
 | Cross / A | Interact, compare readings, or continue after a result |
 | Circle / B | Back / leave exploration view |
 | Square / X | Memories |
-| Triangle / Y | Recenter camera / reset survey; release active tool input |
 | Options / Start | Pause / settings |
 | D-pad | Navigate menus |
 
@@ -44,3 +43,5 @@ Pausing, losing focus, disconnecting, or switching vibration off stops feedback.
 ## For developers
 
 See [implementation and historical tuning notes](CONTROLLER-IMPLEMENTATION.md) for APIs, report layouts, research sources, and tests. Historical sending patterns there are superseded by the current controls above. Automated tests verify logic and report bytes; they cannot establish physical feel or OS device access.
+
+In Memories, use the D-pad or left stick to select an entry, Cross / A to expand or collapse it, and the right stick to scroll. Circle / B or Square / X closes the journal.

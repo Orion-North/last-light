@@ -17,13 +17,11 @@ test('manual family selection works when a browser masks the controller identity
   assert.equal(validPromptStyle(null),false);
 });
 
-test('prompts follow standard gamepad face positions without swapping journal and camera',()=>{
+test('prompts follow standard gamepad face positions for interaction and memories',()=>{
   assert.equal(controllerButtonName('primary','playstation'),'Cross');
   assert.equal(controllerButtonName('back','playstation'),'Circle');
   assert.equal(controllerButtonName('journal','playstation'),'Square');
-  assert.equal(controllerButtonName('camera','playstation'),'Triangle');
   assert.equal(controllerButtonName('journal','xbox'),'X');
-  assert.equal(controllerButtonName('camera','xbox'),'Y');
   assert.equal(controllerButtonName('primary','generic'),'Bottom face button');
   assert.equal(controllerButtonName('journal','generic'),'Left face button');
 });

@@ -1,5 +1,5 @@
 // Browser-standard input; optional USB DualSense output. Protocol sources: docs/CONTROLLERS.md.
-const ACTIONS = { 0: 'primary', 1: 'back', 2: 'journal', 3: 'camera', 9: 'pause', 12: 'navUp', 13: 'navDown', 14: 'navLeft', 15: 'navRight' };
+const ACTIONS = { 0: 'primary', 1: 'back', 2: 'journal', 9: 'pause', 12: 'navUp', 13: 'navDown', 14: 'navLeft', 15: 'navRight' };
 const clamp = (n, min = -1, max = 1) => Math.min(max, Math.max(min, Number.isFinite(n) ? n : 0));
 const axis = n => Math.abs(clamp(n)) < 0.18 ? 0 : clamp(Math.sign(n) * (Math.abs(clamp(n)) - 0.18) / 0.82);
 const button = (pad, i) => clamp(pad?.buttons?.[i]?.value ?? (pad?.buttons?.[i]?.pressed ? 1 : 0), 0, 1);
@@ -245,7 +245,9 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
   nav?.hid?.addEventListener?.('disconnect', hidDisconnected);
   status(); frame = win?.requestAnimationFrame?.(poll);
   return {
-    rearmMenu() { gateMenu(); },
+    // Context changes may happen inside onAction; consume other held buttons
+    // before polling can dispatch them into the newly opened menu.
+    rearmMenu() { gateMenu(); latchButtons(); },
     setInputMode(mode) {
       if (!['drive', 'menu', 'inspect', 'uplink'].includes(mode) || mode === inputMode) return;
       clearUplink(); terrain.moving = false; stopRumble(); inputMode = mode; gateMenu(); neutral(); queueReport(true);

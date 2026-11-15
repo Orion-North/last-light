@@ -823,3 +823,14 @@ HERO-27 complete (root): HUD-free 4K game-renderer hero image, reflective three-
 POLISH-28 — root owns README, player/media/contributor guides, GitHub issue templates, metadata and publication. REVIEW-28 / Sol performed read-only accuracy review; obsolete controls moved to explicitly historical implementation notes. Hero and two actual-game stills are the public presentation.
 
 TRACE-29 — root: distinguish unfinished upper trace (violet) from traced/completed dots (mint green); retain lower amber path. Bypass scene tone mapping for guide colors. Verified the actual renderer at 63% (violet unfinished dots beside mint traced dots), and completed the interaction at 100%. All 25 engine test files, 61 syntax checks, 12 scene contracts, static build, and diff checks pass. v0.19.5.
+
+
+## UI-30 — placement and journal controller polish
+
+Root integrates, owns main.js, index.html, controller prompt presentation, docs, browser QA and release. Shared checkout with disjoint paths.
+LAYOUT-30 / Sol owns src/ui/layout-polish.css only: audit placement across UI and implement final responsive consistency rules; no boxes or smaller text.
+JOURNAL-30 / Sol owns src/input/controller.js, src/ui/scroll-target.js and related engine tests only: diagnose modal navigation/scroll failures and remove triangle camera action mapping. Coordinate any main.js fix with root.
+REVIEW-30 / Sol read-only: independently audit placement and controller journal flow, report concrete gaps and verification scenarios.
+Done: no triangle utility prompts/actions; journal opens/navigates/scrolls/closes with controller; representative layouts visually checked and tests pass.
+
+UI-30 complete: integrated three Sol reviews. Consistent safe margins/control rail, bounded short-window endings, journal hints + initial/return focus, compare-stage controller scrolling, fresh button edges across modal transitions. Removed Triangle camera/reset utility and Keep them text export. Real renderer/simulated Gamepad verified Square/Cross/D-pad/right-stick/Circle, tool resume, nested settings/restart cancellation and ending journal. Layout checks at 1280×720, 960×540, 960×480 and 1440×900. Physical controller hardware not available for this automated pass. v0.19.6.
