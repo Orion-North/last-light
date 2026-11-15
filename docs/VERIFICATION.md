@@ -430,3 +430,13 @@ performed for this small removal.
   sounds are finite filtered-noise articulations, silent during transmissions,
   expected reply intervals and explicit silence. Human playtesting must judge
   emotional effect and the final audio balance.
+
+## v0.15.1 — unboxed presentation
+
+Removed story/ending panel backgrounds and borders, filled choice cards and
+gameplay button backing. Thoughts and actions sit over the world with text
+shadow; focus uses an underline and corner controls retain 44px hit areas.
+Root checked the opening, camera choice, keyboard selection, send/receipt and
+icon-only keyboard focus at 1280×720; no captured browser warnings/errors.
+Source/asset checks and static build pass. Independent Sol source review found
+no blocker. This CSS-only pass did not repeat a full journey or hardware test.

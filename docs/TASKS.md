@@ -576,3 +576,15 @@ Three Sol lanes complete: concise thoughts, bounded mechanical articulation,
 and critical source/screenshot review. Root integrated persistent reveal,
 pause/mute lifecycle, one bottom reading/action area, matching intro/passages,
 and pointer journal access.
+
+## FRAME-15 — remove boxed presentation
+
+User requests an unboxed presentation. Root owns story-console.css, versions,
+verification and publication on develop/v0.15.1; Sol critic may read/review only.
+Remove story panel fills, borders, accent edges and boxed gameplay actions;
+retain the bottom reading position, text reveal, controller glyphs and focus.
+Use the existing full-screen atmospheric gradient and text shadow for contrast.
+
+FRAME-15 complete: transparent story and ending presentation, unfilled actions
+and corner controls, underline focus. Root verified bright-terrain choices,
+send/receipt and keyboard focus; Sol read-only review found no blocker.

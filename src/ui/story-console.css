@@ -9,10 +9,8 @@ body[data-screen="game"][data-tool="true"] .interaction-dock {
   max-width:850px!important;max-height:calc(100svh - 100px);overflow:auto;
   padding:0;border:0;background:none;box-shadow:none;text-align:left;
 }
-.story-shell { padding:20px 26px 16px;background:linear-gradient(115deg,#111c24f2,#101820ed);
-  border-top:1px solid #d2ad7266;border-bottom:1px solid #d2ad7226;
-  box-shadow:0 12px 48px #0004;position:relative;text-shadow:none; }
-.story-shell::before { content:'';position:absolute;left:0;top:0;width:42px;height:2px;background:#e6c18a; }
+.story-shell { padding:20px 26px 16px;background:none;border:0;
+  box-shadow:none;position:relative;text-shadow:0 2px 5px #000,0 0 20px #0009; }
 .story-console { --terminal-ink:#efd0a2;color:#fff0d9; }
 .story-console__meta { display:flex;align-items:center;justify-content:space-between;gap:16px;
   font:10px/1.5 var(--mono);letter-spacing:.07em;color:var(--terminal-ink); }
@@ -105,3 +103,31 @@ body[data-screen="game"] #journal-toggle[hidden] { display:none; }
 
 .world-status[data-state="ready"] { display:none; }
 .upload-terminal[data-presentation="story"][data-input="pointer"] .upload-terminal__guidance { display:none; }
+
+/* Keep the landscape continuous behind thoughts and actions. Underlines, rather
+   than filled cards, identify the selected action without shrinking hit areas. */
+body .story-shell :is(.primary-button,.secondary-button,.upload-terminal__button,.choice),
+body .brief-ending :is(.primary-button,.secondary-button) {
+  background:none;border-color:transparent;border-radius:0;box-shadow:none;
+  color:#ffe4bd;text-shadow:inherit;
+}
+body .story-shell :is(.primary-button,.secondary-button,.upload-terminal__button,.choice):hover,
+body .brief-ending :is(.primary-button,.secondary-button):hover {
+  background:none;border-color:transparent;color:#fff7e9;transform:none;
+  text-decoration:underline;text-underline-offset:6px;
+}
+body[data-screen] .story-shell button:focus,
+body[data-screen] .brief-ending button:focus {
+  outline:none;box-shadow:none;background:none;border-color:transparent;
+  color:#fff7e9;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:6px;
+}
+body[data-screen="game"] #world-controls > .secondary-button,
+body[data-screen="game"] .topbar-actions button {
+  background:none;border-color:transparent;box-shadow:none;
+  text-shadow:0 2px 5px #000;
+}
+body[data-screen="game"] #world-controls > .secondary-button:focus-visible,
+body[data-screen="game"] .topbar-actions button:focus-visible {
+  outline:none;border-bottom:2px solid #ffe4bd;border-radius:0;
+}
+.brief-ending { background:none;border:0;box-shadow:none;text-shadow:0 2px 5px #000,0 0 20px #0009; }
