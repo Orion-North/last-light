@@ -3,7 +3,7 @@
 A playable, real-time 3D story about NASA's Opportunity rover: discovery,
 attachment, a fading signal, and the things that remain.
 
-**Playable v0.19.3.** [Play on GitHub Pages](https://orion-north.github.io/last-light/). Built with parallel Codex agents. The game uses NASA's
+**Playable v0.19.4.** [Play on GitHub Pages](https://orion-north.github.io/last-light/). Built with parallel Codex agents. The game uses NASA's
 textured rover model, a navigable original Mars environment, an original adaptive
 score, and a complete three-act story. No account or AI API is needed by the game
 itself. A hosting provider may apply its own access gate.
@@ -44,7 +44,7 @@ Existing keyboard/touch fallbacks remain available.
 - Saves retain rover position, earned arrival, brushed dust, traced paths, sample readings and captured survey views. Pause and controller disconnect preserve completed work; partial holds require a fresh input.
 - Geological evidence stays in view through sending and receipt, with both findings visible. The compact signal display leaves the landscape readable; the ending includes your chosen Earth archive.
 - Only the first view and Earth archive ask for a text choice. Other records follow your observations. The later storm recalls your actual first horizon/ground memory.
-- Rover collision checks include the full body footprint, turning and scaled rock/rubble bounds. The camera keeps clearance from rocks; older saves embedded in obstacles resume on nearby clear ground.
+- Rover collisions use height-aware outlines of separate wheel/body assemblies and visible rock geometry, leaving the space under solar panels and between wheels clear. Turning no longer cancels a clear reverse escape. The camera keeps clearance from rocks; older saves embedded in obstacles resume on nearby clear ground.
 - Manual driving leads to two hands-on geological investigations and five mast observations. Survey lengths vary from a valley panorama to a single sustained look into the darkened sky.
 - Last Chance: hold R2 and trace two crossing layer paths with the right stick. Berry Bowl: sweep dust away, then take two steady probe readings. Release between readings, hold steady over each marked patch, then press Cross to compare. Keyboard and pointer alternatives remain available.
 - Sending uses a compact Mars–Earth signal route, animated traveling packets, and a returning receipt. A four-note musical question receives a complementary answer early in the mission; after contact loss the familiar answer is absent. The final image is incomplete; recovery calls have no return pulse.

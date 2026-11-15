@@ -1,22 +1,56 @@
-// Conservative horizontal rover footprint against world-space rock bounds.
-export function poseBlocked(pose, rocks, footprint, limit = 19) {
-  const {x,z,heading=0}=pose, {halfWidth,halfLength}=footprint;
-  const c=Math.cos(heading),s=Math.sin(heading);
-  for(const side of [-1,1])for(const end of [-1,1]){
-    if(Math.hypot(x+c*halfWidth*side+s*halfLength*end,z-s*halfWidth*side+c*halfLength*end)>limit)return true;
+// Convex outlines remove the empty corners of axis-aligned bounding boxes.
+export function convexHull(points) {
+  const sorted=points.map(p=>({x:p.x,z:p.z})).sort((a,b)=>a.x-b.x||a.z-b.z);
+  const cross=(a,b,c)=>(b.x-a.x)*(c.z-a.z)-(b.z-a.z)*(c.x-a.x);
+  const half=list=>{const out=[];for(const p of list){while(out.length>1&&cross(out.at(-2),out.at(-1),p)<=1e-9)out.pop();out.push(p);}return out;};
+  return [...half(sorted).slice(0,-1),...half(sorted.reverse()).slice(0,-1)];
+}
+// Imported material groups can contain disconnected wheels and hardware. Keep
+// those islands separate instead of filling the empty space between them.
+export function componentHulls(points,indices) {
+  const parent=Int32Array.from(points,(_,i)=>i),weld=new Map();
+  const root=i=>{while(parent[i]!==i){parent[i]=parent[parent[i]];i=parent[i];}return i;};
+  const join=(a,b)=>{parent[root(a)]=root(b);};
+  points.forEach((p,i)=>{const key=[p.x,p.y,p.z].map(v=>Math.round(v*10000)).join(',');if(weld.has(key))join(i,weld.get(key));else weld.set(key,i);});
+  const at=i=>indices?indices[i]:i,count=indices?.length??points.length;
+  for(let i=0;i+2<count;i+=3){join(at(i),at(i+1));join(at(i),at(i+2));}
+  const groups=new Map();points.forEach((p,i)=>{const key=root(i);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(p);});
+  return [...groups.values()].map(group=>({hull:convexHull(group),minY:Math.min(...group.map(p=>p.y))-.02,maxY:Math.max(...group.map(p=>p.y))+.02})).filter(part=>part.hull.length>=3);
+}
+const rectangle=(x0,x1,z0,z1)=>[{x:x0,z:z0},{x:x1,z:z0},{x:x1,z:z1},{x:x0,z:z1}];
+function overlaps(a,b) {
+  for(const shape of [a,b])for(let i=0;i<shape.length;i++){
+    const p=shape[i],q=shape[(i+1)%shape.length],nx=q.z-p.z,nz=p.x-q.x;
+    let a0=Infinity,a1=-Infinity,b0=Infinity,b1=-Infinity;
+    for(const v of a){const d=v.x*nx+v.z*nz;a0=Math.min(a0,d);a1=Math.max(a1,d);}
+    for(const v of b){const d=v.x*nx+v.z*nz;b0=Math.min(b0,d);b1=Math.max(b1,d);}
+    if(a1<=b0+1e-8||b1<=a0+1e-8)return false;
   }
+  return true;
+}
+export function poseBlocked(pose,rocks,footprint,limit=19) {
+  const {x,z,heading=0}=pose,c=Math.cos(heading),s=Math.sin(heading);
+  // Preserve the original exploration radius, without blocking turns near it.
+  if(Math.hypot(x,z)>limit)return true;
+  const base=footprint.groundHeight?.(x,z)??0;
+  const parts=footprint.parts??[{minY:-Infinity,maxY:Infinity,hull:rectangle(-footprint.halfWidth,footprint.halfWidth,-footprint.halfLength,footprint.halfLength)}];
+  const place=part=>{
+    const hull=part.hull.map(p=>({x:x+c*p.x+s*p.z,z:z-s*p.x+c*p.z}));
+    return {...part,hull,minX:Math.min(...hull.map(p=>p.x)),maxX:Math.max(...hull.map(p=>p.x)),minZ:Math.min(...hull.map(p=>p.z)),maxZ:Math.max(...hull.map(p=>p.z))};
+  };
+  const placed=parts.map(place);
   return rocks.some(b=>{
-    const bx=(b.minX+b.maxX)/2,bz=(b.minZ+b.maxZ)/2;
-    const rx=(b.maxX-b.minX)/2,rz=(b.maxZ-b.minZ)/2,dx=bx-x,dz=bz-z;
-    return Math.abs(dx)<rx+Math.abs(c)*halfWidth+Math.abs(s)*halfLength &&
-      Math.abs(dz)<rz+Math.abs(s)*halfWidth+Math.abs(c)*halfLength &&
-      Math.abs(dx*c-dz*s)<halfWidth+rx*Math.abs(c)+rz*Math.abs(s) &&
-      Math.abs(dx*s+dz*c)<halfLength+rx*Math.abs(s)+rz*Math.abs(c);
+    const hull=b.hull??rectangle(b.minX,b.maxX,b.minZ,b.maxZ);
+    const matches=part=>b.maxY>base+part.minY+.015&&b.minY<base+part.maxY-.015&&part.maxX>b.minX&&part.minX<b.maxX&&part.maxZ>b.minZ&&part.minZ<b.maxZ&&overlaps(part.hull,hull);
+    return placed.some(part=>{
+      if(!matches(part))return false;
+      if(!part.children)return true;
+      part.placedChildren??=part.children.map(place);
+      return part.placedChildren.some(matches);
+    });
   });
 }
-
-// Sweep translation AND rotation so an antenna/deck corner cannot turn into a rock.
-export function sweepRover(from,to,rocks,footprint,limit=19) {
+function sweepPath(from,to,rocks,footprint,limit) {
   const steps=Math.max(1,Math.ceil(Math.hypot(to.x-from.x,to.z-from.z)/.04),Math.ceil(Math.abs(to.heading-from.heading)/.025));
   let pose={...from};
   for(let i=1;i<=steps;i++){
@@ -25,6 +59,18 @@ export function sweepRover(from,to,rocks,footprint,limit=19) {
     pose=next;
   }
   return {...pose,blocked:false};
+}
+export function sweepRover(from,to,rocks,footprint,limit=19) {
+  const result=sweepPath(from,to,rocks,footprint,limit);
+  if(!result.blocked||to.heading===from.heading)return result;
+  // A blocked turn must not cancel an otherwise clear reverse/forward escape.
+  const translated=sweepPath(from,{...to,heading:from.heading},rocks,footprint,limit);
+  if(Math.hypot(translated.x-from.x,translated.z-from.z)>Math.hypot(result.x-from.x,result.z-from.z)+1e-8){
+    const turned=sweepPath(translated,{...translated,heading:to.heading},rocks,footprint,limit);
+    return {...turned,blocked:translated.blocked||turned.blocked};
+  }
+  const turned=sweepPath(from,{...from,heading:to.heading},rocks,footprint,limit);
+  return Math.abs(turned.heading-from.heading)>Math.abs(result.heading-from.heading)+1e-8?turned:result;
 }
 
 export function clearRoverPose(pose,rocks,footprint,limit=19) {

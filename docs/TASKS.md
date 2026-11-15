@@ -795,3 +795,15 @@ save recovery and camera clearance integrated. Sol review led to final uphill
 clearance recheck. Eight collision cases, all engine files, source/build checks
 and real-renderer landmark/reverse/save tests pass. Orbit/evidence views checked.
 Publishing v0.19.3 web release.
+
+## HIT-25 — remove false rock contacts
+
+Root owns height-aware collision hulls, landscape integration and regression tests.
+REVIEW-25 / Sol: read-only review of false contacts, movement escape and open-ground
+regressions; no edits. Preserve actual boulder blocking and camera clearance.
+
+HIT-25 complete: replaced broad prisms with visible-rock hulls and height-aware,
+separate model islands. Restored original boundary with truthful status text;
+clear translation can escape a blocked turn. Sol source review integrated.
+Twelve collision cases, all engine/source/build checks and both renderer landmark
+approaches pass, including the prior false stopping point. Publishing v0.19.4.

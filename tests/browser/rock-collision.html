@@ -14,10 +14,11 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function driveToContact(){blocked=false;world.setDrive({forward:1});const start=performance.now();while(!blocked&&performance.now()-start<25000)await delay(50);const contact=blocked;world.stopDrive();return contact;}
 document.querySelector('#run').onclick=async()=>{
  document.querySelectorAll('button').forEach(b=>b.disabled=true);status.textContent='Checking actual landmark geometry';const checks=[];
- for(const site of [{name:'Last Chance',x:7,z:-5.6,wayZ:-7,insideZ:-8.9},{name:'Berry Bowl',x:-5,z:-8,wayZ:-10,insideZ:-11.8}]){
+ for(const site of [{name:'Last Chance',x:7,z:-4,wayZ:-7,insideZ:-8.9},{name:'Berry Bowl',x:-5,z:-8,wayZ:-10,insideZ:-11.8}]){
   world.setEvidence(null);world.setWaypoint(null);world.restoreCheckpoint({position:{x:site.x,z:site.z,heading:Math.PI}});
   const start=world.getCheckpoint().position,contact=await driveToContact(),end=world.getCheckpoint().position;
   checks.push(`${contact&&end.z<start.z-.1?'PASS':'FAIL'} ${site.name}: ${contact?'blocked':'time limit'} at z=${end.z.toFixed(3)}, travelled ${(start.z-end.z).toFixed(3)}m`);
+  if(site.name==='Last Chance')checks.push(`${end.z < -5.4?'PASS':'FAIL'} passed old invisible stop at z=-5.091`);
   arrived=false;world.setWaypoint({x:site.x,z:site.wayZ});await delay(80);
   checks.push(`${arrived?'PASS':'FAIL'} ${site.name}: observation arrival zone reachable`);world.setWaypoint(null);
   world.setDrive({forward:-1});await delay(700);world.stopDrive();

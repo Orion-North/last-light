@@ -1,4 +1,4 @@
-import { clearRoverPose, sweepRover, clearCamera } from '../engine/rock-collision.js';
+import { convexHull, componentHulls, clearRoverPose, sweepRover, clearCamera } from '../engine/rock-collision.js';
 import { createGeologyTool } from '../engine/geology-tool.js';
 import { createSky } from './sky.js';
 import { createDriveMotion } from '../engine/drive-motion.js';
@@ -179,18 +179,28 @@ export function createLandscape(canvas) {
   });
   const dummy = new THREE.Object3D();
   const collisions = [], cameraRocks = [];
-  const roverFootprint = { halfWidth:1.25, halfLength:1.25 };
-  function registerRock(bounds) {
+  const roverFootprint = { halfWidth:.65, halfLength:.85, groundHeight:surfaceHeight };
+  function registerRock(bounds,points) {
     const b={minX:bounds.min.x,maxX:bounds.max.x,minY:bounds.min.y,maxY:bounds.max.y,minZ:bounds.min.z,maxZ:bounds.max.z};
     cameraRocks.push(b);
     const x=(b.minX+b.maxX)/2,z=(b.minZ+b.maxZ)/2;
-    // Tiny surface gravel remains traversable. Substantial rubble gets the same
-    // collision coverage as boulders, using its scaled/rotated visible geometry.
-    if(Math.hypot(x,z)<24 && b.maxY-surfaceHeight(x,z)>.10)collisions.push(b);
+    // Test protrusion at visible vertices, not the ground at a box's center.
+    // Wheel-sized loose stones are traversable; buried geometry cannot block air.
+    if(Math.hypot(x,z)>=24)return;
+    const visible=points.filter(p=>p.y-surfaceHeight(p.x,p.z)>.08);
+    if(!visible.some(p=>p.y-surfaceHeight(p.x,p.z)>.20))return;
+    const hull=convexHull(visible);
+    if(hull.length>=3)collisions.push({...b,hull});
   }
   function registerInstance(geometry,matrix) {
     if(!geometry.boundingBox)geometry.computeBoundingBox();
-    registerRock(geometry.boundingBox.clone().applyMatrix4(matrix));
+    const points=[],position=geometry.attributes.position;
+    for(let i=0;i<position.count;i++)points.push(new THREE.Vector3().fromBufferAttribute(position,i).applyMatrix4(matrix));
+    registerRock(geometry.boundingBox.clone().applyMatrix4(matrix),points);
+  }
+  function registerLandmark(object) {
+    object.updateMatrixWorld(true);
+    object.traverse(mesh=>{if(mesh.isMesh&&!mesh.isInstancedMesh)registerInstance(mesh.geometry,mesh.matrixWorld);});
   }
   for (let i = 0; i < rockCount; i += 1) {
     const angle = random() * Math.PI * 2;
@@ -341,7 +351,7 @@ export function createLandscape(canvas) {
   lastChance.add(outcropBack);
   scene.add(lastChance);
   lastChance.updateMatrixWorld(true);
-  registerRock(new THREE.Box3().setFromObject(lastChance));
+  registerLandmark(lastChance);
   observationSites.push({ x: 7, z: -7,
     target: lastChance.position.clone().add(new THREE.Vector3(0, .67, .5)),
     normal: new THREE.Vector3(0, 0, 1), kind: 'layers',
@@ -583,7 +593,7 @@ export function createLandscape(canvas) {
   talus.castShadow = talus.receiveShadow = true;
   scene.add(talus);
   berryBowl.updateMatrixWorld(true);
-  registerRock(new THREE.Box3().setFromObject(berryBowl));
+  registerLandmark(berryBowl);
   observationSites.push({ x: -5, z: -10,
     target: berryBowl.position.clone().add(new THREE.Vector3(0, .2, 0)),
     normal: new THREE.Vector3(0, 1, 0), kind: 'grains',
@@ -742,6 +752,19 @@ export function createLandscape(canvas) {
       model.position.x -= center.x;
       model.position.z -= center.z;
       model.position.y -= bounds.min.y;
+      model.updateMatrixWorld(true);
+      roverFootprint.parts=[];
+      model.traverse(mesh=>{
+        if(!mesh.isMesh)return;
+        const points=[],positions=mesh.geometry.attributes.position;
+        let minY=Infinity,maxY=-Infinity;
+        for(let i=0;i<positions.count;i++){
+          const point=new THREE.Vector3().fromBufferAttribute(positions,i).applyMatrix4(mesh.matrixWorld);
+          points.push(point);minY=Math.min(minY,point.y);maxY=Math.max(maxY,point.y);
+        }
+        const hull=convexHull(points);
+        if(hull.length>=3)roverFootprint.parts.push({hull,minY:minY-.02,maxY:maxY+.02,children:componentHulls(points,mesh.geometry.index?.array)});
+      });
       model.traverse((object) => {
         if (!object.isMesh) return;
         object.castShadow = true;
@@ -1406,7 +1429,8 @@ export function createLandscape(canvas) {
     const nextHeading=heading+velocity.turnRate*delta;
     const step = velocity.speed * delta;
     const from={x:vehicle.position.x,z:vehicle.position.z,heading};
-    const resolved=sweepRover(from,{x:from.x+Math.sin(nextHeading)*step,z:from.z+Math.cos(nextHeading)*step,heading:nextHeading},collisions,roverFootprint);
+    const intended={x:from.x+Math.sin(nextHeading)*step,z:from.z+Math.cos(nextHeading)*step,heading:nextHeading};
+    const resolved=sweepRover(from,intended,collisions,roverFootprint);
     const blocked=resolved.blocked;
     heading=resolved.heading;
     {
@@ -1426,7 +1450,7 @@ export function createLandscape(canvas) {
       distance += Math.hypot(resolved.x-from.x,resolved.z-from.z);
       addTracks();
     }
-    if (blocked) motion.reset();
+    if (blocked && Math.hypot(resolved.x-from.x,resolved.z-from.z)<1e-6) motion.reset();
     groundRover();
     // Follow the direction the wheels travel, while preserving deliberate free look.
     if((forward || turn) && elapsed-lastManualLook>2.5 && !orbitGesture) {
@@ -1438,6 +1462,7 @@ export function createLandscape(canvas) {
       eventTime = elapsed;
       const texture=sampleSurface(surfaceHeight,{x:vehicle.position.x,z:vehicle.position.z,heading,speed:blocked ? 0 : Math.abs(velocity.speed),blocked});
       const detail = { ...texture, x: vehicle.position.x, z: vehicle.position.z, distance, blocked,
+        blockedReason:blocked?(Math.hypot(intended.x,intended.z)>19?'boundary':'rock'):null,
         remaining: waypoint ? Math.hypot(vehicle.position.x - waypoint.x, vehicle.position.z - waypoint.z) : 0 };
       canvas.dispatchEvent(new CustomEvent('world-drive', { bubbles: true, detail }));
       canvas.dispatchEvent(new CustomEvent('rover-move', { bubbles: true, detail }));

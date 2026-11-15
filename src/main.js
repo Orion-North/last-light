@@ -64,6 +64,7 @@ let investigationSampleAt = 0;
 const investigation = createInvestigation();
 let lastDistance = 0;
 let movementBlocked = false;
+let movementBlockReason = null;
 let worldReady = false;
 let graphicsError = false;
 let soundPreferenceSet = false;
@@ -759,7 +760,7 @@ canvas.addEventListener('waypoint-guidance',event=>{
   if(screen!=='game'||state.phase!=='observe'||reached||!goals[state.sceneIndex])return;
   const {x,y,angle,onScreen,steering,remaining}=event.detail;
   const distanceLabel=$('#objective-distance');
-  if(distanceLabel && movementBlocked)distanceLabel.textContent='Wheels blocked · reverse, then steer around the obstacle';
+  if(distanceLabel && movementBlocked)distanceLabel.textContent=movementBlockReason==='boundary'?'Edge of exploration area · turn back':'Rock contact · reverse or steer around';
   else if(distanceLabel && Number.isFinite(steering) && Number.isFinite(remaining)) distanceLabel.textContent=`${Math.abs(steering)<.25?'Drive ahead':steering>0?'Turn left':'Turn right'} · ${remaining.toFixed(1)} m`;
   if(![x,y,angle].every(Number.isFinite))return;
   const marker=$('#waypoint-hud');
@@ -773,6 +774,7 @@ canvas.addEventListener('waypoint-reached',()=>{
   announce('Destination reached. Press Interact to investigate.');sound.cue('observe');controller?.feedback('arrival');
 });
 canvas.addEventListener('rover-move',event=>{
+  movementBlockReason=event.detail.blockedReason??null;
   movementBlocked=!!event.detail.blocked && (Math.abs(padInput.throttle)>.1 || ['w','s','arrowup','arrowdown'].some(key=>pressed.has(key)));
   const moving=event.detail.distance>lastDistance+.001; lastDistance=event.detail.distance;
   if(moving)saveWork();

@@ -666,3 +666,29 @@ when calling stopDrive before reading it; corrected to retain the contact result
 Orbit beside Last Chance and Berry Bowl evidence view visually inspected; no
 console errors. Targeted tests, not a fresh complete route or physical controller
 playthrough. Screenshot outside repo: outputs/last-light-rock-clearance.jpg.
+
+
+## v0.19.4 — correct overly broad hitboxes
+
+The previous whole-rover rectangle treated solar panel overhang as solid down
+to the ground, while rock AABBs filled empty corners. Rover collision now uses
+height-aware convex outlines from the model geometry. Disconnected geometry
+islands within each imported material group remain separate, so the spaces
+between wheel assemblies do not become solid. Cheap parent bounds precede
+the detailed checks. Rock outlines use visible vertices, with protrusion tested
+against terrain at each point; <=0.20m loose stones stay traversable. Landmark
+meshes get separate hulls. Camera collision remains unchanged.
+
+Blocked turning no longer cancels an otherwise clear translation/reverse escape.
+The original center-based radius-19 exploration boundary is restored instead of
+stopping deck corners early; its message distinguishes the boundary from rocks.
+
+Independent Sol review identified boundary, buried-geometry and disconnected
+model-component risks, all addressed above. Twelve collision tests include empty
+rock corners, panel clearance, between-wheel clearance and reverse-with-turn.
+All 25 engine files, 58 source/asset checks and static build pass. Actual-renderer
+fixture passes both landmark contacts, arrival zones, reversing and embedded
+saves. Last Chance now passes the old false stop at z=-5.091 and reaches z=-7.107;
+Berry Bowl reaches z=-9.736 on the tested approach. No console errors. Targeted
+regression testing only, not an exhaustive terrain traversal or physical-pad run.
+Screenshot: outputs/last-light-tight-hitboxes.jpg.
