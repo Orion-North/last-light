@@ -807,3 +807,17 @@ separate model islands. Restored original boundary with truthful status text;
 clear translation can escape a blocked turn. Sol source review integrated.
 Twelve collision cases, all engine/source/build checks and both renderer landmark
 approaches pass, including the prior false stopping point. Publishing v0.19.4.
+
+## SHOW-26 — actual gameplay showcase with ending
+
+User requests a smooth video of actual gameplay, including the ending. Root owns
+local frame-capture fixture, virtual clock, edit/encoding and visual QA. AUDIO-26 /
+Sol owns tests/browser/showcase-audio.js and showcase-audio.html only: offline
+soundtrack render using production score/instruments and transmission motifs.
+No game-content changes or production deployment required for this media task.
+
+SHOW-26 complete: 80-second actual-game showcase including ending; deterministic capture/audio fixtures in tests/browser. MP4 in sibling showcase-2026-11-15 output directory. No production game changes or deployment.
+
+HERO-27 complete (root): HUD-free 4K game-renderer hero image, reflective three-quarter camera, 1080p WebP cover in README/public/images; local capture fixture tests/browser/hero-photo.html. Dimensions and image visually verified. No gameplay changes or deployment.
+
+POLISH-28 — root owns README, player/media/contributor guides, GitHub issue templates, metadata and publication. REVIEW-28 / Sol performed read-only accuracy review; obsolete controls moved to explicitly historical implementation notes. Hero and two actual-game stills are the public presentation.

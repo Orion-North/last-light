@@ -1,0 +1,15 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Last Light — hero photo</title>
+<style>*{box-sizing:border-box}body{margin:0;background:#17130f;color:#eee;font:14px system-ui}nav{height:48px;display:flex;align-items:center;gap:10px;padding:8px}button,a{padding:5px;color:inherit}button{color:#17130f}iframe{border:0;display:block;width:1920px;height:1080px}a{color:#ffc68a}</style>
+<nav><button id="reset">Reset view</button><button id="left">Orbit left</button><button id="right">Orbit right</button><button id="up">Raise camera</button><button id="down">Lower camera</button><button id="photo">Render photo</button><a id="save" hidden>Download PNG</a><output id="status">Loading real game renderer…</output></nav><iframe title="HUD-free game renderer"></iframe>
+<script type="module">
+import {installClock} from './showcase-clock.js';
+let view,clock,ready=false;const status=document.querySelector('#status');
+window.prepareHero=win=>{Object.defineProperty(win,'devicePixelRatio',{value:2});clock=installClock(win);};
+window.heroView=v=>{view=v;};
+window.heroReady=()=>{ready=true;view.setMode('game');view.focusRover(true);for(let i=0;i<120;i++)clock.tick();status.textContent='Ready · actual game lighting · 3840 × 2160';};
+const orbit=(x,y)=>{if(!ready)return;view.setLook({x,y});for(let i=0;i<18;i++)clock.tick();view.setLook({x:0,y:0});clock.tick();};
+document.querySelector('#left').onclick=()=>orbit(-.5,0);document.querySelector('#right').onclick=()=>orbit(.5,0);document.querySelector('#up').onclick=()=>orbit(0,-.15);document.querySelector('#down').onclick=()=>orbit(0,.15);
+document.querySelector('#reset').onclick=()=>{view.focusRover(true);clock.tick();};
+document.querySelector('#photo').onclick=async()=>{const blob=await view.capturePhoto();const a=document.querySelector('#save');if(a.href)URL.revokeObjectURL(a.href);a.href=URL.createObjectURL(blob);a.download='last-light-hero-4k.png';a.hidden=false;status.textContent=`Ready to save · ${(blob.size/1e6).toFixed(1)} MB PNG`;};
+document.querySelector('iframe').srcdoc=`<!doctype html><html><head><base href="../../"><style>html,body{margin:0;overflow:hidden}canvas{display:block;width:100vw;height:100vh}</style><script type="importmap">{"imports":{"three":"./vendor/three/three.module.js","three/addons/":"./vendor/three/addons/"}}<\/script><script>parent.prepareHero(window);<\/script></head><body><canvas id="view"></canvas><script type="module">import{createLandscape}from './src/ui/landscape.js';const c=document.querySelector('canvas');c.addEventListener('world-status',e=>{if(e.detail.state==='ready')parent.heroReady();});parent.heroView(createLandscape(c));<\/script></body></html>`;
+</script></html>

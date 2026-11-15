@@ -1,100 +1,73 @@
 # Last Light
 
-A playable, real-time 3D story about NASA's Opportunity rover: discovery,
-attachment, a fading signal, and the things that remain.
+**You were built for ninety sols. You stayed for fourteen years.**
 
-**Playable v0.19.4.** [Play on GitHub Pages](https://orion-north.github.io/last-light/). Built with parallel Codex agents. The game uses NASA's
-textured rover model, a navigable original Mars environment, an original adaptive
-score, and a complete three-act story. No account or AI API is needed by the game
-itself. A hosting provider may apply its own access gate.
+[![Opportunity catching the light on Mars — actual game render without the HUD](public/images/last-light-hero.webp)](https://orion-north.github.io/last-light/)
 
-## Run locally
+**[Play in your browser →](https://orion-north.github.io/last-light/)** · [How to play](docs/PLAYING.md) · [Controller setup](docs/CONTROLLERS.md) · [Media & credits](docs/PRESSKIT.md)
 
-Install Node.js 22 or newer (development used 24.22.1), then:
+[![Verify and deploy](https://github.com/Orion-North/last-light/actions/workflows/pages.yml/badge.svg)](https://github.com/Orion-North/last-light/actions/workflows/pages.yml)
 
-```sh
-node scripts/serve.mjs
-```
+A short, atmospheric 3D game about NASA’s Opportunity rover and the discoveries worth sending home. Drive across Mars, uncover evidence of ancient water, and experience a distant world through the imagined thoughts of a small explorer.
 
-Open `http://localhost:4173`. No dependency installation is required: the pinned
-Three.js 0.180.0 runtime and necessary loaders are vendored with the MIT license.
+A playable project developed for the **2026 NASA Space Apps storytelling challenge**. The rover is NASA’s textured model; the landscape, story, interactions, and adaptive score are authored for the game. The cover above is rendered directly in-game.
 
-```sh
-node scripts/check.mjs
-node tests/engine/game.test.js
-node tests/engine/session.test.js
-node tests/engine/music.test.js
-node tests/engine/controller.test.js
-node tests/engine/surface.test.js
-node scripts/build.mjs
-```
+## Explore. Investigate. Send it home.
 
-The build writes `dist/`, ready for any static host. Serve over HTTP; ES modules
-and the rover model will not work reliably by opening `index.html` as a file.
-WebGL 2 is required for the 3D experience; an explicitly labeled accessible story
-fallback is available if graphics fail. The draft adds 5.08 MB of 1K scanned surface maps to the original assets;
-the detailed NASA model alone is 11.91 MB. The optional poster adds about 2 MB.
+- **Drive the rover yourself.** Cross a rocky landscape with a close camera, changing skies, and terrain feedback on compatible controllers.
+- **Work with the evidence.** Trace crossing rock layers, brush dust from a surface, and compare two sample readings.
+- **Make contact.** Squeeze both triggers, hold the signal, then release to send your discovery toward Earth.
+- **Hear the journey.** An original adaptive score and musical call-and-response accompany the discoveries.
+
+<details>
+<summary><strong>See the investigations</strong> — actual gameplay</summary>
+
+### Read the layers
+
+![Tracing crossing layers at Last Chance](docs/media/layer-tracing.webp)
+
+### Brush the surface
+
+![Brushing the dusty surface at Berry Bowl](docs/media/surface-brushing.webp)
+
+</details>
 
 ## Play
 
-Web-only: a desktop browser with a controller is the primary target.
-Existing keyboard/touch fallbacks remain available.
+**Desktop browser + controller is the primary target.** Keyboard and mouse controls are also available. The 3D scene requires WebGL 2; a story fallback is available if graphics cannot start. No install, account, or AI API key is needed.
 
-- The camera icon in the upper-right corner downloads a PNG of the current 3D view without the interface. A brief shutter and confirmation mark the capture.
-- Saves retain rover position, earned arrival, brushed dust, traced paths, sample readings and captured survey views. Pause and controller disconnect preserve completed work; partial holds require a fresh input.
-- Geological evidence stays in view through sending and receipt, with both findings visible. The compact signal display leaves the landscape readable; the ending includes your chosen Earth archive.
-- Only the first view and Earth archive ask for a text choice. Other records follow your observations. The later storm recalls your actual first horizon/ground memory.
-- Rover collisions use height-aware outlines of separate wheel/body assemblies and visible rock geometry, leaving the space under solar panels and between wheels clear. Turning no longer cancels a clear reverse escape. The camera keeps clearance from rocks; older saves embedded in obstacles resume on nearby clear ground.
-- Manual driving leads to two hands-on geological investigations and five mast observations. Survey lengths vary from a valley panorama to a single sustained look into the darkened sky.
-- Last Chance: hold R2 and trace two crossing layer paths with the right stick. Berry Bowl: sweep dust away, then take two steady probe readings. Release between readings, hold steady over each marked patch, then press Cross to compare. Keyboard and pointer alternatives remain available.
-- Sending uses a compact Mars–Earth signal route, animated traveling packets, and a returning receipt. A four-note musical question receives a complementary answer early in the mission; after contact loss the familiar answer is absent. The final image is incomplete; recovery calls have no return pulse.
-- Losing contact cuts to a distant rover view and an explicit Earth handover. Recovery calls visibly run from Earth toward Opportunity.
-- Lighting follows the atmosphere; terrain contact and traveling shadows better anchor the rover and rocks. Desktop quality uses 2× pixel ratio cap, 2048 shadows and up to 8× surface anisotropy.
+Connect a controller, press a button, and begin. Optional original-DualSense USB trigger effects are experimental and depend on browser and device support; see [setup and limits](docs/CONTROLLERS.md). Sound can be muted, progress saves locally, and the camera button downloads a HUD-free photo.
 
-- Two brief, skippable passages carry the mission from 2004 to 2015 and 2018; mission-age captions and a subtle rover finish retain those years.
-- A skippable twelve-second opening establishes identity, the ancient-water mission and Earth in three short beats. Skipping keeps the purpose in the first playable thought.
-- Opportunity’s thoughts sit directly over the scene at the bottom, without a panel or speaker labels. Thoughts appear at discoveries, not during driving, tools or sending. Geological results come first; their ancient-water interpretation appears once after receipt. Routine replies are wordless; the voice stops at contact loss. The date and next action share the same reading area, with the animated Mars/Earth link above.
-- Scene meaning and the next action sit in the main composition. Close rover framing and a compact left-side glyph guide keep attention on the world.
-- Release both triggers to arm, squeeze L2 + R2 together to charge, then release both to send. The carrier steadies as both triggers charge; releasing launches a signal across the illustrated link. No touchpad click or cursor aiming. Controller sending requires both triggers; × cannot send. A button alternative is available when no controller is connected.
-- Controller-first: left stick drives during travel and selects in menus; right stick looks and aims. Keyboard/touch remain supported.
-- Follow six local observation markers. Drive manually with gentle acceleration and braking, a close chase camera and rover-relative steering guidance. Autodrive has been removed.
-- Drive, trace crossing layers, brush and compare two instrument readings, or survey the sky; then squeeze and release both triggers to send the discovery home. Geological targets are
-  authored 3D reconstructions with readable layers and grains. There is no
-  photography system. Opportunity’s brief imagined thoughts type into one bottom terminal with subtle mechanical sound; discovered science and
-  memories remain available in the optional journal (J / □).
-- A visible signal receipt accompanies Earth's replies. Later calls go
-  unanswered, including with sound off. Pause cancels pending sends safely.
-- Conditions are qualitative, not a survival countdown. Exploration does not
-  consume power. Your chosen memories appear again in the ending.
-- DualSense: left stick or R2/L2 drive; right stick looks; × interacts; D-pad
-  selects; ○ goes back; △ resets camera; Options pauses.
-- Terrain rumble follows surface roughness, slope load, speed, and blocked wheels.
-  Optional original DualSense USB effects begin at the start of each trigger press, independently, with maximum supported resistance through the squeeze and a brief charged vibration; connect them in Settings. Hardware
-  feedback works on the user’s wired DualSense in Chrome; the resistance-first v0.14 tuning needs playtesting. See [controller support](docs/CONTROLLERS.md).
-- The original adaptive score has distinct geology, routine, storm, Earth-waiting and remembrance arrangements, with foreground sound ducking. Sound begins on entering the story unless you opt out; mute anytime.
-- Escape opens settings and pauses. Restart and local progress
-  saving are included. The ending contains your downloadable memory archive.
+The intended session is around 10–15 minutes; this is a design target, not a measured average. **Playable build: v0.19.4.**
 
-The 10–15 minute target is provisional after reducing mandatory reading;
-exploration and time spent in the optional journal change the duration. All thoughts,
-conversations, navigation, terrain, and power/signal displays are dramatized.
-Mission dates and science link to primary NASA sources.
+## Run locally
 
-## Project guide
+Use Node.js 22 or newer (Node 24 is used for deployment). Dependencies are vendored; no package installation is needed.
 
-- [Short plan](docs/PLAN.md) and [architecture](docs/ARCHITECTURE.md).
-- [NASA sources](docs/SOURCES.md), [asset credits](public/ASSETS.csv),
-  [inspiration](docs/INSPIRATION.md), and [soundtrack design](docs/SOUNDTRACK.md).
-- [Shared agent instructions](AGENTS.md), [collaboration workflow](CONTRIBUTING.md),
-  and [task board](docs/TASKS.md).
-- [Verification and limitations](docs/VERIFICATION.md).
-- [GitHub Pages deployment](docs/DEPLOYMENT.md). Desktop with a controller is the primary target; the earlier iPad target has been withdrawn.
+```sh
+git clone https://github.com/Orion-North/last-light.git
+cd last-light
+npm run dev
+```
 
-Open this folder in Codex, Claude, or Antigravity. Their entry files point to the
-same shared instructions. Use bounded tasks and separate worktrees or disjoint
-files; one integrator manages shared contracts and publication.
+Open **http://localhost:4173**. Run `npm run check`, `npm test`, and `npm run build` to verify and build the static game. The build writes `dist/` for [GitHub Pages](docs/DEPLOYMENT.md).
 
-Rover model: NASA/JPL-Caltech. This independent project is not affiliated with or
-endorsed by NASA. Third-party notices remain with their assets. Source-code
-licensing is undecided; do not assume the project's code or artwork shares NASA
-material's usage terms.
+## Inside the project
+
+| Looking for… | Start here |
+| --- | --- |
+| Player instructions and troubleshooting | [How to play](docs/PLAYING.md) |
+| A bug report or playtest feedback | [Open an issue](https://github.com/Orion-North/last-light/issues/new/choose) |
+| Working on the game | [Contributing](CONTRIBUTING.md) · [Architecture](docs/ARCHITECTURE.md) |
+| Coordinating Codex, Claude, or Antigravity | [Shared agent instructions](AGENTS.md) · [Task board](docs/TASKS.md) |
+| Science and historical references | [NASA sources](docs/SOURCES.md) |
+| Screenshots, project facts, and credits | [Media kit](docs/PRESSKIT.md) |
+| Design and development history | [Plan](docs/PLAN.md) · [Soundtrack](docs/SOUNDTRACK.md) · [Verification](docs/VERIFICATION.md) |
+
+## Credits and historical context
+
+Opportunity’s thoughts are fictional. Terrain, navigation, instrument interactions, and power/signal behavior are artistic interpretations; mission dates and discoveries are grounded in the linked NASA sources.
+
+Rover model: **NASA/JPL-Caltech**. Surface textures: **Rob Tuytel, Dario Barresi, and Dimitrios Savva / Poly Haven**. Renderer: **Three.js**. Full provenance and terms are recorded in the [asset ledger](public/ASSETS.csv).
+
+This independent project is not affiliated with or endorsed by NASA. A license for the project’s original code, music, and artwork has not yet been selected; third-party assets retain their own terms.

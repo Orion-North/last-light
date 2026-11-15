@@ -1,10 +1,18 @@
-# Working together
+# Contributing to Last Light
+
+For bugs and playtest impressions, [open an issue](https://github.com/Orion-North/last-light/issues/new/choose). Include what you were trying to do, what happened, the scene, and your browser/controller setup. Mark story spoilers.
+
+For code changes, use Node.js 22+ (Node 24 in CI). Run `npm run dev` for the local game, then `npm run check`, `npm test`, and `npm run build` before submitting a focused PR. Verify relevant player behavior in the browser; automated checks do not establish controller feel or emotional pacing.
+
+Read the [architecture](docs/ARCHITECTURE.md) and [asset ledger](public/ASSETS.csv). Preserve credits and vendor notices. The original project license is undecided; do not introduce a license or assume asset terms cover the whole project.
+
+## Agent coordination
 
 Use the repository root as the workspace. Every agent reads [AGENTS.md](AGENTS.md)
 and receives a bounded task from the integrator. The initial integrator is Codex;
 roles are transferable and are not tied to one model's capabilities.
 
-## Suggested work lanes after implementation begins
+## Work lanes
 
 | Lane | Owned paths | Deliverable |
 | --- | --- | --- |
@@ -54,9 +62,7 @@ Include scope, changed paths, dependency/interface changes, checks and results,
 limitations, and the next action. Unrun checks must be marked unrun. Shared
 interface changes go through the integrator before dependent work resumes.
 
-During setup, check links, whitespace, and the absence of accidental game code.
-Once tooling exists, PRs should include type/build checks and relevant behavior
-tests; browser changes need keyboard, touch, mute, and pause checks.
+PRs should include source/build checks and relevant behavior tests; browser changes need checks of the affected keyboard/controller flow, mute, and pause behavior.
 
 The entry files are provided for onboarding. Antigravity CLI delegation was
 subsequently verified with a read-only Gemini critique; see
