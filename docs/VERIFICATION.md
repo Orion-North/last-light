@@ -705,3 +705,10 @@ Screenshot: outputs/last-light-tight-hitboxes.jpg.
 ## JOURNAL-31 — collapsed-entry navigation correction
 
 UI-30 did not cover moving between multiple collapsed entries and did not fix that reported problem. Reproduced it with eight journal entries: Down stayed on the first collapsed summary. Fixed target filtering to exclude hidden contents even when the browser returns layout rectangles. In the actual renderer with simulated Gamepad, verified six sequential Down steps, seven Up steps, and held left-stick traversal with all eight entries collapsed; selection and automatic scrolling work without expanding earlier entries. New regression tests cover closed entries, expanding/re-collapsing, and nested closed ancestors. All 26 engine test files, source checks and static build pass.
+
+
+## CAMERA-35 — v0.19.9 survey zoom correction
+
+The camera collision tether was treating a survey gaze target as an orbit pivot, pulling the eye toward nearby rocks. Survey now uses endpoint/near-plane clearance only. Its transition resolves a reachable destination with matching aspect-dependent padding, and OrbitControls no longer clamps a survey transition. Normal driving/orbit collision behavior is unchanged.
+
+Added fixed-eye obstruction and endpoint-clearance regressions. The actual-renderer fixture recorded 67 survey samples with eye drift 0.0000 near Last Chance. The isolated production-game fixture completed ordinary-day after controller pause/resume, both marathon views and the skyward dust observation through simulated right-stick input. All 26 engine files, 64 JavaScript syntax checks, scene/asset checks and static build pass. Independent Sol review incorporated. This is targeted camera verification, not a complete playthrough or physical-controller test.

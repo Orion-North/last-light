@@ -1539,6 +1539,10 @@ export function createLandscape(canvas) {
     } }));
   }
 
+  function cameraClearance() {
+    return Math.max(.24,camera.near*Math.sqrt(1+Math.tan(THREE.MathUtils.degToRad(camera.fov/2))**2*(1+camera.aspect**2))+.06);
+  }
+
   function render() {
     if (disposed) return;
     if (evidence) {
@@ -1557,8 +1561,8 @@ export function createLandscape(canvas) {
     const targetGround = surfaceHeight(controls.target.x, controls.target.z);
     if (camera.position.y < ground + .85) camera.position.y = ground + .85;
     if (!survey && !evidence && controls.target.y < targetGround + .45) controls.target.y = targetGround + .45;
-    const nearClearance=Math.max(.24,camera.near*Math.sqrt(1+Math.tan(THREE.MathUtils.degToRad(camera.fov/2))**2*(1+camera.aspect**2))+.06);
-    const safeCamera=clearCamera(controls.target,camera.position,cameraRocks,nearClearance,surfaceHeight);
+    const nearClearance=cameraClearance();
+    const safeCamera=clearCamera(controls.target,camera.position,cameraRocks,nearClearance,surfaceHeight,{tether:!survey});
     camera.position.set(safeCamera.x,safeCamera.y,safeCamera.z);
     camera.lookAt(controls.target);
     // Dedicated evidence close-ups omit the foreground rover that otherwise
@@ -1589,6 +1593,14 @@ export function createLandscape(canvas) {
       dustGeometry.attributes.position.needsUpdate = true;
       applyPalette(1 - Math.exp(-delta * .85));
       if (cameraTween) {
+        // A survey must finish at an attainable, clear eye position. Comparing
+        // against a point inside rock/terrain would leave aiming locked forever.
+        if (survey) {
+          const destination = cameraTween.position.clone();
+          destination.y = Math.max(destination.y, surfaceHeight(destination.x, destination.z) + .85);
+          const safe = clearCamera(cameraTween.target, destination, cameraRocks, cameraClearance(), surfaceHeight, { tether: false });
+          cameraTween.position.set(safe.x, safe.y, safe.z);
+        }
         const amount = 1 - Math.exp(-delta * 3.2);
         camera.position.lerp(cameraTween.position, amount);
         controls.target.lerp(cameraTween.target, amount);
@@ -1610,7 +1622,8 @@ export function createLandscape(canvas) {
           }
         }
       }
-      if (!survey || cameraTween) controls.update();
+      // Survey owns a fixed eye and independent gaze, including its arrival.
+      if (!survey) controls.update();
       render();
       sampleInspection();
       sampleSurvey();

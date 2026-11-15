@@ -2,6 +2,7 @@
 import {installClock} from './showcase-clock.js';
 import {scenes} from '../../src/content/story.js';
 import {restoreSession,serializeSession} from '../../src/session.js';
+import {surveyProfiles} from '../../src/engine/fieldwork.js';
 import {createGeologyTool} from '../../src/engine/geology-tool.js';
 const frame=document.querySelector('iframe'),status=document.querySelector('#status');
 const query=new URLSearchParams(location.search);
@@ -21,11 +22,13 @@ async function load(){
  active=document.querySelector('#scene').value;document.querySelector('#start').disabled=true;pad.axes.fill(0);pad.buttons.forEach((_,i)=>pressure(i,0));
  seed={'last-light-settings':JSON.stringify({sound:false,haptics:false,touch:false,prompts:'playstation'})};
  if(active!=='intro'){
- const id=['travel','trace','compare'].includes(active)?'stone-ripples':active==='ending'?'last-call':'last-image';
- const sceneIndex=scenes.findIndex(s=>s.id===id),phase=['travel','trace','compare'].includes(active)?'observe':active==='send'?'transmit':'received';
+ const aiming=Boolean(surveyProfiles[active]);
+ const id=aiming?active:['travel','trace','compare'].includes(active)?'stone-ripples':active==='ending'?'last-call':'last-image';
+ const sceneIndex=scenes.findIndex(s=>s.id===id),phase=aiming||['travel','trace','compare'].includes(active)?'observe':active==='send'?'transmit':'received';
  const count=sceneIndex+(['received','transmit'].includes(phase)?1:0);
  const state=restoreSession(JSON.stringify({version:1,sceneIndex,phase,choices:scenes.slice(0,count).map(s=>s.choices[0]?.id)}),scenes);
  const checkpoint={sceneId:id,reached:active!=='travel',position:{x:7,z:-7,heading:Math.PI}};
+ if(aiming)checkpoint.survey={step:0};
  if(['trace','compare'].includes(active)){
  const tool=createGeologyTool(id);
  if(active==='compare')for(const path of tool.snapshot().paths){tool.setInput({});tool.setInput({pressure:1});for(const point of path.points){tool.setCursor(point.x,point.y);tool.update(.05);}}
@@ -42,6 +45,6 @@ function tap(i){prepare();pressure(i,1);tick(2);pressure(i,0);tick(3);report();}
 document.querySelector('#load').onclick=load;
 document.querySelector('#start').onclick=()=>{const begin=frame.contentDocument.querySelector('[data-action="begin"]');if(!begin){status.textContent='Wait for the scene to finish loading';return;}document.querySelector('#start').disabled=true;prepare();begin.click();tick(48);if(active==='ending'){tap(0);tick(20);}report();};
 for(const button of document.querySelectorAll('[data-button]'))button.onclick=()=>tap(Number(button.dataset.button));
-for(const button of document.querySelectorAll('[data-axis]'))button.onclick=()=>{prepare();const [axis,value]=button.dataset.axis.split(',').map(Number);pad.axes[axis]=value;tick(24);pad.axes.fill(0);tick(3);report();};
+for(const button of document.querySelectorAll('[data-axis]'))button.onclick=()=>{prepare();const [axis,value]=button.dataset.axis.split(',').map(Number);pad.axes[axis]=value;tick(button.textContent.startsWith('Aim')?3:24);pad.axes.fill(0);tick(3);report();};
 document.querySelector('#settle').onclick=()=>{prepare();tick(48);report();};
 await load();

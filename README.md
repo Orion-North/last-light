@@ -38,7 +38,7 @@ A playable project developed for the **2026 NASA Space Apps storytelling challen
 
 Connect a controller, press a button, and begin. Optional original-DualSense USB trigger effects are experimental and depend on browser and device support; see [setup and limits](docs/CONTROLLERS.md). Sound can be muted, progress saves locally, and the camera button downloads a HUD-free photo.
 
-The intended session is around 10–15 minutes; this is a design target, not a measured average. **Playable build: v0.19.8.**
+The intended session is around 10–15 minutes; this is a design target, not a measured average. **Playable build: v0.19.9.**
 
 ## Run locally
 

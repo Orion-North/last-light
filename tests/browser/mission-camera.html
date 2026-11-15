@@ -1,0 +1,26 @@
+<!doctype html><meta charset="utf-8"><title>Mission camera regression</title>
+<script type="importmap">{"imports":{"three":"../../vendor/three/three.module.js","three/addons/":"../../vendor/three/addons/"}}</script>
+<style>body{margin:0;background:#111;color:white;font:14px system-ui}nav{height:85px}button{padding:8px}canvas{display:block;width:100vw;height:calc(100vh - 85px)}output{display:block}</style>
+<nav><button data-view="trace">Trace layers</button><button data-view="berry">Brush samples</button><button data-view="trace-evidence">Layer evidence</button><button data-view="berry-evidence">Sample evidence</button><button id="survey">Survey near rocks</button><output>Loading</output></nav><canvas></canvas>
+<script type="module">
+import * as THREE from 'three';
+import {createLandscape} from '../../src/ui/landscape.js';
+const canvas=document.querySelector('canvas'),output=document.querySelector('output');
+let eye,camera,samples=0,lastYaw=0;
+THREE.Mesh.prototype.onBeforeRender=function(renderer,scene,c){if(c.isPerspectiveCamera){camera=c;eye=c.position.clone();}};
+canvas.addEventListener('world-status',e=>output.textContent=e.detail.message);
+canvas.addEventListener('survey-sample',e=>{samples++;lastYaw=e.detail.yaw;});
+const world=createLandscape(canvas);world.setMode('game');
+const tick=n=>new Promise(resolve=>setTimeout(resolve,n*1000/24));
+for(const button of document.querySelectorAll('[data-view]'))button.onclick=async()=>{
+ world.reset();world.setMode('game');const berry=button.dataset.view.startsWith('berry'),id=berry?'blueberries':'stone-ripples';
+ world.setToolMode(id);if(button.dataset.view.endsWith('evidence'))world.setEvidence(id);
+ const before=eye.clone();await tick(120);
+ output.textContent=`${button.textContent}: eye ${eye.toArray().map(v=>v.toFixed(3))}, drift ${eye.distanceTo(before).toFixed(4)}`;
+};
+document.querySelector('#survey').onclick=async()=>{
+ world.reset();world.restoreCheckpoint({position:{x:7,z:-6,heading:0}});world.setSurvey(true);samples=0;await tick(120);const before=eye.clone();
+ output.textContent='Aiming near the outcrop…';world.setLook({x:1,y:1});await tick(60);world.setLook({});await tick(24);
+ output.textContent=`Survey samples ${samples}, yaw ${lastYaw.toFixed(3)}, eye drift ${eye.distanceTo(before).toFixed(4)}`;
+};
+</script>

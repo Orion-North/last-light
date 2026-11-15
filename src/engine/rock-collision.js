@@ -86,9 +86,11 @@ export function clearRoverPose(pose,rocks,footprint,limit=19) {
 }
 
 // Ray/expanded-box intersection keeps the camera near plane out of a rock.
-export function clearCamera(target,desired,rocks,padding=.24,groundHeight=()=>-Infinity) {
+export function clearCamera(target,desired,rocks,padding=.24,groundHeight=()=>-Infinity,{tether=true}={}) {
   let end={...desired};
-  for(let pass=0;pass<4;pass++){
+  // Fixed-eye surveys turn their gaze, not an orbit around the gaze target.
+  // Still protect the eye/near plane, but never shorten that viewing ray.
+  for(let pass=0;tether&&pass<4;pass++){
     let closest=1;
     for(const b of rocks){
       const inside=p=>p.x>b.minX-padding&&p.x<b.maxX+padding&&p.y>b.minY-padding&&p.y<b.maxY+padding&&p.z>b.minZ-padding&&p.z<b.maxZ+padding;

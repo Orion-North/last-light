@@ -11,7 +11,7 @@ Last Light is a short, atmospheric 3D browser game about NASA’s Opportunity ro
 | | |
 | --- | --- |
 | Platform | Web; desktop and controller are the primary target |
-| Current playable | v0.19.8 |
+| Current playable | v0.19.9 |
 | Session | Designed for roughly 10–15 minutes; actual duration varies |
 | Technology | JavaScript, Three.js, WebGL 2, Web Audio, optional WebHID |
 | Development | Human-directed development with Codex and parallel AI agents |

@@ -84,3 +84,20 @@ test('disconnected imported parts do not fill the clear gap between wheel assemb
   assert.equal(poseBlocked({x:0,z:0,heading:0},[center],rover),false);
   assert.equal(poseBlocked({x:.8,z:0,heading:0},[center],rover),true);
 });
+
+
+test('fixed-eye aiming does not zoom toward a rock between the gaze target and eye',()=>{
+  const b={minX:-1,maxX:1,minY:0,maxY:3,minZ:2,maxZ:3};
+  const eye={x:0,y:1,z:5};
+  for(const target of [{x:0,y:1,z:0},{x:.4,y:2,z:1},{x:-.5,y:.5,z:2}]){
+    assert.deepEqual(clearCamera(target,eye,[b],.3,()=>0,{tether:false}),eye);
+  }
+});
+test('fixed-eye aiming retains near-plane and terrain clearance',()=>{
+  const b={minX:-1,maxX:1,minY:0,maxY:3,minZ:2,maxZ:3};
+  const target={x:0,y:1,z:0};
+  const safe=clearCamera(target,{x:0,y:1,z:2.5},[b],.3,()=>0,{tether:false});
+  assert.equal(safe.x,0);assert.equal(safe.z,2.5);assert.ok(safe.y>3.3);
+  assert.deepEqual(clearCamera(target,safe,[b],.3,()=>0,{tether:false}),safe);
+  assert.ok(clearCamera(target,{x:4,y:-1,z:4},[b],.3,()=>2,{tether:false}).y>=2.35);
+});
