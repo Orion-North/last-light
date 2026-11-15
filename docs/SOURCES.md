@@ -2,7 +2,7 @@
 
 Reviewed 2026-11-14. Sources support the first playable's historical notes and
 science interactions. Paraphrases below are not quotations. NASA-linked source
-credits do not imply endorsement of the game's fictional dialogue or generated art.
+credits do not imply endorsement of the game's fictional dialogue or artistic interpretation.
 
 ## Challenge fit
 
@@ -109,12 +109,12 @@ insignia as the project's own logo.
 **A3 — [Three.js r180 MIT license](https://github.com/mrdoob/three.js/blob/r180/LICENSE).**
 The vendored copy is in `vendor/three/LICENSE`, credited to the three.js authors
 2010–2025. Preserve that copyright and permission notice in distributed copies.
-The NASA model, original game code, and generated artwork are separate entries
+The NASA model, original game code, and rendered artwork are separate entries
 in [the asset ledger](../public/ASSETS.csv); the MIT notice is not their license.
 
 The environment is original procedural terrain, not NASA elevation data. Audio
 is original Web Audio synthesis, not a recording from Mars or a reference game's
-soundtrack. [ART.md](ART.md) records the generated fallback poster and its prompt.
+soundtrack. [ART.md](ART.md) records the actual-game fallback and the removal of an earlier generated poster.
 [INSPIRATION.md](INSPIRATION.md) records design references without importing assets.
 
 ## Agent tooling reference
@@ -135,3 +135,5 @@ agent tool was run during setup.
 ### v0.12 tool interpretation
 
 NASA's [Berry Bowl account](https://science.nasa.gov/resource/discovery-served-up-in-a-bowl/) describes brushing a relatively berry-free patch, followed by spectrometer comparison of the clean rock and hematite-rich grains. The game compresses this into swept dust removal and two qualitative readings; it does not reproduce instrument spectra or telemetry. Last Chance paired layer tracing is an authored teaching interaction, not a reconstruction of an exact documented sequence. Rechecked November 14, 2026.
+
+For all factual, asset, technical and inspiration links in one place, see [BIBLIOGRAPHY.md](BIBLIOGRAPHY.md).

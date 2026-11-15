@@ -1,0 +1,13 @@
+<!doctype html><meta charset="utf-8"><title>Last Light — graphics fallback review</title>
+<style>body{margin:0;background:#111}iframe{width:100vw;height:100vh;border:0;display:block}</style><iframe title="Graphics fallback"></iframe>
+<script type="module">
+// Test the production failure path with no WebGL; isolate saves and controller.
+const html=await(await fetch('../../index.html')).text();
+const boot=`<base href="../../"><script>
+const originalContext=HTMLCanvasElement.prototype.getContext;
+HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:originalContext.call(this,type,...args)};
+const memory=new Map();Object.defineProperty(window,'localStorage',{value:{getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,String(v)),removeItem:k=>memory.delete(k)}});
+Object.defineProperty(navigator,'getGamepads',{value:()=>[]});
+<\/script>`;
+document.querySelector('iframe').srcdoc=html.replace('<head>','<head>'+boot);
+</script>

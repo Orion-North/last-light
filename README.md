@@ -4,7 +4,7 @@
 
 [![Opportunity catching the light on Mars — actual game render without the HUD](public/images/last-light-hero.webp)](https://orion-north.github.io/last-light/)
 
-**[Play in your browser →](https://orion-north.github.io/last-light/)** · [How to play](docs/PLAYING.md) · [Controller setup](docs/CONTROLLERS.md) · [Media & credits](docs/PRESSKIT.md)
+**[Play in your browser →](https://orion-north.github.io/last-light/)** · [How to play](docs/PLAYING.md) · [Controller setup](docs/CONTROLLERS.md) · [Media & credits](docs/PRESSKIT.md) · [Bibliography](docs/BIBLIOGRAPHY.md)
 
 [![Verify and deploy](https://github.com/Orion-North/last-light/actions/workflows/pages.yml/badge.svg)](https://github.com/Orion-North/last-light/actions/workflows/pages.yml)
 
@@ -38,7 +38,7 @@ A playable project developed for the **2026 NASA Space Apps storytelling challen
 
 Connect a controller, press a button, and begin. Optional original-DualSense USB trigger effects are experimental and depend on browser and device support; see [setup and limits](docs/CONTROLLERS.md). Sound can be muted, progress saves locally, and the camera button downloads a HUD-free photo.
 
-The intended session is around 10–15 minutes; this is a design target, not a measured average. **Playable build: v0.19.7.**
+The intended session is around 10–15 minutes; this is a design target, not a measured average. **Playable build: v0.19.8.**
 
 ## Run locally
 

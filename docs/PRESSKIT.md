@@ -11,7 +11,7 @@ Last Light is a short, atmospheric 3D browser game about NASA’s Opportunity ro
 | | |
 | --- | --- |
 | Platform | Web; desktop and controller are the primary target |
-| Current playable | v0.19.7 |
+| Current playable | v0.19.8 |
 | Session | Designed for roughly 10–15 minutes; actual duration varies |
 | Technology | JavaScript, Three.js, WebGL 2, Web Audio, optional WebHID |
 | Development | Human-directed development with Codex and parallel AI agents |
@@ -35,6 +35,6 @@ The cover and screenshots below come from the actual game renderer. They are not
 
 Rover: NASA/JPL-Caltech. Terrain surface maps: Rob Tuytel, Dario Barresi, and Dimitrios Savva / Poly Haven. Rendering: Three.js. Story, environment construction, interactions, and procedural score: Last Light project. Refer to the [asset ledger](../public/ASSETS.csv) for individual provenance and terms.
 
-Opportunity’s internal dialogue is fictional. The terrain and instrument interactions are artistic reconstructions, not NASA photographs or instrument simulations. Historical references are collected in [NASA sources](SOURCES.md).
+Opportunity’s internal dialogue is fictional. The terrain and instrument interactions are artistic reconstructions, not NASA photographs or instrument simulations. Historical references are collected in [NASA sources](SOURCES.md); all resource links are in the [complete bibliography](BIBLIOGRAPHY.md).
 
 This independent project is not affiliated with or endorsed by NASA. Project licensing is undecided; this media kit does not grant a blanket license to original artwork or underlying third-party material. Keep source credits with any approved use.

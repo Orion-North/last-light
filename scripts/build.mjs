@@ -11,4 +11,4 @@ for (const item of ['index.html', 'src', 'public', 'vendor']) {
   });
 }
 console.log(`Static build written to ${dist}`);
-console.log(`Landscape: ${((await stat(path.join(dist, 'public/images/mars-landscape.png'))).size / 1024 / 1024).toFixed(2)} MB`);
+console.log(`Game-render fallback: ${((await stat(path.join(dist, 'public/images/last-light-hero.webp'))).size / 1024 / 1024).toFixed(2)} MB`);

@@ -20,7 +20,8 @@ The landscape is an interpretation of Mars, not a surveyed reconstruction of
 Opportunity's route. Keep the rover model visible and useful to interaction so
 that the experience is more than text placed over a rotating object.
 
-The generated image in [ART.md](ART.md) is retained only as a poster/loading or
-graphics-failure fallback. It does not replace the requested 3D scene. Credits and
-asset provenance live in [SOURCES.md](SOURCES.md) and
-[ASSETS.csv](../public/ASSETS.csv).
+The cover and graphics-failure fallback use the actual-game render in
+`public/images/last-light-hero.webp`. The earlier generated poster was removed
+in v0.19.8; [ART.md](ART.md) retains its historical provenance. Current credits
+and asset sources live in [SOURCES.md](SOURCES.md), [BIBLIOGRAPHY.md](BIBLIOGRAPHY.md)
+and [ASSETS.csv](../public/ASSETS.csv).

@@ -49,7 +49,7 @@ Additional API: setMode, setDrive, focusRover, inspect, setWaypoint, setObservat
 reset. Emits world-status, rover-move, waypoint-reached.
 Observation targets persist independently of the navigation marker. Set one on
 scene entry (including resume) before inspect. Changing target releases inspection.
-The generated image is a graphics-failure fallback only.
+The graphics-failure fallback is an actual-game render, using the same credited model and textures.
 
 ## Interaction waits and presentation
 
