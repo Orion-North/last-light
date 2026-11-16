@@ -25,7 +25,8 @@ function click(selector){const element=doc().querySelector(selector);if(!element
 function assert(condition,label){if(!condition)throw Error(label);}
 async function load(id){
  const index=scenes.findIndex(scene=>scene.id===id);caseErrors=[];
- backing=new Map([['last-light-settings',JSON.stringify({touch:false,haptics:false,reducedMotion:false,prompts:'auto'})],[storageKey,JSON.stringify({version:1,sceneIndex:index,phase:'transmit',choices:scenes.slice(0,index+1).map(scene=>scene.choices[0].id),checkpoint:{sceneId:id,reached:true,position:{x:7,z:-7,heading:0}}})]]);
+ const position=({'first-morning':{x:0,z:4,heading:0},'stone-ripples':{x:7,z:-7,heading:Math.PI},blueberries:{x:-5,z:-10,heading:Math.PI},'ordinary-day':{x:6,z:10,heading:1.1},'last-image':{x:3,z:-4,heading:0}})[id];
+ backing=new Map([['last-light-settings',JSON.stringify({touch:false,haptics:false,reducedMotion:false,prompts:'auto'})],[storageKey,JSON.stringify({version:1,sceneIndex:index,phase:'transmit',choices:scenes.slice(0,index+1).map(scene=>scene.choices[0].id),checkpoint:{sceneId:id,reached:true,position}})]]);
  let loaded=false;frame.addEventListener('load',()=>{loaded=true;},{once:true});
  frame.srcdoc=html.replace('<head>','<head><base href="../../"><script>parent.installMissionMatrix(window);<\/script>');
  await until(()=>loaded,'fresh iframe load');await until(()=>doc()?.querySelector('[data-action="begin"]'),'title');click('[data-action="begin"]');
@@ -46,7 +47,7 @@ run.onclick=async()=>{
    click('#settings-toggle');await until(()=>doc().querySelector('#settings-modal').open,'pause reveal');
    const captured=doc().querySelector('.discovery-camera__capture');assert(captured?.src.startsWith('blob:'),'actual captured blob missing');
    const blob=await(await frame.contentWindow.fetch(captured.src)).blob(),parentURL=URL.createObjectURL(blob);urls.push(parentURL);
-   const reconstructed=addImage(pair,parentURL,'Captured reconstructed view'),photo=discoveryPhotos[id];
+   const reconstructed=addImage(pair,parentURL,'Captured playable-world view'),photo=discoveryPhotos[id];
    const original=addImage(pair,new URL('../../'+photo.src,location.href).href,photo.credit+' · '+photo.date);
    await Promise.all([reconstructed.decode(),original.decode()]);
    const ratio=reconstructed.naturalWidth/reconstructed.naturalHeight;assert(Math.abs(ratio-photo.aspect)<.02,'capture aspect '+ratio.toFixed(4)+' differs from '+photo.aspect);pass('captured aspect matches source '+ratio.toFixed(3));

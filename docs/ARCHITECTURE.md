@@ -66,13 +66,15 @@ transmit phases remain playable. Full narrative and science live in a paused
 journal. `play.css` supplies the compact HUD and the shortened ending. No native
 desktop runtime or waveform haptics implementation is included.
 
-## Reference photography scenes
+## Photography in the playable world
 
-`mission-photo-scene.js` and `mission-valley-model.js` build lightweight, lazy
-3D reconstructions from five credited photographic references. The driveable
-world remains separate. `landscape.js` uses an independent photo camera and render
-pass; its projection aligns the actual HUD crop with the source aspect and model
-field of view. Collision and world camera effects cannot shift the photo framing.
-Actual NASA images are never used as flat 3D geometry or restored missing pixels.
-The final incomplete frame uses an authored sensor mask before the authentic
-record is revealed. Sources and interpretation notes remain in the journal.
+The discovery camera uses the same scene, terrain, objects, lighting and rover
+as driving and investigations. Its eye moves to the actual rover mast and aims at
+existing world targets. It does not load a separate scene or substitute deck.
+Original NASA images appear only after capture. Missing data belongs to the
+historical image, not to the live camera view. The same upload terminal and
+musical call/reply follow the photograph. Source details remain in Memories.
+
+`world-geology-refinement.js` improves the existing landmark meshes and grains
+in place. The refinements are visible while driving and investigating as well as
+photographing. Tool contact surfaces and collision remain part of the same world.

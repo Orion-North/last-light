@@ -832,3 +832,35 @@ static build pass.
 The browser harness isolates saves and holds visibility for reproducible testing.
 These checks do not establish physical controller feel, background-tab suspension
 or a fresh beginning-to-ending emotional playthrough.
+
+## WORLD-41 — v0.21.1 continuous-world correction (2026-11-15)
+
+The user rejected v0.21's detached photo stages. They are removed, including the
+separate scene/camera, dark aperture and fabricated pre-capture sensor mask.
+The real rover mast now looks at the same terrain, landmarks, lighting and rover
+used during play. Persistent bedrock patches and in-place geology refinements
+improve that world. Capture, authentic-image reveal, original sending apparatus,
+call/reply audio and partial receipt remain.
+
+Full-window critical review caught and corrected overly tight lens framing,
+painted-looking fractures, oversized grains, stretched top UVs and hollow outcrop
+gaps. See reviews/WORLD-41.md for the rejected design, review findings and remaining
+modeling criticism. Source resemblance is approximate, not a claim of exact matching.
+
+All five production capture/reveal/uplink/receipt browser paths pass. Active Berry
+brushing progressed to 26% using keyboard input; its dust and reticle were visually
+checked on the refined slab. Active Last Chance guides were checked on the solid
+rock. The original 29 engine test files pass; the focused geology test was rerun
+after the core/UV fix, including actual raycasts, trace-coordinate preservation,
+finite geometry and top texture mapping. The harness isolates saves and holds
+visibility; this does not establish background-tab behavior, physical controller
+feel or a complete fresh emotional playthrough.
+
+A short real keyboard drive around rocks into Perseverance Valley, normal survey
+and subsequent mast capture view also passed. The actual rover and rear terrain
+remained continuous; wheel tracks were too faint in the screenshot to claim a
+strong reference match. 71 syntax checks, 12 scene contracts and static build pass.
+
+A planned additional controller/portrait fixture rerun did not execute after the
+local preview connection dropped. The completed five-scene matrix, keyboard drive,
+brush and full-window reviews above are the checks actually run for this correction.

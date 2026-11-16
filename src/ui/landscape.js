@@ -1,4 +1,4 @@
-import { createMissionPhotoScene } from './mission-photo-scene.js';
+import { refineLastChance, refineBerryBowl } from './world-geology-refinement.js';
 import { convexHull, componentHulls, clearRoverPose, sweepRover, clearCamera } from '../engine/rock-collision.js';
 import { createGeologyTool } from '../engine/geology-tool.js';
 import { createSky } from './sky.js';
@@ -60,8 +60,6 @@ export function createLandscape(canvas) {
   let roverFrame = null;
   let evidence = null, retainedTool = null;
   let discoveryCamera = null, discoveryPointer = null, discoverySampleTime = -1;
-  let missionPhotoScene = null;
-  const photoCamera = new THREE.PerspectiveCamera(43, 1, .01, 100);
   let tool = null, toolPointer = null, toolSampleTime = 0;
   let investigation = false;
   let inspectionOrigin = null;
@@ -89,6 +87,7 @@ export function createLandscape(canvas) {
   let lastManualLook = -Infinity;
   let lastTrackPosition = new THREE.Vector3();
   let cameraTween = null;
+  let cameraLensTarget = 43;
   let intro = null;
   let waypoint = null;
   let observationTarget = null;
@@ -244,8 +243,8 @@ export function createLandscape(canvas) {
   }
   scene.add(pebbles);
 
-  // Authored teaching dioramas, not surveyed reconstructions. Geometry and grain
-  // scale favor recognition on phones; sourced interpretation lives in content.
+  // Persistent fieldwork landmarks, not surveyed reconstructions. Geometry and
+  // grain scale favor recognition on phones; interpretation lives in content.
   const observationSites = [];
   const outcropTexture = own(surfaceTexture.clone());
   outcropTexture.repeat.set(2.8, 2.8);
@@ -355,6 +354,7 @@ export function createLandscape(canvas) {
   lastChance.add(outcropBack);
   scene.add(lastChance);
   lastChance.updateMatrixWorld(true);
+  refineLastChance({ THREE, group: lastChance, own, materials: strataMaterials });
   registerLandmark(lastChance);
   observationSites.push({ x: 7, z: -7,
     target: lastChance.position.clone().add(new THREE.Vector3(0, .67, .5)),
@@ -367,10 +367,10 @@ export function createLandscape(canvas) {
   // surface: the loose concretions collect here rather than floating on a plate.
   function bowlHeight(x, z) {
     const radius = Math.hypot((x + .18) / 1.42, (z - .06) / .9);
-    return .105 + .18 * THREE.MathUtils.smoothstep(radius, .18, .94)
-      + .025 * Math.sin(x * 7 + z * 4) + .014 * Math.sin(z * 19 - x * 3)
-      - .045 * Math.exp(-((x - .67) ** 2 + (z + .24) ** 2) / .008)
-      - .035 * Math.exp(-((x + .71) ** 2 + (z - .31) ** 2) / .006);
+    return .14 + .075 * THREE.MathUtils.smoothstep(radius, .18, .94)
+      + .012 * Math.sin(x * 7 + z * 4) + .006 * Math.sin(z * 19 - x * 3)
+      - .025 * Math.exp(-((x - .67) ** 2 + (z + .24) ** 2) / .008)
+      - .020 * Math.exp(-((x + .71) ** 2 + (z - .31) ** 2) / .006);
   }
   const bowlGeometry = own(makeBowlGeometry(bowlHeight));
   const bowlMaterial = own(strataMaterials[2].clone());
@@ -559,84 +559,149 @@ export function createLandscape(canvas) {
     }
     render();
   }
-  // Authored reference scenes have their own camera and coordinate system.
-  // World collision, atmosphere and orbit controls cannot move this instrument.
+  // The same eye, scene and atmosphere used while driving. Photo framing moves
+  // from the current world view to the actual rover mast; only its gaze changes.
   function setDiscoveryCamera(sceneId, { immediate = false, aspect, frame: photoFrame } = {}) {
     if (!sceneId) {
-      if (!discoveryCamera) return true;
+      const previous = discoveryCamera;
+      if (!previous) return true;
       discoveryCamera = null; discoveryPointer = null; look = { x: 0, y: 0 };
-      controls.enabled = !tool && !evidence && !survey && !remoteView && !paused && !intro && !contactActive;
-      setEvidence(evidence);
-      if (!evidence) focusRover(immediate);
+      controls.enabled = false;
+      cameraLensTarget = previous.returnFov;
+      cameraTween = { position: previous.returnPosition, target: previous.returnTarget, fov: previous.returnFov, restoreControls: true };
+      if (immediate) {
+        camera.position.copy(cameraTween.position); controls.target.copy(cameraTween.target);
+        camera.fov = previous.returnFov; camera.updateProjectionMatrix();
+        cameraTween = null;
+        controls.enabled = !tool && !evidence && !survey && !remoteView && !paused && !intro && !contactActive && !contactPulse;
+      }
       render(); return true;
     }
     if (disposed || mode !== 'game' || remoteView || !['first-morning','stone-ripples','blueberries','ordinary-day','last-image'].includes(sceneId)) return false;
     if (discoveryCamera?.sceneId === sceneId) {
       if (Number.isFinite(aspect) && aspect > 0) discoveryCamera.aspect = aspect;
-      if (photoFrame) discoveryCamera.frame = {...photoFrame};
-      configurePhotoCamera(); render(); return true;
+      if (photoFrame) discoveryCamera.frame = { ...photoFrame };
+      fitDiscoveryLens();
+      if (immediate) { camera.fov = discoveryCamera.fov; camera.updateProjectionMatrix(); }
+      render(); return true;
     }
     if (discoveryCamera) setDiscoveryCamera(null, { immediate: true });
-    missionPhotoScene ||= createMissionPhotoScene();
-    const profile = missionPhotoScene.setScene(sceneId);
-    if (!profile) return false;
+    // Save the rendered view before changing survey/tool state. Returning from
+    // the mast retraces this move instead of jumping to an unrelated composition.
+    const returnPosition = camera.position.clone(), returnTarget = controls.target.clone(), returnFov = camera.fov;
     setSurvey(false); stopDrive(); tool?.stop(); emitToolFeedback();
     toolPointer = null; discoveryPointer = null; look = { x: 0, y: 0 };
     investigation = inspecting = false;
     cancelContactPulse(); contactActive = contactFraming = false; contactVisual.visible = false;
-    const eye = new THREE.Vector3(profile.eye.x,profile.eye.y,profile.eye.z);
-    const target = new THREE.Vector3(profile.target.x,profile.target.y,profile.target.z);
-    const gaze = new THREE.Spherical().setFromVector3(target.clone().sub(eye));
-    discoveryCamera = { sceneId, eye, target, profile, theta:gaze.theta, phi:gaze.phi,
-      distance:gaze.radius, yaw:0, pitch:0, frozen:false, readyAt:elapsed + (immediate ? 0 : .45),
-      aspect:Number.isFinite(aspect) && aspect>0 ? aspect : profile.aspect || 4/3, frame:photoFrame && {...photoFrame} };
-    discoverySampleTime = -1; controls.enabled = false;
-    configurePhotoCamera(); render(); return true;
-  }
-  function configurePhotoCamera() {
-    const d=discoveryCamera;if(!d)return;
-    const rect=canvas.getBoundingClientRect(),width=Math.max(1,rect.width),height=Math.max(1,rect.height);
-    let frame=d.frame;
-    if (!frame || ![frame.left,frame.top,frame.width,frame.height].every(Number.isFinite) || frame.width<=0 || frame.height<=0) {
-      const w=Math.min(width,height*d.aspect),h=w/d.aspect;
-      frame={left:(width-w)/2,top:(height-h)/2,width:w,height:h};
+    vehicle.updateMatrixWorld(true);
+    // NASA model normalized to 2.4 m: the camera head is at z=.49, y=1.67.
+    // Five centimetres of clearance above it avoids looking through the model
+    // when looking back over the real solar deck or turning toward a landmark.
+    const eye = vehicle.localToWorld(new THREE.Vector3(-.046, 1.72, .49));
+    let target;
+    if (sceneId === 'blueberries') target = berryBowl.position.clone().add(new THREE.Vector3(0, .16, 0));
+    else if (sceneId === 'stone-ripples') target = lastChance.position.clone().add(new THREE.Vector3(0, .67, .55));
+    else if (sceneId === 'first-morning') {
+      // Look across the landing ground and its persistent low bedrock apron.
+      target = new THREE.Vector3(-1, surfaceHeight(-1, -12) + .12, -12);
+    } else if (sceneId === 'ordinary-day') {
+      // The rover's actual deck and the tracks left by driving share this view.
+      const behind = new THREE.Vector3(0, 0, -1).applyQuaternion(vehicle.quaternion);
+      target = eye.clone().addScaledVector(behind, 2.8);
+      target.y = surfaceHeight(target.x, target.z) + .1;
+    } else {
+      // Look up into the current storm sky. Missing downlink pixels appear only
+      // in the authentic NASA observation revealed after the live capture.
+      const direction = new THREE.Vector3(Math.sin(heading), 1.8, Math.cos(heading)).normalize();
+      target = eye.clone().addScaledVector(direction, 20);
     }
-    d.resolvedFrame=frame;
-    photoCamera.near=d.profile.near || .01;photoCamera.far=d.profile.far || 100;
-    photoCamera.aspect=width/height;
-    // The captured UI window, rather than the full canvas, receives the authored
-    // vertical field of view. Off-axis projection centers that exact window.
-    photoCamera.fov=THREE.MathUtils.radToDeg(2*Math.atan(Math.tan(THREE.MathUtils.degToRad(d.profile.fov || 43)/2)*height/frame.height));
-    photoCamera.setViewOffset(width,height,width/2-(frame.left+frame.width/2),height/2-(frame.top+frame.height/2),width,height);
-    photoCamera.updateProjectionMatrix();
+    const safe = clearCamera(target, eye, cameraRocks, cameraClearance(), surfaceHeight, { tether: false });
+    eye.set(safe.x, safe.y, safe.z);
+    const gaze = new THREE.Spherical().setFromVector3(target.clone().sub(eye));
+    discoveryCamera = { sceneId, eye, target, theta: gaze.theta, phi: gaze.phi,
+      distance: gaze.radius, yaw: 0, pitch: 0, frozen: false, returnPosition, returnTarget, returnFov,
+      readyAt: elapsed + (immediate ? 0 : .45),
+      aspect: Number.isFinite(aspect) && aspect > 0 ? aspect : 4 / 3,
+      frame: photoFrame && { ...photoFrame } };
+    fitDiscoveryLens();
+    discoverySampleTime = -1; controls.enabled = false;
+    // Flush orbit damping without letting its distance/polar limits clamp the
+    // mast view. Projection remains the normal, full-viewport world projection.
+    const damping = controls.enableDamping; controls.enableDamping = false;
+    controls.update(); controls.enableDamping = damping;
+    camera.position.copy(returnPosition); controls.target.copy(returnTarget);
+    cameraTween = { position: eye.clone(), target: target.clone() };
+    if (immediate) { camera.position.copy(eye); controls.target.copy(target); camera.fov = discoveryCamera.fov; camera.updateProjectionMatrix(); cameraTween = null; }
+    render(); return true;
+  }
+  function discoveryCrop(d) {
+    const rect = canvas.getBoundingClientRect(), width = Math.max(1, rect.width), height = Math.max(1, rect.height);
+    const cropWidth = Math.min(width, height * d.aspect), cropHeight = cropWidth / d.aspect;
+    return { width, height, crop: d.frame || { left: (width - cropWidth) / 2, top: (height - cropHeight) / 2, width: cropWidth, height: cropHeight } };
+  }
+  function fitDiscoveryLens() {
+    const d = discoveryCamera;
+    if (!d) return;
+    d.fov = d.sceneId === 'ordinary-day' ? 58 : 43;
+    cameraLensTarget = d.fov;
+    const subject = d.sceneId === 'stone-ripples' ? lastChance : d.sceneId === 'blueberries' ? berryBowl : null;
+    if (!subject) return;
+    // Measure the actual persistent landmark from the mast, then open the same
+    // physical lens. The source-shaped HUD is a crop, never another projection.
+    const bounds = new THREE.Box3().setFromObject(subject);
+    const forward = d.target.clone().sub(d.eye).normalize();
+    const right = forward.clone().cross(new THREE.Vector3(0, 1, 0)).normalize();
+    const up = right.clone().cross(forward).normalize();
+    const { width, height, crop } = discoveryCrop(d);
+    const xRoom = Math.max(.05, Math.min(width / 2 - crop.left, crop.left + crop.width - width / 2) / (width / 2) * .8);
+    const yRoom = Math.max(.05, Math.min(height / 2 - crop.top, crop.top + crop.height - height / 2) / (height / 2) * .8);
+    let tangent = Math.tan(THREE.MathUtils.degToRad(50 / 2));
+    for (const x of [bounds.min.x, bounds.max.x]) for (const y of [bounds.min.y, bounds.max.y]) for (const z of [bounds.min.z, bounds.max.z]) {
+      const point = new THREE.Vector3(x, y, z).sub(d.eye), depth = Math.max(.12, point.dot(forward));
+      tangent = Math.max(tangent, Math.abs(point.dot(right)) / (depth * camera.aspect * xRoom), Math.abs(point.dot(up)) / (depth * yRoom));
+    }
+    // Close approaches can exceed a plausible wide lens. Keep the real eye and
+    // an honest crop rather than pulling the camera through the rover or rock.
+    d.fov = Math.min(85, THREE.MathUtils.radToDeg(2 * Math.atan(tangent)));
+    cameraLensTarget = d.fov;
   }
   function setDiscoveryCameraFrozen(value) {
     if (!discoveryCamera) return;
-    discoveryCamera.frozen=Boolean(value);discoveryPointer=null;look={x:0,y:0};
+    discoveryCamera.frozen = Boolean(value); discoveryPointer = null; look = { x: 0, y: 0 };
   }
   function aimDiscovery(right, down) {
-    const d=discoveryCamera;
-    if(!d || d.frozen || paused || elapsed<d.readyAt)return;
-    d.yaw=THREE.MathUtils.clamp(d.yaw-right,-(d.profile.yawLimit || .15),d.profile.yawLimit || .15);
-    d.pitch=THREE.MathUtils.clamp(d.pitch+down,-(d.profile.pitchLimit || .12),d.profile.pitchLimit || .12);
+    const d = discoveryCamera;
+    if (!d || d.frozen || paused || cameraTween || elapsed < d.readyAt) return;
+    d.yaw = THREE.MathUtils.clamp(d.yaw - right, -.30, .30);
+    d.pitch = THREE.MathUtils.clamp(d.pitch + down, -.24, .24);
   }
   function frameDiscovery() {
-    const d=discoveryCamera;if(!d)return;
-    marker.visible=false;
-    photoCamera.position.copy(d.eye);
-    const settling=Math.max(0,d.readyAt-elapsed)/.45;
-    const direction=new THREE.Vector3().setFromSpherical(new THREE.Spherical(d.distance,
-      THREE.MathUtils.clamp(d.phi+d.pitch+settling*.018,.001,Math.PI-.001),d.theta+d.yaw));
-    photoCamera.lookAt(d.eye.clone().add(direction));
-    photoCamera.updateMatrixWorld();
+    const d = discoveryCamera;
+    if (!d) return;
+    marker.visible = false;
+    toolHead.visible = traceGuide.visible = false;
+    toolRings.forEach(ring => { ring.visible = false; });
+    // Cleared dust remains on the same rock. Probe, rings and trace dots are UI.
+    if (!cameraTween) {
+      camera.position.copy(d.eye);
+      controls.target.copy(d.eye).add(new THREE.Vector3().setFromSpherical(
+        new THREE.Spherical(d.distance, THREE.MathUtils.clamp(d.phi + d.pitch, .03, Math.PI - .03), d.theta + d.yaw)));
+    }
   }
   function sampleDiscovery() {
-    const d=discoveryCamera;
-    if(!d || paused || elapsed-discoverySampleTime<.1)return;
-    discoverySampleTime=elapsed;
-    const ready=elapsed>=d.readyAt;
-    canvas.dispatchEvent(new CustomEvent('discovery-camera-sample',{bubbles:true,
-      detail:{ready,aligned:ready && Math.abs(d.yaw)<(d.profile.yawLimit || .15)*.85 && Math.abs(d.pitch)<(d.profile.pitchLimit || .12)*.85,yaw:d.yaw,pitch:d.pitch}}));
+    const d = discoveryCamera;
+    if (!d || paused || elapsed - discoverySampleTime < .1) return;
+    discoverySampleTime = elapsed;
+    camera.updateMatrixWorld();
+    const point = d.target.clone().project(camera);
+    const { width, height, crop } = discoveryCrop(d);
+    const x = (point.x + 1) * width / 2, y = (1 - point.y) * height / 2;
+    const ready = modelReady && !cameraTween && Math.abs(camera.fov - d.fov) < .05 && elapsed >= d.readyAt;
+    canvas.dispatchEvent(new CustomEvent('discovery-camera-sample', { bubbles: true,
+      detail: { ready, aligned: ready && point.z > -1 && point.z < 1
+        && x > crop.left + crop.width * .12 && x < crop.left + crop.width * .88
+        && y > crop.top + crop.height * .12 && y < crop.top + crop.height * .88,
+        yaw: d.yaw, pitch: d.pitch } }));
   }
   function getCheckpoint() {
     const source = tool || retainedTool;
@@ -663,6 +728,31 @@ export function createLandscape(canvas) {
   function setToolInput(value) { if (tool && !evidence && toolPointer === null && !paused && !document.hidden) tool.setInput(value); }
   function compareToolSamples() { const result = !evidence && tool?.compare() || false; if (result) emitTool(tool.snapshot()); return result; }
 
+  // Pale, broken low bedrock continues through the landing ground. It exists
+  // during driving, fieldwork and photography alike, using the landmark stone
+  // materials rather than appearing only when the shutter is raised.
+  const bedrock = new THREE.InstancedMesh(rockGeometries[2], strataMaterials[0], 28);
+  const bedrockRandom = seededRandom(8302);
+  for (let i = 0; i < bedrock.count; i += 1) {
+    const center = [[-1.4, -7.3], [3.1, -8.8], [.2, -11.3]][Math.floor(i / 10)];
+    const angle = bedrockRandom() * Math.PI * 2, radius = Math.sqrt(bedrockRandom()) * 1.85;
+    const x = center[0] + Math.cos(angle) * radius;
+    const z = center[1] + Math.sin(angle) * radius * .7;
+    const width = .38 + bedrockRandom() * .48, depth = .28 + bedrockRandom() * .42;
+    // Bury the underside into the local slope. The low exposed plates are
+    // traversable, and register the actual geometry for camera clearance.
+    const ground = Math.min(surfaceHeight(x - width, z), surfaceHeight(x + width, z),
+      surfaceHeight(x, z - depth), surfaceHeight(x, z + depth));
+    dummy.position.set(x, ground + .035, z);
+    dummy.rotation.set(0, -.2 + bedrockRandom() * .5, 0);
+    dummy.scale.set(width, .075 + bedrockRandom() * .035, depth);
+    dummy.updateMatrix(); bedrock.setMatrixAt(i, dummy.matrix);
+    bedrock.setColorAt(i, new THREE.Color().setScalar(.83 + bedrockRandom() * .17));
+    registerInstance(bedrock.geometry, dummy.matrix);
+  }
+  bedrock.castShadow = bedrock.receiveShadow = true;
+  scene.add(bedrock);
+
   // Fractured shoulders and talus tie each hero to the ground. Shared geometry
   // and one instanced batch keep staging inexpensive on mobile GPUs.
   const talus = own(new THREE.InstancedMesh(rockGeometries[2], strataMaterials[1], 34));
@@ -682,6 +772,7 @@ export function createLandscape(canvas) {
   }
   talus.castShadow = talus.receiveShadow = true;
   scene.add(talus);
+  refineBerryBowl({ THREE, group: berryBowl, own, bowlHeight, grains, slab });
   berryBowl.updateMatrixWorld(true);
   registerLandmark(berryBowl);
   observationSites.push({ x: -5, z: -10,
@@ -1647,36 +1738,8 @@ export function createLandscape(canvas) {
 
   function render() {
     if (disposed) return;
-    if (discoveryCamera) {
-      frameDiscovery();
-      const exposure=renderer.toneMappingExposure;
-      const scissor=renderer.getScissor(new THREE.Vector4()),tested=renderer.getScissorTest();
-      const color=renderer.getClearColor(new THREE.Color()).clone(),alpha=renderer.getClearAlpha();
-      const area=discoveryCamera.resolvedFrame,rect=canvas.getBoundingClientRect();
-      renderer.toneMappingExposure=discoveryCamera.profile.exposure ?? 1.15;
-      try {
-        // The authored reference set only exists inside the camera aperture.
-        // Clear the entire buffer first so its finite terrain never floats in
-        // the surrounding HUD, even after resize or a previous world render.
-        renderer.setScissorTest(false);renderer.setClearColor(0x101112,1);
-        renderer.clear(true,true,true);
-        renderer.setScissor(area.left,rect.height-area.top-area.height,area.width,area.height);
-        renderer.setScissorTest(true);
-        renderer.render(missionPhotoScene.scene, photoCamera);
-        // Missing downlink pixels belong to the image sensor, not the terrain.
-        const missing=discoveryCamera.profile.missingDataFraction;
-        if (missing>0 && missing<1) {
-          renderer.setScissor(area.left,rect.height-area.top-area.height,area.width,area.height*missing);
-          renderer.setClearColor(0x000000,1);renderer.clear(true,false,false);
-        }
-      }
-      finally {
-        renderer.setClearColor(color,alpha);renderer.setScissor(scissor);renderer.setScissorTest(tested);
-        renderer.toneMappingExposure=exposure;
-      }
-      return;
-    }
-    if (evidence) {
+    if (discoveryCamera) frameDiscovery();
+    if (evidence && !discoveryCamera && !cameraTween) {
       const center = toolGroup.position.clone().add(toolPoint(0, 0));
       const offset = toolBerry ? new THREE.Vector3(0, 2.9, 1.8) : new THREE.Vector3(0, .2, 3.2);
       // After comparison, leave the lower reading/signal dock clear. Move the
@@ -1698,7 +1761,7 @@ export function createLandscape(canvas) {
     camera.lookAt(controls.target);
     // Dedicated evidence close-ups omit the foreground rover that otherwise
     // blocks the near-side rock/grains. Restored on every other world view.
-    vehicle.visible = !discoveryCamera && !investigation && !tool && !evidence;
+    vehicle.visible = Boolean(discoveryCamera || cameraTween?.restoreControls) || !investigation && !tool && !evidence;
     anchorShadows();
     renderer.render(scene, camera);
     sampleWaypointGuidance();
@@ -1726,6 +1789,11 @@ export function createLandscape(canvas) {
       }
       dustGeometry.attributes.position.needsUpdate = true;
       applyPalette(1 - Math.exp(-delta * .85));
+      const lensFov = cameraLensTarget;
+      if (Number.isFinite(lensFov) && Math.abs(camera.fov - lensFov) > .005) {
+        camera.fov = THREE.MathUtils.lerp(camera.fov, lensFov, 1 - Math.exp(-delta * 3.2));
+        camera.updateProjectionMatrix();
+      }
       if (cameraTween) {
         // A survey must finish at an attainable, clear eye position. Comparing
         // against a point inside rock/terrain would leave aiming locked forever.
@@ -1738,7 +1806,13 @@ export function createLandscape(canvas) {
         const amount = 1 - Math.exp(-delta * 3.2);
         camera.position.lerp(cameraTween.position, amount);
         controls.target.lerp(cameraTween.target, amount);
-        if (camera.position.distanceTo(cameraTween.position) < .015) cameraTween = null;
+        if (camera.position.distanceTo(cameraTween.position) < .015 && controls.target.distanceTo(cameraTween.target) < .015
+          && (!Number.isFinite(lensFov) || Math.abs(camera.fov - lensFov) < .02)) {
+          camera.position.copy(cameraTween.position); controls.target.copy(cameraTween.target);
+          const restoreControls = cameraTween.restoreControls;
+          cameraTween = null;
+          if (restoreControls) controls.enabled = !discoveryCamera && !tool && !evidence && !survey && !remoteView && !paused && !intro && !contactActive && !contactPulse;
+        }
       }
       if (discoveryCamera && (look.x || look.y)) aimDiscovery(look.x * delta * .65, look.y * delta * .55);
       if(look.x || look.y || orbitGesture)lastManualLook=elapsed;
@@ -1758,7 +1832,7 @@ export function createLandscape(canvas) {
         }
       }
       // Survey owns a fixed eye and independent gaze, including its arrival.
-      if (!survey && !discoveryCamera) controls.update();
+      if (!survey && !discoveryCamera && !cameraTween) controls.update();
       render();
       sampleInspection();
       sampleSurvey();
@@ -1807,7 +1881,8 @@ export function createLandscape(canvas) {
     camera.updateProjectionMatrix();
     renderer.setSize(width, height, false);
     if (discoveryCamera) {
-      configurePhotoCamera();
+      // Resize changes the regular full-world projection and measured HUD crop.
+      fitDiscoveryLens();
     } else if (tool) {
       const center = toolGroup.position.clone().add(toolPoint(0, 0));
       camera.position.copy(center).add(toolBerry ? new THREE.Vector3(0, 2.9, 1.8) : new THREE.Vector3(0, .2, 3.2));
@@ -1852,7 +1927,7 @@ export function createLandscape(canvas) {
 
   return {
     capturePhoto() {
-      if (disposed || (!discoveryCamera && !modelReady) || renderer.getContext().isContextLost()) return Promise.resolve(null);
+      if (disposed || !modelReady || renderer.getContext().isContextLost()) return Promise.resolve(null);
       // Read immediately after rendering: keep normal WebGL buffer disposal and
       // avoid a permanent preserveDrawingBuffer cost during gameplay.
       render();
@@ -1957,10 +2032,10 @@ export function createLandscape(canvas) {
       for (const resource of resources) resource.dispose?.();
       for (const field of rockField) field.dispose();
       pebbles.dispose();
+      bedrock.dispose();
       grains.dispose();
       tracks.dispose();
       contacts.dispose();
-      missionPhotoScene?.dispose();
       renderer.dispose();
     },
   };

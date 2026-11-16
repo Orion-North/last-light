@@ -950,3 +950,25 @@ MATCH-40 implementation and source review complete. Five production camera
 lifecycles and receipts pass; valley/final-image portrait checks pass. All 29
 engine test files, 72 syntax checks and static build pass. Final integration
 retains original uplink/audio and source details in Memories. See VERIFICATION.md.
+
+## WORLD-41 — remove detached photo stage; improve the playable world
+
+User rejects v0.21's separate reference sets and asks for stronger criticism.
+Shared branch fix/continuous-world-photos; disjoint GPT-6.1 Sol lanes:
+- WORLD-CAMERA / camera: src/ui/landscape.js only. Restore one scene and the
+  actual rover mast camera for all five photo moments. Preserve the continuous
+  world, materials, terrain, rover and lighting; no separate set or black aperture.
+- WORLD-GEOLOGY / geology: new src/ui/world-geology-refinement.js only. Refine
+  existing Last Chance and Berry Bowl geometry/materials toward NASA references;
+  no duplicate scene or image planes. Export refinement hooks for camera owner.
+- WORLD-CRITIC / critic: read-only independent visual/design critique, then review
+  actual full-screen captures. Explicitly identify regressions and unmet intent.
+- Root: integration, remove detached modules, HUD/projection and full-screen QA,
+  docs, attribution, verification and publication. Preserve photo→Earth/audio.
+
+WORLD-41 complete: detached scene removed; real-world camera, persistent bedrock
+and refined landmarks integrated. Independent critic rejected and rechecked
+framing, fractures, grain scale, hollow gaps and top UVs before clearing this
+bounded correction. All five capture flows and 29 engine files pass. Actual
+short drive/survey/mast transition and active tracing/brushing visually checked.
+Residual model and terrain limitations remain in reviews/WORLD-41.md.

@@ -56,7 +56,7 @@ has no timer. The picture dissolves into a credited original NASA image, then
 fades into the original Mars–Earth sending instrument. **Send** or the usual
 two-trigger squeeze/release starts the familiar signal journey and Earth reply.
 The photo clears as the transmission begins; there is no extra review menu.
-Photo credits and source links remain in Memories. The reconstructed terrain follows the source composition but is not a surveyed or exact recreation.
+Photo credits and source links remain in Memories. The camera stays in the world you explore. Its terrain is an artistic interpretation; the original photographs have their own viewpoints.
 
 Pause preserves the captured frame. Reload before sending returns to camera framing
 without repeating the investigation; received observations remain available after

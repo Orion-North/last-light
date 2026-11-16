@@ -5,7 +5,7 @@ a controller is the primary target. The Windows/Electron edition and its build
 workflow are removed; earlier native-edition milestones below are historical.
 Browser Gamepad rumble and optional USB WebHID trigger effects remain supported.
 
-**v0.21 reference scenes:** Five mission moments now lead to rover-eye framing,
+**v0.21.1 continuous-world correction:** Five mission moments now lead to rover-eye framing,
 intentional capture and a credited real NASA image reveal, followed by the original
 Mars–Earth sending animation and call/reply ritual. Keep the screen
 immersive: minimal reticle/actions, with scientific explanations in the journal.
@@ -13,8 +13,9 @@ Inline skipping is replaced by deliberate pause-menu assistance. Capture moves
 directly through the reveal into sending: no Retake or persistent photo panel.
 Detailed readings, photo provenance and source links stay in the journal.
 The landing site, Last Chance, Berry Bowl, Perseverance Valley and the final sky
-use authored 3D compositions based on real photographs. Camera crops follow each
-source aspect; these are artistic reconstructions, not surveyed meshes.
+are photographed from the actual rover in the playable world. Improve that world
+using the source references; never swap in a detached set to force a match. The
+source images differ in viewpoint and medium; do not promise pixel alignment.
 
 **Previous v0.19 focus:** controller scrolling and disconnect recovery, readable short-screen
 receipts, clearer Earth recovery actions, and a visible consequence for the archive
