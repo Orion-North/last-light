@@ -1158,3 +1158,9 @@ post-contact, no backlog, mute/pause/hidden/transmission guards. No extra UI.
 VOICE-54 complete: authored emotion metadata and sparse start/clause gestures
 integrated; explicit accent contract checked end-to-end. Real browser six-tone,
 pause/mute/reduced-motion checks and all33 engine files pass. No extra UI.
+
+## LAMP-55 — solid task-lamp head
+Root owns earth-room.js: user screenshot shows separated/intersecting shade and
+light disc. Put both in one tilted assembly, give shade thickness and an inner
+wall, and recess the diffuser inside the aperture. Actual production room render
+verified: diffuser sits within the metal lip, with no detached face or shade clipping.

@@ -208,8 +208,15 @@ export function createEarthRoom(THREE) {
   rod([-3.49,2.03,-.3],[-2.98,2.84,-.16],.038,lampPaint);
   rod([-3.42,2.02,-.3],[-2.91,2.83,-.16],.017,silver);
   for(const p of [[-3.49,2.03,-.3],[-2.96,2.84,-.16]])mesh(new THREE.SphereGeometry(.075,12,8),edge,...p);
-  const shade=mesh(new THREE.CylinderGeometry(.12,.3,.26,32,1,true),lampPaint,-2.92,2.71,-.07);shade.rotation.z=-.18;shade.rotation.x=-.48;
-  const diffuser=mesh(new THREE.CircleGeometry(.265,32),emissive('#f6d3a1',2),-2.895,2.595,-.01);diffuser.rotation.x=Math.PI/2-.48;diffuser.rotation.y=.18;
+  // One local assembly keeps the recessed light concentric with the tilted
+  // shade. A closed wall profile provides a real inner surface and metal lip.
+  const lampHead=new THREE.Group();scene.add(lampHead);
+  lampHead.position.set(-2.92,2.71,-.07);lampHead.rotation.set(-.48,0,-.18);
+  const shadeProfile=[[.30,-.13],[.12,.13],[.10,.13],[.28,-.13],[.30,-.13]]
+    .map(([radius,height])=>new THREE.Vector2(radius,height));
+  mesh(new THREE.LatheGeometry(shadeProfile,48),lampPaint,0,0,0,lampHead);
+  const diffuser=mesh(new THREE.CircleGeometry(.272,48),emissive('#f6d3a1',1.1),0,-.119,0,lampHead);
+  diffuser.rotation.x=Math.PI/2;diffuser.castShadow=false;
   tube([[-3.34,1.34,-.14],[-3.65,1.28,-.4],[-3.8,1.27,-.9],[-3.6,1.1,-1.3]],.016,edge);
 
   // Ceramic cup and a single-ear communications headset, quietly set aside.
