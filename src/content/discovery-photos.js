@@ -1,10 +1,43 @@
 /** Authentic NASA photographs, revealed after the player's reconstructed view.
  * Dates describe the observation period, not the web page's publication date.
- * Bundled JPEGs are unmodified originals; provenance: SCIENCE-37 handoff.
+ * Bundled JPEGs are unmodified originals; provenance: SCIENCE-37 and SOURCE-40 handoffs.
  */
 export const discoveryPhotos = {
+  'first-morning': {
+    title: 'The first view', aspect: 1, frameLabel: 'EAGLE CRATER',
+    instrument: 'Opportunity · Panoramic Camera (Pancam)',
+    date: 'Landing-site view · January 2004',
+    credit: 'NASA/JPL/Cornell',
+    sourceUrl: 'https://science.nasa.gov/photojournal/a-curious-landscape/',
+    src: './public/images/discoveries/first-morning.jpg',
+    alt: 'Grayscale Opportunity image of pale exposed bedrock within Eagle Crater, beneath a gently sloping dark rim and bright sky.',
+    caption: 'Your view is a reconstruction. This real grayscale Pancam photograph looks southwest in the late Martian afternoon shortly after landing, rather than showing the imagined morning in the story.',
+    discovery: 'Early camera views revealed exposed bedrock inside the landing crater, giving scientists a target for closer investigation.',
+  },
+  'ordinary-day': {
+    title: 'A sunlit slope', aspect: 1, frameLabel: 'PERSEVERANCE VALLEY',
+    instrument: 'Opportunity · Navigation Camera (Navcam)',
+    date: 'July 18, 2017 · Sol 4,793',
+    credit: 'NASA/JPL-Caltech',
+    sourceUrl: 'https://science.nasa.gov/resource/view-back-uphill-after-entering-perseverance-valley/',
+    src: './public/images/discoveries/perseverance-valley.jpg',
+    alt: 'Grayscale view uphill in Perseverance Valley, with wheel tracks across a sunlit rocky slope and Opportunity’s rear solar panel along the bottom.',
+    caption: 'Your view is a reconstruction. This real Navcam photograph was taken on July 18, 2017. Wheel tracks lead uphill above the rear solar panel.',
+    discovery: 'A slight northward tilt at this stopping place improved solar-panel power as southern autumn reduced daily sunshine.',
+  },
+  'last-image': {
+    title: 'What light remained', aspect: 1, frameLabel: 'THE DARKENED SUN',
+    instrument: 'Opportunity · Pancam left eye · solar filter',
+    date: 'June 10, 2018 · Sol 5,111',
+    credit: 'NASA/JPL-Caltech/Cornell/ASU',
+    sourceUrl: 'https://science.nasa.gov/resource/opportunitys-last-message/',
+    src: './public/images/discoveries/last-image.jpg',
+    alt: 'Opportunity’s incomplete dark solar-filter image, with white camera noise across the upper portion and missing data represented by a black strip across the bottom.',
+    caption: 'Your view is a reconstruction. This is the actual incomplete full-frame Pancam transmission: dust hid the Sun, white speckles are camera noise, and the black lower portion represents missing data. Later-taken images reached Earth only as thumbnails.',
+    discovery: 'The solar-filter image recorded a sky so dark that the Sun was hidden; transmission stopped before the full frame arrived.',
+  },
   'stone-ripples': {
-    title: 'Last Chance',
+    title: 'Last Chance', aspect: 447 / 333, frameLabel: 'LAST CHANCE',
     instrument: 'Opportunity · Panoramic Camera (Pancam)',
     date: 'Early mission · 2004',
     credit: 'NASA/JPL/Cornell',
@@ -15,7 +48,7 @@ export const discoveryPhotos = {
     discovery: 'Pancam and microscopic images revealed fine layers whose scale and geometry are consistent with ripples formed by ancient flowing water.',
   },
   blueberries: {
-    title: 'Berry Bowl',
+    title: 'Berry Bowl', aspect: 768 / 512, frameLabel: 'BERRY BOWL',
     instrument: 'Opportunity · Panoramic Camera (Pancam)',
     date: 'Early mission · 2004',
     credit: 'NASA/JPL-Caltech/Cornell',

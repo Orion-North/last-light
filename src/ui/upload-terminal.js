@@ -9,7 +9,7 @@ const results = {
 };
 
 // The caller owns gesture recognition, live hint text, and stage transitions.
-export function renderUploadTerminal({ sceneId = '', findings = [], title, mode, stage, prompt, response, meaning = '', input = 'pointer', family = 'playstation', story = '', voice = true }) {
+export function renderUploadTerminal({ sceneId = '', sendLabel = '', findings = [], title, mode, stage, prompt, response, meaning = '', input = 'pointer', family = 'playstation', story = '', voice = true }) {
   const upload = mode === 'reply' || mode === 'partial';
   const controller = input === 'controller';
   const verb = mode === 'silence' ? 'call' : mode === 'archive' ? 'keep' : 'send';
@@ -20,7 +20,7 @@ export function renderUploadTerminal({ sceneId = '', findings = [], title, mode,
   const operationalResponse = /^Earth[’']s call, imagined:/i.test(response || '') ? 'No signal is received from Opportunity.' : response;
   // An absent rover thought is authored silence, not a request for Earth dialogue.
   const showOperationalResponse = !voice && (mode === 'silence' || mode === 'archive');
-  const buttonLabel = upload ? (['stone-ripples','blueberries'].includes(sceneId)?'Send':'Upload memory') : mode === 'silence' ? 'Call Opportunity' : 'Keep memory';
+  const buttonLabel = upload ? (sendLabel || 'Upload memory') : mode === 'silence' ? 'Call Opportunity' : 'Keep memory';
   const commitmentLabel = mode === 'silence' ? 'Call commitment' : mode === 'archive' ? 'Archive commitment' : 'Send commitment';
   const action = stage === 'ready' && !controller
     ? `<button class="upload-terminal__button" type="button" data-action="transmit">${buttonLabel} <span aria-hidden="true">→</span></button>`

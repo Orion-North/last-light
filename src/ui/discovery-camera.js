@@ -1,5 +1,6 @@
 import { controllerGlyph } from './controller-prompts.js';
 const escape = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const aspectOf = photo => Number.isFinite(photo.aspect) && photo.aspect>=.5 && photo.aspect<=4 ? photo.aspect : 4/3;
 const safeUrl = value => /^(?:https?:|blob:|data:image\/|\.\.?\/|\/)/i.test(String(value || '')) ? escape(value) : '';
 
 /** The caller owns capture, image loading, live status and progression. */
@@ -10,8 +11,8 @@ export function renderDiscoveryCamera({photo={},stage='aim',captureUrl='',ready=
   const button=(action,label,disabled=false,primary=true)=>`<button class="${primary?'primary-button':'quiet-button'} discovery-camera__action" data-action="${action}"${disabled?' disabled':''}>${primary?glyph:''}<span>${label}</span></button>`;
   const visibleError=error || (unavailable?'Camera unavailable.':'');
   const status=visibleError || (stage==='capturing'?'Recording picture.':stage==='revealing'?'Original mission image.':ready?'Camera ready.':'Positioning camera.');
-  const name=/berry|blueberr/i.test(photo.title || '')?'BERRY BOWL':/chance|layer/i.test(photo.title || '')?'LAST CHANCE':photo.title || '';
-  return `<section class="discovery-camera" data-stage="${escape(stage)}" data-aligned="${aligned}" data-reduced-motion="${reducedMotion}" aria-label="${authentic?'Opportunity mission image':'Rover camera'}">
+  const name=photo.frameLabel || (/berry|blueberr/i.test(photo.title || '')?'BERRY BOWL':/chance|layer/i.test(photo.title || '')?'LAST CHANCE':photo.title || '');
+  return `<section class="discovery-camera" data-stage="${escape(stage)}" data-aligned="${aligned}" style="--photo-aspect:${aspectOf(photo)}" data-reduced-motion="${reducedMotion}" aria-label="${authentic?'Opportunity mission image':'Rover camera'}">
     <div class="discovery-camera__view${aiming?' discovery-camera__view--open':''}">
       ${captureUrl?`<img class="discovery-camera__capture" src="${safeUrl(captureUrl)}" alt="Reconstructed game view of ${escape(photo.title || 'Mars')}"${authentic?' aria-hidden="true"':''}>`:''}
       ${authentic?`<img class="discovery-camera__original" data-discovery-photo="true" src="${safeUrl(photo.src)}" alt="${escape(photo.alt || photo.title || 'Opportunity’s actual observation')}">`:''}
@@ -36,7 +37,7 @@ export function renderPhotoUplink({photo={},captureUrl='',imageState='loading',s
   const src=authentic?photo.src:captureUrl;
   const alt=authentic?`${photo.alt || photo.title || 'Opportunity mission image'}. ${photo.credit || 'NASA/JPL-Caltech'}`:`Reconstructed game view of ${photo.title || 'Mars'}`;
   const image=src?`<img src="${safeUrl(src)}" alt="${escape(alt)}"${authentic?' data-discovery-photo="true"':''}>`:'';
-  return `<section class="photo-uplink" data-stage="${escape(stage)}" data-reduced-motion="${reducedMotion}" style="--handoff-progress:${stage==='handoff'?0:1}">
+  return `<section class="photo-uplink" data-stage="${escape(stage)}" data-reduced-motion="${reducedMotion}" style="--photo-aspect:${aspectOf(photo)};--handoff-progress:${stage==='handoff'?0:1}">
     <div class="photo-uplink__terminal">${terminal}</div>
     ${stage==='handoff' && image?`<figure class="photo-uplink__photo">${image}</figure>`:''}
   </section>`;

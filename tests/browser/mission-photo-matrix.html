@@ -1,0 +1,67 @@
+<!doctype html><meta charset="utf-8"><title>Mission photo comparison matrix</title>
+<style>body{margin:16px;background:#171918;color:#eee;font:14px system-ui}button{padding:10px 16px}output{white-space:pre-wrap;display:block;padding:12px 0}article{border-top:1px solid #59605b;padding:12px 0}.pair{display:grid;grid-template-columns:1fr 1fr;gap:16px}.pair figure{margin:0}.pair img{display:block;width:100%;height:280px;object-fit:contain;background:#090b0b}figcaption{padding:6px;color:#ccc}article pre{white-space:pre-wrap}iframe{width:100%;height:760px;border:1px solid #59605b}@media(max-width:600px){.pair{grid-template-columns:1fr}}</style>
+<button id="run">Run five scenes</button><output>Ready. Isolated saves; muted audio. Harness keeps the document active; browser background behavior is not tested.</output><div id="comparisons"></div><iframe title="Production mission photo game"></iframe>
+<script type="module">
+import {scenes} from '../../src/content/story.js';
+import {discoveryPhotos} from '../../src/content/discovery-photos.js';
+const allowedIds=['first-morning','stone-ripples','blueberries','ordinary-day','last-image'];
+const params=new URLSearchParams(location.search),requested=params.get('scenes')?.split(',').filter(id=>allowedIds.includes(id));
+const ids=requested?.length?[...new Set(requested)]:allowedIds;
+const frame=document.querySelector('iframe'),out=document.querySelector('output'),pairs=document.querySelector('#comparisons'),run=document.querySelector('#run');
+if(params.get('portrait')==='1'){frame.style.width='390px';frame.style.height='760px';}
+const storageKey='last-light-journey-v1';let backing=new Map(),caseErrors=[],deadline=0,html='',urls=[];
+window.installMissionMatrix=win=>{
+ const memory=backing,errors=caseErrors;
+ Object.defineProperty(win.document,'hidden',{configurable:true,get:()=>false});
+ win.addEventListener('blur',event=>event.stopImmediatePropagation(),true);
+ Object.defineProperty(win.navigator,'getGamepads',{value:()=>[]});
+ Object.defineProperty(win,'localStorage',{value:{getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,String(v)),removeItem:k=>memory.delete(k)}});
+ win.addEventListener('error',event=>errors.push(event.message));win.addEventListener('unhandledrejection',event=>errors.push(String(event.reason)));
+};
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function until(predicate,label,limit=18000){const end=Math.min(deadline,Date.now()+limit);while(!predicate()){if(Date.now()>end)throw Error('Timed out: '+label);await sleep(30);}}
+const doc=()=>frame.contentDocument;
+function click(selector){const element=doc().querySelector(selector);if(!element)throw Error('Missing '+selector);element.click();}
+function assert(condition,label){if(!condition)throw Error(label);}
+async function load(id){
+ const index=scenes.findIndex(scene=>scene.id===id);caseErrors=[];
+ backing=new Map([['last-light-settings',JSON.stringify({touch:false,haptics:false,reducedMotion:false,prompts:'auto'})],[storageKey,JSON.stringify({version:1,sceneIndex:index,phase:'transmit',choices:scenes.slice(0,index+1).map(scene=>scene.choices[0].id),checkpoint:{sceneId:id,reached:true,position:{x:7,z:-7,heading:0}}})]]);
+ let loaded=false;frame.addEventListener('load',()=>{loaded=true;},{once:true});
+ frame.srcdoc=html.replace('<head>','<head><base href="../../"><script>parent.installMissionMatrix(window);<\/script>');
+ await until(()=>loaded,'fresh iframe load');await until(()=>doc()?.querySelector('[data-action="begin"]'),'title');click('[data-action="begin"]');
+ await until(()=>doc().querySelector('[data-action="capture-discovery"]:not(:disabled)'),'ready camera');
+}
+function addPair(id){const article=document.createElement('article'),heading=document.createElement('h2'),pair=document.createElement('div'),report=document.createElement('pre');heading.textContent=id+' · '+discoveryPhotos[id].title;pair.className='pair';article.append(heading,pair,report);pairs.append(article);return {pair,report};}
+function addImage(pair,src,label){const figure=document.createElement('figure'),img=document.createElement('img'),caption=document.createElement('figcaption');img.src=src;img.alt=label;caption.textContent=label;figure.append(img,caption);pair.append(figure);return img;}
+run.onclick=async()=>{
+ run.disabled=true;urls.forEach(URL.revokeObjectURL);urls=[];pairs.replaceChildren();deadline=Date.now()+180000;const summaries=[];
+ try{html=await(await fetch('../../index.html')).text();
+ for(const id of ids){
+  const {pair,report}=addPair(id),checks=[];const pass=label=>{checks.push('PASS '+label);report.textContent=checks.join('\n');};out.textContent='RUNNING '+id+'\n'+summaries.join('\n');
+  try{
+   await load(id);pass('production camera ready');
+   click('[data-action="capture-discovery"]');
+   await until(()=>doc().querySelector('.discovery-camera[data-stage="revealing"]'),'reveal stage');
+   // Hold the real reveal while copying its frame into parent-owned storage.
+   click('#settings-toggle');await until(()=>doc().querySelector('#settings-modal').open,'pause reveal');
+   const captured=doc().querySelector('.discovery-camera__capture');assert(captured?.src.startsWith('blob:'),'actual captured blob missing');
+   const blob=await(await frame.contentWindow.fetch(captured.src)).blob(),parentURL=URL.createObjectURL(blob);urls.push(parentURL);
+   const reconstructed=addImage(pair,parentURL,'Captured reconstructed view'),photo=discoveryPhotos[id];
+   const original=addImage(pair,new URL('../../'+photo.src,location.href).href,photo.credit+' · '+photo.date);
+   await Promise.all([reconstructed.decode(),original.decode()]);
+   const ratio=reconstructed.naturalWidth/reconstructed.naturalHeight;assert(Math.abs(ratio-photo.aspect)<.02,'capture aspect '+ratio.toFixed(4)+' differs from '+photo.aspect);pass('captured aspect matches source '+ratio.toFixed(3));
+   assert(original.naturalWidth>0,'NASA source decode failed');pass('authentic source decoded');
+   await until(()=>doc().querySelector('[data-discovery-photo]')?.naturalWidth>0,'NASA image in actual reveal');pass('actual NASA reveal displayed');
+   click('#settings-modal [data-close]');
+   await until(()=>doc().querySelector('.photo-uplink[data-stage="uplink"]'),'original uplink ready');
+   assert(doc().querySelector('.signal-world--mars') && doc().querySelector('.signal-world--earth'),'Mars/Earth sending map missing');
+   assert(!doc().querySelector('[data-action="retake-discovery"],.photo-uplink__photo'),'photo leftovers in uplink');pass('original Mars/Earth uplink; no Retake or photo leftovers');
+   click('[data-action="transmit"]');await until(()=>doc().querySelector('[data-action="next"]'),'receipt',15000);
+   const saved=JSON.parse(backing.get(storageKey));assert(saved.phase==='received','receipt not saved');
+   assert(doc().querySelector('.upload-terminal[data-mode="'+(id==='last-image'?'partial':'reply')+'"]'),'wrong receipt mode');pass(id==='last-image'?'partial-image receipt saved':'receipt saved');
+   assert(!doc().querySelector('[data-action="retake-discovery"],.photo-uplink__photo'),'photo leftovers after receipt');assert(!caseErrors.length,'runtime errors: '+caseErrors.join('; '));pass('no runtime errors or leftover photo controls');summaries.push('PASS '+id);
+  }catch(error){checks.push('FAIL '+error.message);report.textContent=checks.join('\n');summaries.push('FAIL '+id+' — '+error.message);}
+ }
+ }catch(error){summaries.push('FAIL fixture — '+error.message);}finally{out.textContent=summaries.join('\n')+'\nDONE';run.disabled=false;}
+};
+</script>

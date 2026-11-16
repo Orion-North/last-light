@@ -920,3 +920,33 @@ IMMERSION-39 complete: Retake, persistent thumbnail/source controls, alignment
 labels and duplicate science readouts removed. Photo enters the existing Mars
 signal and clears; sources remain in Memories. Both discovery lifecycles and
 receipt reload verified in browser; 28 engine files/source/assets/build pass.
+
+## MATCH-40 — more mission images and reference-shaped 3D scenes
+
+User authorizes agent modeling around real images for stronger transitions.
+Shared branch feature/mission-photo-scenes; disjoint GPT-6.1 Sol lanes.
+- SOURCE-40 / challenge_review: src/content/discovery-photos.js,
+  public/images/discoveries/ new JPEGs and docs/handoffs/SOURCE-40.md only.
+  Verify/download primary NASA images for first-morning, ordinary-day and
+  last-image; inspect references and share composition/credit details.
+- MODEL-40 / technical_review: new src/ui/mission-photo-scene.js and focused
+  tests only. Actual lightweight 3D reconstructions shaped/composed around
+  all five photographs; communicate renderer contract directly with RENDER-40.
+- RENDER-40 / gameplay_review: src/ui/landscape.js only. Integrate modeled
+  photo sets and matched camera compositions, aim, readiness, capture and safe
+  restoration for all five scenes; preserve fieldwork and sending.
+- Root: generalized photo flow, aspect/crop matching, preview fixtures, truthful
+  provenance/story wording, attribution, verification and publication.
+Keep original sending/audio and minimal immersive UI; no Retake/extra panels.
+
+Visual refinement after reference comparison:
+- VALLEY-40 / gameplay_review: new src/ui/mission-valley-model.js only; improved
+  reference-aligned valley terrain, deck outline and faint wheel-track relief.
+  Coordinate helper/profile contract with MODEL-40; do not edit shared model.
+- MODEL-40 continues first-view and geological scene refinement plus common
+  procedural surface detail and source-specific lighting.
+
+MATCH-40 implementation and source review complete. Five production camera
+lifecycles and receipts pass; valley/final-image portrait checks pass. All 29
+engine test files, 72 syntax checks and static build pass. Final integration
+retains original uplink/audio and source details in Memories. See VERIFICATION.md.

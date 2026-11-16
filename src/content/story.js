@@ -112,9 +112,9 @@ export const scenes = [
     id: 'ordinary-day', act: 2, chapter: 'II · The light grows thin',
     subtitle: 'Wake. Look. Send. The work has become familiar.',
     objective: 'Take in the valley',
-    discovery: '2018. After fourteen years, sunlight still reaches the ground beside your wheels. Send this ordinary view home.',
+    discovery: '2017. After thirteen years, sunlight still reaches the ground beside your wheels. Send this ordinary view home.',
     response: 'Earth, imagined: Received. We will be here for the next one.',
-    sol: 'PERSEVERANCE VALLEY · 2018', title: 'An ordinary day.',
+    sol: 'PERSEVERANCE VALLEY · JULY 18, 2017', title: 'An ordinary day.',
     text: 'Wake. Check the warmth inside your body. Turn toward the light.\n\nThe work has become familiar. A camera movement. A little pause. A packet of information crossing the dark between worlds.\n\nNothing about this morning tells you it will be one of the mornings you remember.',
     thought: 'If they ask what I did today, I can tell them.',
     environment: 'sunset', power: 72, signal: 95,
@@ -187,7 +187,7 @@ export const scenes = [
     actionLabel: 'Look once more',
     observation: {
       title: 'An unfinished picture',
-      text: 'Opportunity’s final transmitted full-frame image was dark and incomplete. Its camera had been pointed toward the Sun, obscured by dust. White speckles were camera noise; the missing part of the frame had not arrived.\n\nThis is a dramatized rendering, not the original image. The real record is linked below.',
+      text: 'Opportunity’s final transmitted full-frame image was dark and incomplete. Its camera had been pointed toward the Sun, obscured by dust. White speckles were camera noise; the missing part of the frame had not arrived.\n\nThe camera view is a reconstruction. Its reveal shows the original incomplete transmitted image, with the missing data left untouched.',
       fact: 'The last contact was June 10, 2018. Later images existed as transmitted thumbnails; the incomplete frame is not simply the last photograph taken.', sourceId: 'N3',
     },
     choices: [

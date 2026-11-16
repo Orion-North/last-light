@@ -1,6 +1,6 @@
 /* Camera presentation stays outside the original signal apparatus. */
 .discovery-camera { --camera-edge:rgba(247,201,155,.72);position:fixed;inset:82px max(24px,env(safe-area-inset-right)) 28px max(24px,env(safe-area-inset-left));z-index:5;display:grid;grid-template-rows:minmax(90px,1fr) auto;gap:10px;max-width:1100px;margin-inline:auto;pointer-events:none;color:var(--ink,#f3e8d9); }
-.discovery-camera__view { position:relative;overflow:hidden;background:#101112;min-height:0;width:min(100%,calc((100svh - 200px) * 1.333333));height:auto;aspect-ratio:4 / 3;max-width:100%;max-height:100%;justify-self:center;align-self:center;pointer-events:none; }
+.discovery-camera__view { position:relative;overflow:hidden;background:#101112;min-height:0;width:min(100%,calc((100svh - 200px) * var(--photo-aspect,1.333333)));height:auto;aspect-ratio:var(--photo-aspect,1.333333);max-width:100%;max-height:100%;justify-self:center;align-self:center;pointer-events:none; }
 .discovery-camera__view--open { background:transparent; }
 .discovery-camera__capture,.discovery-camera__original { position:absolute;inset:0;width:100%;height:100%;object-fit:contain; }
 .discovery-camera__original { background:#101112; }
@@ -17,7 +17,7 @@
 .discovery-camera__crosshair::before,.discovery-camera__crosshair::after { content:'';position:absolute;background:#f7e7d3;box-shadow:0 0 3px #000; }
 .discovery-camera__crosshair::before { left:4px;top:0;width:1px;height:9px; }
 .discovery-camera__crosshair::after { left:0;top:4px;width:9px;height:1px; }
-.discovery-camera__reading { max-height:28svh;overflow:auto;pointer-events:auto;background:linear-gradient(transparent,rgba(10,12,13,.65));padding:8px;margin:-8px;scrollbar-width:thin; }
+.discovery-camera__reading { min-height:60px;box-sizing:border-box;max-height:28svh;overflow:auto;pointer-events:auto;background:linear-gradient(transparent,rgba(10,12,13,.65));padding:8px;margin:-8px;scrollbar-width:thin; }
 .discovery-camera__actions { display:flex;justify-content:center;align-items:center;gap:16px;flex-wrap:wrap; }
 .discovery-camera .discovery-camera__action { display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:44px;font-size:15px;padding:8px 14px;pointer-events:auto; }
 .discovery-camera__action .controller-glyph { width:25px;height:25px; }
@@ -27,7 +27,7 @@
 @keyframes discovery-exposure { from { opacity:.28; } to { opacity:0; } }
 body[data-paused="true"] .discovery-camera__exposure { animation-play-state:paused; }
 /* Root advances these clocks and restores their values after each DOM mount. */
-.photo-uplink { --photo-width:min(calc(100vw - 48px),calc((100svh - 200px) * 1.333333));--photo-height:calc(var(--photo-width) * .75);--photo-left:calc((100vw - var(--photo-width)) / 2);--photo-top:82px;--photo-scale:.22; }
+.photo-uplink { --photo-width:min(calc(100vw - 48px),calc((100svh - 200px) * var(--photo-aspect,1.333333)));--photo-height:calc(var(--photo-width) / var(--photo-aspect,1.333333));--photo-left:calc((100vw - var(--photo-width)) / 2);--photo-top:82px;--photo-scale:.22; }
 .photo-uplink__terminal { opacity:var(--handoff-progress,1); }
 .photo-uplink__photo { position:fixed;left:var(--photo-left);top:var(--photo-top);width:var(--photo-width);height:var(--photo-height);margin:0;z-index:4;pointer-events:none;transform-origin:top left;transform:translate(calc((var(--photo-dest-x,35vw) - var(--photo-left)) * var(--handoff-progress,1)),calc((var(--photo-dest-y,45vh) - var(--photo-top)) * var(--handoff-progress,1))) scale(calc(1 - (1 - var(--photo-scale)) * var(--handoff-progress,1)));opacity:calc(1 - var(--handoff-progress,1)); }
 .photo-uplink__photo img { width:100%;height:100%;object-fit:contain;background:#101112; }

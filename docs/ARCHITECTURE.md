@@ -65,3 +65,14 @@ immediately through existing CHOOSE and TRANSMIT transitions; legacy saved
 transmit phases remain playable. Full narrative and science live in a paused
 journal. `play.css` supplies the compact HUD and the shortened ending. No native
 desktop runtime or waveform haptics implementation is included.
+
+## Reference photography scenes
+
+`mission-photo-scene.js` and `mission-valley-model.js` build lightweight, lazy
+3D reconstructions from five credited photographic references. The driveable
+world remains separate. `landscape.js` uses an independent photo camera and render
+pass; its projection aligns the actual HUD crop with the source aspect and model
+field of view. Collision and world camera effects cannot shift the photo framing.
+Actual NASA images are never used as flat 3D geometry or restored missing pixels.
+The final incomplete frame uses an authored sensor mask before the authentic
+record is revealed. Sources and interpretation notes remain in the journal.

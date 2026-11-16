@@ -114,6 +114,13 @@ function preloadDiscovery(id) {
   const done=stateValue=>{asset.state=stateValue;if(currentDiscovery() && scenes[state.sceneIndex].id===id && ['revealing','handoff','uplink','sending','received'].includes(discoveryStage()))renderGame();};
   asset.image.onload=()=>done('ready');asset.image.onerror=()=>done('error');asset.image.src=photo.src;
 }
+function syncDiscoveryFraming() {
+  const photo=currentDiscovery(),windowRect=app.querySelector('.discovery-camera__view')?.getBoundingClientRect();
+  if(!photo || !windowRect || graphicsError)return;
+  const canvasRect=canvas.getBoundingClientRect();
+  view?.setDiscoveryCamera?.(scenes[state.sceneIndex].id,{immediate:settings.reducedMotion,aspect:photo.aspect,
+    frame:{left:windowRect.left-canvasRect.left,top:windowRect.top-canvasRect.top,width:windowRect.width,height:windowRect.height}});
+}
 function syncDiscoveryProgress() {
   const root=app.querySelector('.discovery-camera,.photo-uplink');if(!root || !discoveryShot)return;
   const progress=discoveryShot.progress || 0;
@@ -453,7 +460,7 @@ function renderGame({ focus = false } = {}) {
   document.body.dataset.evidence=String(evidence);
   document.body.dataset.discovery=String(!!photo);
   if(photo && !photoTerminal) {
-    view?.setDiscoveryCamera?.(graphicsError?null:scene.id,{immediate:settings.reducedMotion});
+    view?.setDiscoveryCamera?.(graphicsError?null:scene.id,{immediate:settings.reducedMotion,aspect:photo.aspect});
     view?.setDiscoveryCameraFrozen?.(discoveryStage()!=='aim' || state.paused);
   }
   $('#waypoint-hud').hidden=!goal || reached || state.phase!=='observe';
@@ -461,7 +468,7 @@ function renderGame({ focus = false } = {}) {
   const terminalHTML=()=>renderUploadTerminal({title:recalled?`Remember: ${recalled.title}`:choice?.memory?.title || scene.title,mode:contact.mode,
       stage:state.phase==='received'?'received':transmitting?'sending':'ready',
       prompt:state.phase==='received'?'':transmitting?contact.waiting:contacting?uploadPrompt():contact.mode==='archive'?'Keep this moment in the mission archive.':'Send a call. Listen for a reply.',
-      response:scene.response || scene.transmission,meaning:recalled?'The first view you sent is still on Earth. The storm cannot take it back.':contact.mode==='partial'?'A sky full of dust. Send what light remains.':recordedChoice(scene,state)?scene.discovery:choice?.shortReply || '',input:controllerConnected?'controller':'pointer',sceneId:scene.id,family:controllerFamily(controllerId,settings.prompts),story:consoleHTML,voice:!!thought.text});
+      response:scene.response || scene.transmission,meaning:recalled?'The first view you sent is still on Earth. The storm cannot take it back.':contact.mode==='partial'?'A sky full of dust. Send what light remains.':recordedChoice(scene,state)?scene.discovery:choice?.shortReply || '',input:controllerConnected?'controller':'pointer',sceneId:scene.id,sendLabel:photo?'Send':undefined,family:controllerFamily(controllerId,settings.prompts),story:consoleHTML,voice:!!thought.text});
   let content = '';
   if(photoTerminal) {
     content=renderPhotoUplink({photo,captureUrl:discoveryShot?.url || '',imageState:photoAssets.get(scene.id)?.state || 'loading',stage:discoveryStage(),terminal:terminalHTML(),reducedMotion:settings.reducedMotion});
@@ -486,7 +493,7 @@ function renderGame({ focus = false } = {}) {
 
   const upload = ['transmit','received'].includes(state.phase);
   app.innerHTML = `<section class="play-screen">${survey?'<div class="survey-aim" aria-hidden="true"><span class="survey-center"></span><i id="survey-target"></i></div>':''}<h1 class="sr-only" tabindex="-1">${escape(scene.title)}</h1><article class="interaction-dock" aria-label="Current interaction" aria-busy="${scanning || transmitting}">${upload?content:`<div class="story-shell ${thought.text?'':'story-voice-absent'}">${consoleHTML}<div class="story-actions">${content}</div></div>`}</article></section>`;
-  syncDiscoveryProgress();
+  syncDiscoveryFraming();syncDiscoveryProgress();
   storyWriter.mount(app.querySelector('.story-console'),thought,`${scene.id}:${state.phase}:${thought.text}`);
   setExploring(exploring);
   $('#world-controls').hidden = !!photo;
@@ -1059,7 +1066,7 @@ $('#haptics-setting').checked=settings.haptics;
 $('#haptics-setting').addEventListener('change',event=>{settings.haptics=event.target.checked;controller.setHaptics(settings.haptics && !padPreviewMuted);applySettings();});
 $('#adaptive-connect').addEventListener('click',()=>controller.connectAdaptiveTriggers());
 $('#adaptive-disconnect').addEventListener('click',()=>controller.disconnectAdaptiveTriggers());
-window.addEventListener('resize',updateInputHint);
+window.addEventListener('resize',()=>{updateInputHint();syncDiscoveryFraming();});
 window.addEventListener('blur',()=>{padInput={throttle:0,steer:0};pause();});
 window.addEventListener('focus',resume);
 window.addEventListener('pagehide',()=>{storyWriter.stop();pause();controller.disconnectAdaptiveTriggers();});

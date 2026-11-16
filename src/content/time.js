@@ -8,7 +8,7 @@ const times = {
   'stone-ripples': { year: '2004', label: '2004 · EARLY MISSION', ageYears: 0 },
   blueberries: { year: '2004', label: '2004 · SOL 48', ageYears: 0 },
   marathon: { year: '2015', label: 'MARCH 24, 2015 · ELEVEN YEARS ON MARS · SOL 3968', ageYears: 11 },
-  'ordinary-day': { year: '2018', label: '2018 · FOURTEEN YEARS ON MARS · PERSEVERANCE VALLEY', ageYears: 14 },
+  'ordinary-day': { year: '2017', label: 'JULY 18, 2017 · THIRTEEN YEARS ON MARS · PERSEVERANCE VALLEY', ageYears: 13 },
   dust: { year: '2018', label: 'EARLY JUNE 2018 · FOURTEEN YEARS ON MARS', ageYears: 14 },
   'smaller-world': { year: '2018', label: 'JUNE 2018 · THE LAST DAYS OF CONTACT', ageYears: 14 },
   'last-image': { year: '2018', label: 'JUNE 10, 2018 · SOL 5111 · LAST CONTACT', ageYears: 14 },
@@ -35,10 +35,10 @@ const passages = {
     ],
   },
   'marathon:ordinary-day': {
-    duration: 3, fromYear: '2015', toYear: '2018',
-    headline: 'Three more years.',
+    duration: 3, fromYear: '2015', toYear: '2017',
+    headline: 'Two more years.',
     beats: [
-      { label: '2018 · FOURTEEN YEARS ON MARS', title: 'Fourteen years.', cue: 'What shall I show them today?' },
+      { label: '2017 · THIRTEEN YEARS ON MARS', title: 'Thirteen years.', cue: 'What shall I show them today?' },
     ],
   },
 };

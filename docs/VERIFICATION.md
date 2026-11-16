@@ -796,3 +796,39 @@ journal's original-photo link and full credit were observed. 28 engine test file
 69 source syntax checks, scene/assets and static build pass; the image-wait regression
 also passes. Physical controller feel and a full fresh story playthrough are untested.
 Received-save reload also passes with the original receipt and no photo panel.
+
+## MATCH-40 — v0.21.0 five reference-composed photo moments (2026-11-15)
+
+Three GPT-6.1 Sol lanes verified original NASA sources, authored physical photo
+scenes and integrated their camera rendering. First morning, Last Chance, Berry
+Bowl, Perseverance Valley and the final incomplete image now share capture, real
+image dissolve and the original Mars/Earth sending sequence. The three added
+original JPEGs total 696,600 bytes. Credits, dates and source links live in Memories;
+no Retake, persistent thumbnail or extra explanation panel was added. The first
+view source is explicitly an afternoon image used for the imagined first morning.
+The valley scene now uses July 18, 2017, matching its source. The final full-frame
+image retains its missing lower quarter and the partial-image receipt.
+
+The photo stage uses independent, aimable 3D geometry: a continuous crater bowl
+and source-aligned bedrock groups, weathered layered outcrops, a brushed patch and
+concentrated grains, and an uphill valley with deck and faint wheel tracks. These
+are approximate artistic reconstructions, not surveyed geometry or photogrammetry.
+The final dark sky is authored sensor imagery without invented terrain or Sun.
+Frame projection follows each source aspect ratio and the actual HUD rectangle.
+A final full-screen review caught terrain beyond the aperture; the renderer now
+clears a dark surround and clips the photo stage to the HUD frame. The complete
+valley HUD was visually checked after the fix.
+
+The production browser matrix passes all five captures, source-image decoding and
+reveal, aspect matching, preserved signal apparatus and saved receipts. The valley
+and final image also pass at 390 × 760. Side-by-side captures were visually reviewed
+and used to refine silhouette, framing, texture, deck placement and grain density.
+Berry Bowl also passes keyboard aiming, simulated controller sending, pause during
+reveal and handoff, blocked premature sending and saved receipt with no leftover
+photo controls. 29 engine test files pass, including real-Three geometry, profiles, scene switching
+and disposal. All 72 source syntax checks, 12 scene contracts, local assets and
+static build pass.
+
+The browser harness isolates saves and holds visibility for reproducible testing.
+These checks do not establish physical controller feel, background-tab suspension
+or a fresh beginning-to-ending emotional playthrough.

@@ -13,7 +13,7 @@ test('chronology jumps and the Earth handover have explicit passages', () => {
     ['blueberries', 'marathon'], ['marathon', 'ordinary-day'], ['last-image', 'earth-listens'],
   ]);
   assert.deepEqual(found.map(([, , p]) => [p.duration, p.fromYear, p.toYear, p.beats.length]), [
-    [7, '2004', '2015', 1], [3, '2015', '2018', 1], [7, '2018', '2018', 2],
+    [7, '2004', '2015', 1], [3, '2015', '2017', 1], [7, '2018', '2018', 2],
   ]);
   for (const [, , p] of found) {
     assert.ok(p.headline);
@@ -36,7 +36,7 @@ test('mission ages cover every scene, never decrease, and stop at last contact',
   }
   assert.equal(missionTime('first-morning').ageYears, 0);
   assert.equal(missionTime('marathon').ageYears, 11);
-  assert.equal(missionTime('ordinary-day').ageYears, 14);
+  assert.equal(missionTime('ordinary-day').ageYears, 13);
   assert.equal(missionTime('unknown'), null);
   assert.equal(missionTime('__proto__'), null);
 });
