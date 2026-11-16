@@ -16,9 +16,10 @@ const originalDualSense = pad => {
 const usbCollection = device => device.collections?.some(c => c.usagePage === 1 && c.usage === 5 &&
   Math.max(0, ...(c.inputReports || []).map(r => (r.items || []).reduce((n, i) => n + i.reportSize * i.reportCount, 0))) === 504);
 
-export function createController({ onInput = () => {}, onAction = () => {}, onStatus = () => {}, onTouch = () => {}, onScroll = () => {},
+export function createController({ onInput = () => {}, onAction = () => {}, onActivity = () => {}, onStatus = () => {}, onTouch = () => {}, onScroll = () => {},
   navigator: nav = globalThis.navigator, window: win = globalThis.window, document: doc = globalThis.document, now: clock = () => globalThis.performance.now() } = {}) {
   let enabled = true, paused = false, blurred = false, haptics = true, destroyed = false, pad = null, previous = {}, frame;
+  let activityNeedsBaseline = false, activityButtons = [], activityAxes = [0, 0, 0, 0], activityTriggers = [0, 0];
   let inputMode = 'drive', menuNeedsNeutral = true, menuDirection = '', menuRepeatAt = 0;
   let touchActive = false, touchAt = -Infinity, lastPollAt = null, touchBlocked = false;
   let touchPoint = { x: 0, y: 0, id: null };
@@ -65,9 +66,33 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
     const middle = data.getUint8(offset + 2);
     const x = data.getUint8(offset + 1) | ((middle & 15) << 8);
     const y = (middle >> 4) | (data.getUint8(offset + 3) << 4);
+    const nextPoint = { x: clamp(x / 1919 * 2 - 1), y: clamp(y / 1079 * 2 - 1), id };
+    if (!touchActive || Math.max(Math.abs(nextPoint.x - touchPoint.x), Math.abs(nextPoint.y - touchPoint.y)) > .025) onActivity();
     touchAt = clock(); touchActive = true;
-    touchPoint = { x: clamp(x / 1919 * 2 - 1), y: clamp(y / 1079 * 2 - 1), id };
+    touchPoint = nextPoint;
     onTouch({ ...touchPoint, active: true, cancelled: false });
+  }
+  function sampleActivity(notify = true) {
+    const buttons = Array.from(pad?.buttons || [], (_, i) => i !== 6 && i !== 7 && pressed(pad, i));
+    let changed = buttons.some((value, i) => value && !activityButtons[i]);
+    activityButtons = buttons;
+    // Hysteresis avoids a resting stick near the gameplay deadzone changing
+    // prompts. Compare against the last meaningful position, not frame jitter,
+    // so a slow deliberate sweep still counts but an unchanged hold does not.
+    for (let i = 0; i < 4; i += 2) {
+      const x = clamp(pad?.axes?.[i]), y = clamp(pad?.axes?.[i + 1]);
+      const magnitude = Math.max(Math.abs(x), Math.abs(y));
+      if (magnitude <= .18) { activityAxes[i] = activityAxes[i + 1] = 0; continue; }
+      if (magnitude > .24 && Math.max(Math.abs(x - activityAxes[i]), Math.abs(y - activityAxes[i + 1])) > .12) {
+        changed = true; activityAxes[i] = x; activityAxes[i + 1] = y;
+      }
+    }
+    for (let i = 0; i < 2; i++) {
+      const value = button(pad, i + 6), previous = activityTriggers[i];
+      if (value <= .03) activityTriggers[i] = 0;
+      else if (value > .12 && (!previous || Math.abs(value - previous) > .08)) { changed = true; activityTriggers[i] = value; }
+    }
+    if (changed && notify) onActivity();
   }
   function gateMenu() { menuNeedsNeutral = true; menuDirection = ''; menuRepeatAt = 0; }
   function latchButtons() { previous = Object.fromEntries(Object.keys(ACTIONS).map(i => [i, pressed(pad, i)])); }
@@ -192,9 +217,12 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
       || pads.find(p => p && p.connected !== false && p.mapping === 'standard' && p.index === pad?.index)
       || pads.find(p => p && p.connected !== false && p.mapping === 'standard') || null;
     if (next?.index !== pad?.index || next?.id !== pad?.id) {
+      activityButtons = []; activityAxes = [0, 0, 0, 0]; activityTriggers = [0, 0];
       clearTool(); clearUplink(); stopRumble(); releaseTouch(); pad = next; latchButtons(); gateMenu(); neutral(); queueReport(true); status();
     } else pad = next;
     if (pad) {
+      sampleActivity(enabled && !blurred && !doc?.hidden && !activityNeedsBaseline);
+      activityNeedsBaseline = false;
       const current = {};
       for (const [index, action] of Object.entries(ACTIONS)) current[index] = pressed(pad, index);
       // Paused menus still receive button actions; disabled/hidden pages do not.
@@ -261,9 +289,9 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
     } catch { status('Adaptive triggers unavailable; standard controls still work.'); return false; }
     finally { connecting = false; }
   }
-  function visibility() { gateMenu(); latchButtons(); if (doc?.hidden) { terrain.moving = false; cleanup(); } else queueReport(); }
+  function visibility() { activityNeedsBaseline = !!pad; gateMenu(); latchButtons(); sampleActivity(false); if (doc?.hidden) { terrain.moving = false; cleanup(); } else queueReport(); }
   function blur() { blurred = true; gateMenu(); terrain.moving = false; cleanup(); }
-  function focus() { blurred = false; gateMenu(); latchButtons(); queueReport(); }
+  function focus() { activityNeedsBaseline = !!pad; blurred = false; gateMenu(); latchButtons(); sampleActivity(false); queueReport(); }
   function disconnected(event) {
     if (event.gamepad?.index === pad?.index) { stopRumble(); pad = null; previous = {}; cleanup(); status(); }
   }
@@ -281,7 +309,7 @@ export function createController({ onInput = () => {}, onAction = () => {}, onSt
       if (!['drive', 'menu', 'inspect', 'uplink'].includes(mode) || mode === inputMode) return;
       clearTool(); clearUplink(); terrain.moving = false; stopRumble(); inputMode = mode; gateMenu(); neutral(); queueReport(true);
     },
-    setEnabled(value) { enabled = !!value; gateMenu(); latchButtons(); if (!enabled) cleanup(); else queueReport(); },
+    setEnabled(value) { activityNeedsBaseline = !!pad; enabled = !!value; gateMenu(); latchButtons(); sampleActivity(false); if (!enabled) cleanup(); else queueReport(); },
     setPaused(value) { paused = !!value; if (paused) { terrain.moving = false; cleanup(); } else queueReport(); },
     pause(value = true) { this.setPaused(value); },
     setHaptics(value) { haptics = !!value; if (!haptics) { clearTool(); clearUplink(); stopRumble(); } queueReport(true); },

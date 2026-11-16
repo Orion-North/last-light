@@ -5,6 +5,20 @@ a controller is the primary target. The Windows/Electron edition and its build
 workflow are removed; earlier native-edition milestones below are historical.
 Browser Gamepad rumble and optional USB WebHID trigger effects remain supported.
 
+**v0.22.0 world and camera refinement:** Lower, fuller Last Chance bedrock and
+partly buried Berry Bowl fragments remain in the playable world. Tool contact
+and pointer picking share the same rock deformation. Photo capture uses one
+cropped encoding and a shorter reveal/handoff; the mast lens clears its own head.
+
+Earth recovery scenes use a real Three.js mission-control room, with a rendered
+monitor, desk, lighting and surrounding stations. The monitor shows
+the same rover from overhead in the storm. This is a position reconstruction,
+not a live feed after contact was lost. Recovery calls and archive choices remain.
+
+Keyboard and mouse actions now have context keys; prompts follow meaningful
+active input rather than an idle connected controller. Sound defaults enabled,
+unlocks on the first gesture, and preserves explicit mute.
+
 **v0.21.1 continuous-world correction:** Five mission moments now lead to rover-eye framing,
 intentional capture and a credited real NASA image reveal, followed by the original
 Mars–Earth sending animation and call/reply ritual. Keep the screen

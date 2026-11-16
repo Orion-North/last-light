@@ -1,0 +1,111 @@
+/* The room and monitor are rendered in the same 3D pipeline as Mars. */
+#earth-station {display:none;position:fixed;inset:0;z-index:1;pointer-events:none;}
+body[data-perspective="earth"]:is([data-screen="game"],[data-screen="passage"]) {
+ --earth-screen-left:20vw;--earth-screen-top:12svh;--earth-screen-width:60vw;--earth-screen-height:48svh;
+ --earth-screen-bottom:calc(var(--earth-screen-top) + var(--earth-screen-height));
+ --earth-console-top:calc(var(--earth-screen-bottom) + 64px);
+}
+body[data-perspective="earth"]:is([data-screen="game"],[data-screen="passage"]) #earth-station {display:block;}
+body[data-perspective="earth"]:is([data-screen="game"],[data-screen="passage"]) #atmosphere {
+ position:absolute;inset:0;width:100%;height:100%;border-radius:0;transform:none;pointer-events:none;
+}
+body[data-perspective="earth"]:is([data-screen="game"],[data-screen="passage"]) .vignette,
+body[data-perspective="earth"]:is([data-screen="game"],[data-screen="passage"]) .world::after {display:none;}
+.earth-station__label {position:absolute;left:calc(var(--earth-screen-left) + 12px);top:calc(var(--earth-screen-bottom) - 26px);color:#c2c9c8;font:9px/1.3 var(--mono);letter-spacing:.08em;text-transform:uppercase;text-shadow:0 1px 3px #000;}
+.earth-station__label small {margin-left:14px;font-size:8px;opacity:.7;}
+/* Seat every actual recovery/archive action below the monitor. The whole lower
+   console scrolls on short screens, including the trigger cue and receipt. */
+body[data-perspective="earth"][data-screen="game"] .play-screen,
+body[data-perspective="earth"][data-screen="passage"] .mission-briefing { background:none; }
+body[data-perspective="earth"][data-screen="passage"] .handover-link { display:none; }
+body[data-perspective="earth"][data-screen="game"] .interaction-dock,
+body[data-perspective="earth"][data-screen="game"][data-upload="true"] .interaction-dock {
+  inset:auto!important;left:50%!important;top:var(--earth-console-top)!important;bottom:var(--layout-bottom)!important;
+  transform:translateX(-50%)!important;width:min(1000px,calc(100vw - 280px));height:auto;
+  max-width:1000px!important;max-height:none!important;overflow:auto;pointer-events:auto;
+  scrollbar-width:thin;scrollbar-color:#768a8a66 transparent;
+}
+body[data-perspective="earth"][data-screen="game"] .story-shell { padding:12px 20px; }
+body[data-perspective="earth"][data-screen="game"] .upload-terminal[data-presentation="story"] {
+  display:grid;grid-template-columns:minmax(240px,.9fr) minmax(260px,1fr);align-items:start;gap:24px;
+}
+body[data-perspective="earth"][data-screen="game"] .upload-terminal__apparatus {
+  position:static;transform:none;width:100%;height:auto;display:flex;flex-direction:column;padding:12px 0 0;
+}
+body[data-perspective="earth"][data-screen="game"] .signal-map { height:100px;flex-shrink:0; }
+body[data-perspective="earth"][data-screen="game"] .signal-controls { position:static;transform:none;width:100%;margin-top:12px;order:3; }
+body[data-perspective="earth"][data-screen="game"] .signal-dialogue { margin:0 auto; }
+body[data-perspective="earth"][data-screen="game"] .upload-terminal > .story-shell {
+  position:static;transform:none;width:100%;max-height:none;overflow:visible;padding:10px 0;
+}
+body[data-perspective="earth"][data-screen="passage"] .mission-briefing .briefing-console {
+  top:var(--earth-console-top);bottom:var(--layout-bottom);width:min(850px,calc(100vw - 60px));max-height:none;
+}
+@media (max-width:650px) {
+  body[data-perspective="earth"]:is([data-screen="game"],[data-screen="passage"]) {
+    --earth-screen-left:7vw;--earth-screen-width:86vw;--earth-screen-top:14svh;--earth-screen-height:34svh;
+    --earth-console-top:calc(var(--earth-screen-bottom) + 60px);
+  }
+  body[data-perspective="earth"][data-screen="game"] .interaction-dock,
+  body[data-perspective="earth"][data-screen="game"][data-upload="true"] .interaction-dock { width:calc(100vw - 32px);bottom:80px!important; }
+  body[data-perspective="earth"][data-screen="game"] .story-shell { padding:8px; }
+  body[data-perspective="earth"][data-screen="game"] .upload-terminal[data-presentation="story"] { grid-template-columns:1fr;gap:6px; }
+  body[data-perspective="earth"][data-screen="game"] .upload-terminal__apparatus { padding:12px 8px 0; }
+  body[data-perspective="earth"][data-screen="game"] .signal-map { height:88px; }
+  body[data-perspective="earth"][data-screen="game"] .upload-terminal > .story-shell { padding:8px; }
+  body[data-perspective="earth"][data-screen="game"] #world-controls { bottom:12px; }
+}
+@media (max-height:650px) and (min-width:651px) {
+  body[data-perspective="earth"]:is([data-screen="game"],[data-screen="passage"]) {
+    --earth-screen-top:14svh;--earth-screen-height:38svh;--earth-screen-left:24vw;--earth-screen-width:52vw;
+    --earth-console-top:calc(var(--earth-screen-bottom) + 52px);
+  }
+  body[data-perspective="earth"][data-screen="game"] .interaction-dock,
+  body[data-perspective="earth"][data-screen="game"][data-upload="true"] .interaction-dock { width:calc(100vw - 240px); }
+  body[data-perspective="earth"][data-screen="game"] .upload-terminal[data-presentation="story"] { gap:18px;grid-template-columns:minmax(230px,.9fr) minmax(240px,1fr); }
+  body[data-perspective="earth"][data-screen="game"] .signal-map { height:88px; }
+  body[data-perspective="earth"][data-screen="game"] .upload-terminal__apparatus { padding-top:12px; }
+  body[data-perspective="earth"][data-screen="game"] .upload-terminal > .story-shell { padding-top:0; }
+}
+/* Let the room carry the setting; recovery chronology is in the journal. */
+body[data-perspective="earth"][data-screen="game"] .recovery-trace,
+body[data-perspective="earth"][data-screen="game"] .journey-rail {display:none;}
+body[data-perspective="earth"][data-screen="game"] .interaction-dock {scrollbar-width:none;}
+body[data-perspective="earth"][data-screen="game"] .interaction-dock::-webkit-scrollbar {display:none;}
+/* A single restrained console keeps the call animation clear of physical props. */
+body[data-perspective="earth"][data-screen="game"] .interaction-dock {
+ top:auto!important;bottom:20px!important;height:auto;max-height:30svh!important;
+ width:min(860px,calc(100vw - 64px));background:#071013e8;
+ border:1px solid #9baea329;border-radius:8px;padding:10px 20px;
+ box-shadow:0 12px 40px #0008;backdrop-filter:blur(12px);
+}
+body[data-perspective="earth"][data-screen="game"] #input-hint {display:none;}
+body[data-perspective="earth"][data-screen="game"] .signal-map {height:70px;}
+body[data-perspective="earth"][data-screen="game"] .signal-world .planet {transform:scale(.72);}
+.earth-station__label {left:28vw;top:55svh;}
+@media(max-width:650px) {
+ .earth-station__label {left:12vw;top:42svh;font-size:8px;}
+ .earth-station__label small {font-size:7px;margin-left:8px;}
+ body[data-perspective="earth"][data-screen="game"] .interaction-dock {width:calc(100vw - 28px);padding:8px 12px;max-height:41svh!important;bottom:72px!important;}
+}
+@media(max-height:650px) and (min-width:651px) {
+ body[data-perspective="earth"][data-screen="game"] .interaction-dock {max-height:34svh!important;bottom:12px!important;}
+}
+body[data-perspective="earth"][data-screen="game"][data-upload="true"] .interaction-dock {top:auto!important;width:min(860px,calc(100vw - 64px));}
+@media(max-width:650px) {
+ body[data-perspective="earth"][data-screen="game"][data-upload="true"] .interaction-dock {width:calc(100vw - 28px);}
+}
+
+/* Signal graphics live on the physical monitor. Keep their semantic description
+   available to assistive technology and retain the DOM fallback without WebGL. */
+body[data-earth-monitor="true"] :is(.signal-map,.signal-dialogue) {
+ position:absolute!important;width:1px!important;height:1px!important;padding:0!important;
+ margin:-1px!important;overflow:hidden!important;clip-path:inset(50%);white-space:nowrap;
+}
+body[data-earth-monitor="true"] .upload-terminal[data-input="pointer"] .upload-terminal__body {position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);}
+body[data-earth-monitor="true"] .upload-terminal[data-input="pointer"] {display:block!important;}
+body[data-earth-monitor="true"] .upload-terminal__apparatus {padding-top:0!important;}
+
+/* Archival context sits above the monitor-local signal instrument. */
+.earth-station__label {top:14svh;}
+@media(max-width:650px) {.earth-station__label {top:20svh;}}

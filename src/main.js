@@ -9,12 +9,15 @@ import { createBriefing, briefingBeats } from './engine/briefing.js';
 import { missionTime, timePassage } from './content/time.js';
 import { createSound } from './audio/sound.js';
 import { createLandscape } from './ui/landscape.js';
+import { renderEarthStation } from './ui/earth-station.js';
 import { restoreSession, serializeSession, restoreCheckpoint, restoreAssistedScenes } from './session.js';
+import { createActiveInput } from './input/active-input.js';
+import { initialSoundPreference } from './engine/first-run-preferences.js';
 import { createController } from './input/controller.js';
 import { currentObjective, inputMode } from './ui/objectives.js';
 import { controllerScrollTarget } from './ui/scroll-target.js';
 import { controllerMenuTargets } from './ui/controller-navigation.js';
-import { renderGeologyPanel } from './ui/geology-panel.js';
+import { renderGeologyPanel, geologyHint } from './ui/geology-panel.js';
 import { renderUploadTerminal } from './ui/upload-terminal.js';
 import { createSqueeze } from './engine/squeeze.js';
 import { createSurvey, surveyProfiles } from './engine/fieldwork.js';
@@ -26,6 +29,7 @@ import { controllerFamily, controllerGlyph, controllerButtonName, validPromptSty
 const $ = (selector) => document.querySelector(selector);
 const app = $('#app');
 const canvas = $('#atmosphere');
+$('#earth-station').innerHTML = renderEarthStation();
 const escape = (value) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const paragraphs = (text) => String(text).split('\n\n').map(p => `<p>${escape(p)}</p>`).join('');
 const arrow = '<span aria-hidden="true">↗</span>';
@@ -36,13 +40,14 @@ let saved = null;
 let savedCheckpoint = null, pendingCheckpoint = null;
 let assistedScenes = new Set();
 let checkpointAt = 0;
-let settings = { haptics: true, sound: false, reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+let settings = { haptics: true, sound: true, reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
   touch: matchMedia('(any-pointer: coarse)').matches, prompts: 'auto' };
 try {
   saved = restoreSession(localStorage.getItem(storageKey), scenes);
   assistedScenes=new Set(restoreAssistedScenes(localStorage.getItem(storageKey),scenes));
   savedCheckpoint = restoreCheckpoint(localStorage.getItem(storageKey), scenes);
   const storedSettings = JSON.parse(localStorage.getItem('last-light-settings'));
+  settings.sound = initialSoundPreference(storedSettings);
   if (storedSettings && typeof storedSettings.haptics === 'boolean') settings.haptics = storedSettings.haptics;
   if (storedSettings && typeof storedSettings.reducedMotion === 'boolean') settings.reducedMotion = storedSettings.reducedMotion;
   if (storedSettings && typeof storedSettings.touch === 'boolean') settings.touch = storedSettings.touch;
@@ -73,7 +78,7 @@ let movementBlocked = false;
 let movementBlockReason = null;
 let worldReady = false;
 let graphicsError = false;
-let soundPreferenceSet = false;
+let audioGestureStarted = false;
 let lastScene = null;
 let reached = false;
 let exploring = false;
@@ -85,6 +90,14 @@ let uploadInputAt = 0;
 let restoreSendFocus = false;
 const modalReturnFocus = new WeakMap();
 let inputDevice = settings.touch ? 'touch' : 'keyboard';
+const activeInput = createActiveInput({ initial: inputDevice, onChange(device) {
+  inputDevice=device;
+  document.body.dataset.input=device==='mouse'?'pointer':device;
+  document.body.classList.toggle('controller-active',device==='controller');
+  if(device!=='controller'){padInput={throttle:0,steer:0};toolPad={x:0,y:0,pressure:0};view?.setLook?.({x:0,y:0});drive();}
+  refreshControllerPrompts();
+}});
+const usingController = () => inputDevice==='controller';
 let controllerConnected = false;
 let controllerId = '';
 
@@ -166,21 +179,16 @@ async function captureDiscovery() {
   renderGame();sound.cue('observe');controller?.feedback('observe');
   let blob;
   try {
-    const full=await view?.capturePhoto?.();
     const windowRect=app.querySelector('.discovery-camera__view')?.getBoundingClientRect(),canvasRect=canvas.getBoundingClientRect();
-    blob=full;
-    if(full && windowRect && canvasRect.width>0 && canvasRect.height>0) {
-      const bitmap=await createImageBitmap(full);
-      try {
-        const x=Math.max(0,(windowRect.left-canvasRect.left)/canvasRect.width*bitmap.width);
-        const y=Math.max(0,(windowRect.top-canvasRect.top)/canvasRect.height*bitmap.height);
-        const width=Math.min(bitmap.width-x,windowRect.width/canvasRect.width*bitmap.width);
-        const height=Math.min(bitmap.height-y,windowRect.height/canvasRect.height*bitmap.height);
-        const crop=document.createElement('canvas');crop.width=Math.max(1,Math.round(width));crop.height=Math.max(1,Math.round(height));
-        crop.getContext('2d').drawImage(bitmap,x,y,width,height,0,0,crop.width,crop.height);
-        blob=await new Promise(resolve=>crop.toBlob(resolve,'image/png'));
-      }finally{bitmap.close();}
-    }
+    if(windowRect && canvasRect.width>0 && canvasRect.height>0) {
+      // Crop the rendered buffer before encoding; avoid a full PNG encode/decode
+      // round trip on high-density laptop displays.
+      blob=await view?.capturePhoto?.({
+        x:(windowRect.left-canvasRect.left)/canvasRect.width,
+        y:(windowRect.top-canvasRect.top)/canvasRect.height,
+        width:windowRect.width/canvasRect.width,height:windowRect.height/canvasRect.height,
+      });
+    } else blob=await view?.capturePhoto?.();
   } catch {blob=null;}
   if(token!==captureGeneration || scenes[state.sceneIndex].id!==id || screen!=='game')return;
   if(blob) {
@@ -201,8 +209,8 @@ function useHistoricalObservation() {
 
 const transmissionWait = createInteractionWait();
 const sound = createSound();
-sound.setMuted(true);
-const storyWriter = createStoryWriter({ paused:()=>state.paused || document.hidden || exploring, pulse:options=>sound.textPulse?.(options) });
+sound.setMuted(!settings.sound);
+const storyWriter = createStoryWriter({ reducedMotion:()=>settings.reducedMotion, paused:()=>state.paused || document.hidden || exploring, pulse:options=>sound.textPulse?.(options) });
 const goals = {
   1: { x: 7, z: -7, label: 'Last Chance outcrop' },
   2: { x: -5, z: -10, label: 'Berry Bowl' },
@@ -260,7 +268,7 @@ function setExploring(value) {
   if (panel) panel.inert = value;
 }
 function setWorld(environment, mode) {
-  if(mode!=='game'){clearDiscovery();view?.setRemoteView?.(false);view?.setEvidence?.(null);}
+  if(mode!=='game'){document.body.dataset.perspective='rover';clearDiscovery();view?.setRemoteView?.(false);view?.setEvidence?.(null);}
   document.body.dataset.environment = environment;
   if(mode!=='game')document.body.dataset.upload='false';
   document.body.dataset.screen = mode;
@@ -314,7 +322,8 @@ function startBriefing(passage = null) {
   view?.setEvidence?.(null);
   pressed.clear();padInput={throttle:0,steer:0};
   screen=passage?'passage':'intro';briefingActive=true;briefingPassage=!!passage;setExploring(false);
-  if(!passage) {purposeKnown=false;setWorld('dawn','game');}
+  document.body.dataset.perspective=passage?.role==='earth'?'earth':'rover';
+  if(!passage) {purposeKnown=false;view?.setRemoteView?.(false);setWorld('dawn','game');}
   document.body.dataset.screen=screen;document.body.dataset.upload='false';
   $('#world-controls').hidden=true;$('#waypoint-hud').hidden=true;
   view?.stopDrive?.();view?.setLook?.({x:0,y:0});
@@ -363,45 +372,61 @@ function syncInputMode() {
 function updateInputHint() {
   const moving=screen==='game' && state.phase==='observe' && !reached;
   const family=controllerFamily(controllerId,settings.prompts);
-  const pad=controllerConnected || settings.prompts!=='auto';
+  const pad=usingController();
   const row=(action,label,key,usePad=pad)=>`<span class="controller-hint" aria-label="${usePad?controllerButtonName(action,family):key}: ${label.toLowerCase()}">${usePad?controllerGlyph(action,family):`<kbd>${key}</kbd>`}<span>${label}</span></span>`;
   let hints;
   if(transmitting) hints='';
-  else if(contacting) hints=controllerConnected?'':row('primary',transmissionProfile(scenes[state.sceneIndex]).mode==='silence'?'Call':transmissionProfile(scenes[state.sceneIndex]).mode==='archive'?'Keep':'Send','Enter',false);
+  else if(contacting) hints=usingController()?'':row('primary',transmissionProfile(scenes[state.sceneIndex]).mode==='silence'?'Call':transmissionProfile(scenes[state.sceneIndex]).mode==='archive'?'Keep':'Send','Enter',false);
   else if(geologyActive) hints=toolState?.stage==='compare'?row('primary','Compare','Enter'):row('look',toolState?.stage==='trace'?'Follow layer':'Move tool','↑↓←→')+row('forward',toolState?.stage==='trace'?'Trace':toolState?.stage==='brush'?'Brush':'Measure','Space');
   else if(investigating) hints=row('look','Look','↑↓←→')+'<span class="control-rest">Hold still to record</span>';
-  else if(moving) hints=row('move','Drive','WASD')+row('look','Look','Drag');
+  else if(moving) hints=row('move','Drive','WASD')+row('look','Look','Mouse drag');
   else hints=screen==='game' && state.phase!=='choose'?'':row('move','Select','Tab')+row('primary','Confirm','Enter');
   if(screen==='game')hints+=row('journal','Memories','J');
-  if(settings.touch&&!pad) hints=contacting?'<span class="controller-hint"><kbd>·</kbd>Tap Send</span>':investigating?'<span class="controller-hint"><kbd>↔</kbd>Drag to look</span><span class="control-rest">Hold still to record</span>':moving?'<span class="controller-hint"><kbd>↔</kbd>Drag to look</span>':'<span class="controller-hint"><kbd>·</kbd>Tap to choose</span>';
-  if(controllerConnected && (!investigating || toolState?.stage==='compare') && controllerScrollTarget(app)) hints+=row('look','Read more','Scroll');
-  if(currentDiscovery())hints=cameraAiming()?row('look','Aim','Arrow keys')+row('primary','Take picture','Enter'):discoveryStage()==='uplink'?(controllerConnected?'<span class="control-rest">Squeeze both triggers and release, or select Send</span>':'<span class="control-rest">Send your discovery home</span>'):'';
-  if(cameraAiming() && settings.touch && !controllerConnected)hints='<span class="control-rest">Drag to frame · Tap Take picture</span>';
+  if(inputDevice==='touch'&&!pad) hints=contacting?'<span class="controller-hint"><kbd>·</kbd>Tap Send</span>':investigating?'<span class="controller-hint"><kbd>↔</kbd>Drag to look</span><span class="control-rest">Hold still to record</span>':moving?'<span class="controller-hint"><kbd>↔</kbd>Drag to look</span>':'<span class="controller-hint"><kbd>·</kbd>Tap to choose</span>';
+  if(usingController() && (!investigating || toolState?.stage==='compare') && controllerScrollTarget(app)) hints+=row('look','Read more','Scroll');
+  if(currentDiscovery())hints=cameraAiming()?row('look','Aim','Arrow keys / drag')+row('primary','Take picture','Enter'):discoveryStage()==='uplink'?(usingController()?'<span class="control-rest">Squeeze both triggers and release, or select Send</span>':'<span class="control-rest">Send your discovery home</span>'):'';
+  if(cameraAiming() && inputDevice==='touch' && !usingController())hints='<span class="control-rest">Drag to frame · Tap Take picture</span>';
   $('#input-hint').innerHTML=hints;
+}
+
+function syncActivePresentation() {
+  const pad=usingController();
+  const hint=$('#tool-hint');if(hint && toolState)hint.textContent=geologyHint(toolState,pad);
+  const operate=app.querySelector('.tool-operate');if(operate)operate.hidden=pad;
+  const terminal=app.querySelector('.upload-terminal');
+  if(terminal){
+    terminal.dataset.input=pad?'controller':'pointer';
+    const send=terminal.querySelector('[data-action="transmit"]');if(send)send.hidden=pad;
+    const controls=terminal.querySelector('.signal-controls');if(controls)controls.hidden=!pad;
+    const instruction=terminal.querySelector('#squeeze-hint');
+    if(instruction && !transmitting){const verb=terminal.dataset.mode==='silence'?'call':terminal.dataset.mode==='archive'?'keep':'send';instruction.textContent=pad?`Squeeze both triggers. Release to ${verb}.`:'Press Enter or select the button to continue.';}
+  }
 }
 
 function refreshControllerPrompts() {
   const family = controllerFamily(controllerId,settings.prompts);
-  const show = controllerConnected || settings.prompts !== 'auto';
+  const show = usingController();
   const decorate = (button, action) => {
-    button.querySelector(':scope > .controller-glyph')?.remove();
+    button.querySelectorAll(':scope > .controller-glyph,:scope > .input-keycap').forEach(icon=>icon.remove());
     button.classList.toggle('with-controller-glyph',show);
-    if (show) button.insertAdjacentHTML('afterbegin',controllerGlyph(action,family));
+    button.insertAdjacentHTML('afterbegin',show?controllerGlyph(action,family):`<kbd class="input-keycap" aria-hidden="true">${{primary:'Enter',journal:'J',pause:'Esc',back:'Esc'}[action] || 'Enter'}</kbd>`);
   };
-  app.querySelectorAll('[data-action]').forEach(button=>{if(button.dataset.action!=='transmit')decorate(button,button.dataset.action==='journal'?'journal':'primary');});
+  app.querySelectorAll('[data-action]').forEach(button=>{if(button.matches('button') && button.dataset.action!=='restart')decorate(button,button.dataset.action==='journal'?'journal':'primary');});
   for(const [side,action] of [['left','reverse'],['right','forward']]){const icon=app.querySelector(`[data-trigger="${side}"]`);if(icon)icon.innerHTML=controllerGlyph(action,family);}
   decorate($('#settings-toggle'),'pause');
-  $('#journal-toggle').hidden=controllerConnected;
+  $('#journal-toggle').hidden=usingController();
+  decorate($('#journal-toggle'),'journal');
   document.querySelectorAll('dialog [data-close]').forEach(button=>{
-    if(button.classList.contains('close-button'))button.innerHTML=show?'':'<span aria-hidden="true">×</span>';
     decorate(button,'back');
   });
   const guide = [['move','Drive'],['forward','Forward'],['reverse','Reverse'],['look','Look'],['primary','Interact'],['select','Select'],['journal','Memories'],['back','Back'],['pause','Pause']];
-  $('#controller-guide').innerHTML = guide.map(([action,label])=>`<span class="controller-hint" aria-label="${controllerButtonName(action,family)}: ${label.toLowerCase()}">${controllerGlyph(action,family)}<span>${label}</span></span>`).join('');
+  $('#controller-guide').innerHTML = guide.map(([action,label])=>`<span class="controller-hint" aria-label="${show?controllerButtonName(action,family):label}">${show?controllerGlyph(action,family):`<kbd>${{move:'WASD',forward:'W',reverse:'S',look:'Mouse drag / ↑↓←→',primary:'Enter',select:'Tab',journal:'J',back:'Esc',pause:'Esc'}[action]}</kbd>`}<span>${label}</span></span>`).join('');
   const journalHints=$('#journal-controls');
-  journalHints.hidden=!controllerConnected;
-  journalHints.innerHTML=[['select','Select entry'],['primary','Open / close entry'],['look','Scroll'],['back','Close']].map(([action,label])=>`<span class="controller-hint" aria-label="${controllerButtonName(action,family)}: ${label.toLowerCase()}">${controllerGlyph(action,family)}<span>${label}</span></span>`).join('');
+  journalHints.hidden=false;
+  journalHints.innerHTML=[['select','Select entry'],['primary','Open / close entry'],['look','Scroll'],['back','Close']].map(([action,label])=>`<span class="controller-hint" aria-label="${show?controllerButtonName(action,family):label}">${show?controllerGlyph(action,family):`<kbd>${{select:'Tab',primary:'Enter',look:'Scroll',back:'Esc'}[action]}</kbd>`}<span>${label}</span></span>`).join('');
+  syncActivePresentation();
   updateInputHint();
+  const aimHint=app.querySelector('#camera-input-hint');if(aimHint)aimHint.textContent=usingController()?'Right stick to aim':inputDevice==='keyboard'?'Arrow keys to aim':'Drag to aim';
   syncInputMode();
 }
 
@@ -443,6 +468,8 @@ function renderGame({ focus = false } = {}) {
   const consoleHTML = renderStoryConsole({line:thought,time:missionTime(scene.id)?.label || scene.sol});
   view?.setRemoteView?.(scene.signal===0);
   document.body.dataset.perspective=scene.signal===0?'earth':'rover';
+  view?.setEarthSignal?.({mode:contact.mode,stage:state.phase==='received'?(contact.mode==='archive'?'received':'no-answer'):transmitting?'sending':'ready',visible:['transmit','received'].includes(state.phase),reducedMotion:settings.reducedMotion});
+  document.body.dataset.earthMonitor=String(scene.signal===0 && !!view?.setEarthSignal && !graphicsError);
   document.body.dataset.upload = ['transmit','received'].includes(state.phase) ? 'true' : 'false';
   const photoTerminal=!!photo && ['handoff','uplink','sending','received'].includes(discoveryStage());
   if(photoTerminal)view?.setDiscoveryCamera?.(null);
@@ -468,14 +495,14 @@ function renderGame({ focus = false } = {}) {
   const terminalHTML=()=>renderUploadTerminal({title:recalled?`Remember: ${recalled.title}`:choice?.memory?.title || scene.title,mode:contact.mode,
       stage:state.phase==='received'?'received':transmitting?'sending':'ready',
       prompt:state.phase==='received'?'':transmitting?contact.waiting:contacting?uploadPrompt():contact.mode==='archive'?'Keep this moment in the mission archive.':'Send a call. Listen for a reply.',
-      response:scene.response || scene.transmission,meaning:recalled?'The first view you sent is still on Earth. The storm cannot take it back.':contact.mode==='partial'?'A sky full of dust. Send what light remains.':recordedChoice(scene,state)?scene.discovery:choice?.shortReply || '',input:controllerConnected?'controller':'pointer',sceneId:scene.id,sendLabel:photo?'Send':undefined,family:controllerFamily(controllerId,settings.prompts),story:consoleHTML,voice:!!thought.text});
+      response:scene.response || scene.transmission,meaning:recalled?'The first view you sent is still on Earth. The storm cannot take it back.':contact.mode==='partial'?'A sky full of dust. Send what light remains.':recordedChoice(scene,state)?scene.discovery:choice?.shortReply || '',input:usingController()?'controller':'pointer',sceneId:scene.id,sendLabel:photo?'Send':undefined,family:controllerFamily(controllerId,settings.prompts),story:consoleHTML,voice:!!thought.text});
   let content = '';
   if(photoTerminal) {
     content=renderPhotoUplink({photo,captureUrl:discoveryShot?.url || '',imageState:photoAssets.get(scene.id)?.state || 'loading',stage:discoveryStage(),terminal:terminalHTML(),reducedMotion:settings.reducedMotion});
   } else if (photo) {
-    content=renderDiscoveryCamera({photo,stage:graphicsError && discoveryStage()==='aim'?'unavailable':discoveryStage(),captureUrl:discoveryShot?.url || '',ready:discoveryReady,aligned:discoveryAligned,controller:controllerConnected,family:controllerFamily(controllerId,settings.prompts),imageState:photoAssets.get(scene.id)?.state || 'loading',reducedMotion:settings.reducedMotion,error:discoveryShot?.error || ''});
+    content=renderDiscoveryCamera({photo,stage:graphicsError && discoveryStage()==='aim'?'unavailable':discoveryStage(),captureUrl:discoveryShot?.url || '',ready:discoveryReady,aligned:discoveryAligned,controller:usingController(),family:controllerFamily(controllerId,settings.prompts),imageState:photoAssets.get(scene.id)?.state || 'loading',reducedMotion:settings.reducedMotion,error:discoveryShot?.error || ''});
   } else if (geologyActive) {
-    content=renderGeologyPanel(toolState || (scene.id==='stone-ripples'?{mode:'trace',stage:'trace'}:{}),controllerConnected);
+    content=renderGeologyPanel(toolState || (scene.id==='stone-ripples'?{mode:'trace',stage:'trace'}:{}),usingController());
   } else if (investigating) {
     const profile=surveyProfiles[scene.id];
     content = survey ? `<div class="survey-instrument" aria-label="${escape(profile.title)}"><div class="survey-ticks" aria-label="Observation views">${profile.steps.map((_,i)=>`<span data-survey-step="${i}">${String(i+1).padStart(2,'0')}</span>`).join('')}</div><p id="investigation-hint" class="discovery-line">${escape(profile.steps[surveyStep]?.hint || "Observation recorded.")}</p><progress id="investigation-progress" max="1" value="0" aria-label="Observation recorded"></progress><p class="pace-note">Bring the amber bearing to the center. Hold still to record.</p></div>` : `<p id="investigation-hint" class="discovery-line">Look around the feature, then hold the view still.</p><progress id="investigation-progress" max="1" value="0" aria-label="Observation recorded"></progress>`;
@@ -540,7 +567,7 @@ function scan() {
   if ([1,2].includes(state.sceneIndex)) {
     geologyActive=true;investigating=true;scanning=true;toolState=null;toolSampleCount=0;toolPad={x:0,y:0,pressure:0};toolButtonHeld=false;
     if(!view?.setToolMode?.(scenes[state.sceneIndex].id)){geologyActive=false;investigating=false;scanning=false;return;}
-    sound.cue('investigate');renderGame();announce(scenes[state.sceneIndex].id==='stone-ripples'?'Hold R2 and follow the two dotted rock layers.':'Move the tool with the right stick. Hold R2 and sweep away the dust.');return;
+    sound.cue('investigate');renderGame();announce(usingController()?(scenes[state.sceneIndex].id==='stone-ripples'?'Hold R2 and follow the two dotted rock layers.':'Move the tool with the right stick. Hold R2 and sweep away the dust.'):(scenes[state.sceneIndex].id==='stone-ripples'?'Drag along each dotted layer, or hold Space and use the arrow keys.':'Drag across the dust, or hold Space and use the arrow keys.'));return;
   }
   scanning = true;
   drive();
@@ -557,7 +584,7 @@ function scan() {
 function uploadPrompt() {
   const mode=transmissionProfile(scenes[state.sceneIndex]).mode;
   const action=mode==='silence'?'call':mode==='archive'?'keep this memory':'send';
-  return controllerConnected ? `Squeeze to charge. Release both triggers to ${action}.` : 'Continue when you are ready.';
+  return usingController() ? `Squeeze to charge. Release both triggers to ${action}.` : 'Continue when you are ready.';
 }
 function updateUploadProgress(result) {
   if(!contacting || state.paused)return;
@@ -574,7 +601,7 @@ function updateUploadProgress(result) {
   const {mode,effort}=transmissionProfile(scenes[state.sceneIndex]);
   const releaseAction=mode==='silence'?'call':mode==='archive'?'keep this memory':'send';
   const hints={release:'Release both triggers',ready:'Squeeze both triggers',pressing:'Keep squeezing…',charged:`Release both triggers to ${releaseAction}`,latched:'Released'};
-  if(hint && controllerConnected)hint.textContent=result.stage!=='release' && result.stage!=='charged' && Math.max(result.left||0,result.right||0)>.03 && Math.min(result.left||0,result.right||0)<=.03 ? 'Squeeze the other trigger too' : hints[result.stage] || hints.release;
+  if(hint && usingController())hint.textContent=result.stage!=='release' && result.stage!=='charged' && Math.max(result.left||0,result.right||0)>.03 && Math.min(result.left||0,result.right||0)<=.03 ? 'Squeeze the other trigger too' : hints[result.stage] || hints.release;
   controller?.setUplink?.({active:result.stage!=='release' && !result.commit && (Math.max(result.left||0,result.right||0)>.03 || result.stage==='charged'),leftTrigger:result.left||0,rightTrigger:result.right||0,progress:result.progress,charge:result.charge || 0,charged:result.stage==='charged',effort});
   if(result.cue)controller?.feedback(result.cue);
   const audible=['reply','partial'].includes(mode);
@@ -721,8 +748,14 @@ document.querySelectorAll('dialog').forEach(dialog=>{
   dialog.querySelectorAll('[data-close]').forEach(button=>button.addEventListener('click',()=>dialog.close()));
 });
 
+function unlockAudio() {
+  if(!settings.sound || audioGestureStarted || document.querySelector('dialog[open]'))return;
+  audioGestureStarted=true;
+  toggleSound(true);
+}
 async function toggleSound(enabled) {
   settings.sound = enabled;
+  if(!enabled)audioGestureStarted=false;
   sound.setMuted(!enabled);
   if (enabled) {
     // Request the audio context while still inside the tap gesture on Safari.
@@ -732,8 +765,7 @@ async function toggleSound(enabled) {
     const started = await starting;
     if (document.querySelector('dialog[open]')) sound.pause();
     if (!started) {
-      settings.sound = false;
-      sound.setMuted(true);
+      audioGestureStarted=false;
       announce('Audio is unavailable. The complete story is playable without sound.');
     }
   }
@@ -747,7 +779,7 @@ function applySettings() {
   document.body.dataset.reducedMotion=String(settings.reducedMotion);
   $('#motion-setting').checked=settings.reducedMotion;
   $('#touch-setting').checked = settings.touch;
-  try { localStorage.setItem('last-light-settings',JSON.stringify({haptics:settings.haptics,touch:settings.touch,prompts:settings.prompts,reducedMotion:settings.reducedMotion})); } catch { /* Optional. */ }
+  try { localStorage.setItem('last-light-settings',JSON.stringify({sound:settings.sound,haptics:settings.haptics,touch:settings.touch,prompts:settings.prompts,reducedMotion:settings.reducedMotion})); } catch { /* Optional. */ }
 }
 
 function previewChoice(event) {
@@ -755,7 +787,7 @@ function previewChoice(event) {
   if(screen==='game' && state.phase==='choose' && button && !state.paused)
     view?.previewMemory?.(button.dataset.choice,scenes[state.sceneIndex].id);
 }
-app.addEventListener('focusin',event=>{document.body.classList.toggle('controller-menu-focus',controllerConnected);previewChoice(event);});
+app.addEventListener('focusin',event=>{document.body.classList.toggle('controller-menu-focus',usingController());previewChoice(event);});
 app.addEventListener('pointerover',previewChoice);
 
 $('#credits-content').innerHTML = `<p>${escape(credits)}</p><h3>Built to remember</h3><p>Original story and procedural sound. The interactive terrain is an artistic reconstruction, not a surveyed map. Rover model: NASA/JPL-Caltech. Ground and rock surfaces use CC0 terrestrial scans by Rob Tuytel, Dario Barresi and Dimitrios Savva / Poly Haven, artistically adapted for Mars. Rendering: Three.js (MIT). The graphics fallback and cover are renders captured from the game.</p><p>This independent project is not affiliated with or endorsed by NASA. Inspiration: the scale of Journey, the curiosity of Outer Wilds, and the grounded science fiction of The Invincible.</p><h3>Primary mission sources</h3><ul class="sources-list">${sources.map(s=>`<li><a href="${escape(s.url)}" target="_blank" rel="noreferrer">${escape(s.title)} ↗</a>${s.credit ? `<small>${escape(s.credit)}</small>`:''}</li>`).join('')}<li><a href="https://science.nasa.gov/resource/spirit-and-opportunity-rover-3d-model/" target="_blank" rel="noreferrer">NASA/JPL-Caltech rover model ↗</a></li><li><a href="./vendor/three/LICENSE" target="_blank">Three.js MIT license ↗</a></li></ul>`;
@@ -791,11 +823,11 @@ $('#photo-button').addEventListener('click',async()=>{
     button.disabled=!worldReady;
   }
 });
-$('#sound-toggle').addEventListener('click',()=>{soundPreferenceSet=true;toggleSound(!settings.sound);});
-$('#sound-setting').addEventListener('change',event=>{soundPreferenceSet=true;toggleSound(event.target.checked);});
+$('#sound-toggle').addEventListener('click',()=>{toggleSound(!settings.sound);applySettings();});
+$('#sound-setting').addEventListener('change',event=>{toggleSound(event.target.checked);applySettings();});
 $('#touch-setting').addEventListener('change',event=>{
   settings.touch=event.target.checked;
-  if (inputDevice==='touch' || inputDevice==='keyboard') inputDevice=settings.touch?'touch':'keyboard';
+  if (inputDevice==='touch' || inputDevice==='keyboard') activeInput.use(settings.touch?'touch':'keyboard');
   applySettings();updateInputHint();
 });
 document.querySelectorAll('[name="prompt-style"]').forEach(radio=>{
@@ -833,7 +865,7 @@ app.addEventListener('click',event=>{
   const button=event.target.closest('[data-action]');
   if (!button || button.disabled) return;
   switch(button.dataset.action) {
-    case 'begin': { const fresh=!saved;if(!soundPreferenceSet)toggleSound(true); state=saved || createState(); state={...state,paused:false}; lastScene=null;pendingCheckpoint=savedCheckpoint;if(fresh)startBriefing();else renderGame({focus:true});save();break; }
+    case 'begin': { const fresh=!saved;if(settings.sound)unlockAudio(); state=saved || createState(); state={...state,paused:false}; lastScene=null;pendingCheckpoint=savedCheckpoint;if(fresh)startBriefing();else renderGame({focus:true});save();break; }
     case 'capture-discovery': captureDiscovery();break;
     case 'use-discovery-photo': useHistoricalObservation();break;
     case 'observe': scan(); break;
@@ -860,8 +892,8 @@ app.addEventListener('pointerdown',event=>{const button=event.target.closest('.t
 const releaseTool=()=>{toolButtonHeld=false;syncToolInput(true);};
 app.addEventListener('pointerup',releaseTool);app.addEventListener('pointercancel',releaseTool);app.addEventListener('lostpointercapture',releaseTool);
 const pressed = new Set();
-window.addEventListener('pointermove',event=>{if(event.pointerType==='mouse' && (event.movementX || event.movementY))document.body.dataset.input='pointer';},{passive:true});
-window.addEventListener('pointerdown',()=>{document.body.dataset.input='pointer';},{passive:true});
+window.addEventListener('pointermove',event=>{if(event.pointerType==='mouse' && (event.movementX || event.movementY))activeInput.use('mouse');},{passive:true});
+window.addEventListener('pointerdown',event=>{activeInput.use(event.pointerType==='touch'?'touch':'mouse');if(!event.target.closest('#sound-toggle,#sound-setting'))unlockAudio();},{passive:true,capture:true});
 function drive() {
   if (screen !== 'game' || state.paused || state.phase!=='observe' || reached || scanning || transmitting || scenes[state.sceneIndex].signal === 0) return view?.setDrive?.({forward:0,turn:0});
   const forward=(pressed.has('w')||pressed.has('arrowup')?1:0)-(pressed.has('s')||pressed.has('arrowdown')?1:0);
@@ -869,6 +901,8 @@ function drive() {
   view?.setDrive?.({forward:Math.max(-1,Math.min(1,forward+padInput.throttle)),turn:Math.max(-1,Math.min(1,turn-padInput.steer))});
 }
 window.addEventListener('keydown',event=>{
+  activeInput.use('keyboard');
+  if(!event.target.closest('#sound-toggle,#sound-setting'))unlockAudio();
   if(event.repeat && ['Enter',' '].includes(event.key)) {event.preventDefault();return;}
   if (event.key==='Escape' && !document.querySelector('dialog[open]')) { event.preventDefault();openModal('#settings-modal');return; }
   if (event.key.toLowerCase()==='j' && !document.querySelector('dialog[open]') && screen==='game') {event.preventDefault();openJournal();return;}
@@ -880,6 +914,7 @@ window.addEventListener('keydown',event=>{
   if(geologyActive && key==='enter' && toolState?.stage==='compare'){event.preventDefault();view?.compareToolSamples?.();return;}
   if(contacting && key==='enter' && !event.target.closest('button,a,input,summary')) {event.preventDefault();sendMemory();return;}
   if(investigating && ['arrowup','arrowdown','arrowleft','arrowright'].includes(key)) {event.preventDefault();pressed.add(key);inspectionLook();return;}
+  if(key==='enter' && (screen==='title' || screen==='game') && !briefingActive && !event.target.closest('button,a,input,summary')){event.preventDefault();controllerAction('primary');return;}
   if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(key) && screen==='game') {event.preventDefault();pressed.add(key);drive();}
 });
 function inspectionLook() {if(geologyActive){syncToolInput(true);return;}const value={x:(pressed.has('arrowright')?1:0)-(pressed.has('arrowleft')?1:0),y:(pressed.has('arrowdown')?1:0)-(pressed.has('arrowup')?1:0)};if(investigating || cameraAiming())view?.setLook?.(value);}
@@ -923,7 +958,7 @@ canvas.addEventListener('tool-sample',event=>{
   if(next.complete){cancelScan();act({type:'OBSERVE'});return;}
   if(next.samples.length>toolSampleCount){toolSampleCount=next.samples.length;save();sound.cue('observe');controller?.feedback('observe');}
   if(previous && (next.stage!==previous.stage || next.samples.length!==previous.samples.length))renderGame();
-  const hint=$('#tool-hint');if(hint)hint.textContent=next.hint.replaceAll('R2',controllerConnected?'R2':'Space').replace('×',controllerConnected?'×':'Enter');
+  const hint=$('#tool-hint');if(hint)hint.textContent=geologyHint(next,usingController());
   const coverage=$('#tool-coverage');if(coverage)coverage.textContent=`${next.stage==='trace'?'Layers traced':'Brush progress'} · ${Math.round(next.progress*100)}%`;
   const progress=$('#tool-progress');if(progress)progress.value=next.progress;
   sound.setActivity?.({investigating:true,toolActive:next.operating,toolPressure:next.operating?1:0,toolMotion:next.toolMotion});
@@ -984,7 +1019,6 @@ function menuTargets() {
   return controllerMenuTargets(root);
 }
 function controllerAction(action) {
-  document.body.dataset.input='controller';
   const dialog=document.querySelector('dialog[open]');
   if(action==='pause') { if(dialog) dialog.close(); else openModal('#settings-modal'); return; }
   if(action==='back') { if(dialog) dialog.close(); else if(exploring) setExploring(false); else openModal('#settings-modal'); return; }
@@ -1019,8 +1053,9 @@ function controllerAction(action) {
   }
 }
 controller=createController({
+  onActivity() {activeInput.use('controller');unlockAudio();},
   onInput(input) {
-    if(input.actualSample && [input.steer,input.throttle,input.lookX,input.lookY,input.leftTrigger,input.rightTrigger].some(v=>Math.abs(v)>.15))document.body.dataset.input='controller';
+    if(!usingController())return;
     if(state.paused || document.querySelector('dialog[open]')) {padInput={throttle:0,steer:0};return;}
     padInput={throttle:input.throttle,steer:input.steer};drive();
     if(cameraAiming()){if(!['arrowup','arrowdown','arrowleft','arrowright'].some(key=>pressed.has(key)))view?.setLook?.({x:input.lookX,y:input.lookY});return;}
@@ -1029,7 +1064,6 @@ controller=createController({
     }
     if(contacting) {
       const now=performance.now(),dt=(now-uploadInputAt)/1000;uploadInputAt=now;
-      if(input.actualSample && Math.max(input.leftTrigger || 0,input.rightTrigger || 0)>.03)document.body.dataset.input='controller';
       updateUploadProgress(squeeze.sample({left:input.leftTrigger,right:input.rightTrigger,actualSample:input.actualSample},dt));
       view?.setLook?.({x:0,y:0});return;
     }
@@ -1042,18 +1076,16 @@ controller=createController({
     const disconnected = controllerConnected && !status.connected;
     controllerConnected=status.connected;
     controllerId=status.id;
-    if (disconnected && !padPreviewMuted) {
+    if (disconnected && usingController() && !padPreviewMuted) {
       pressed.clear();padInput={throttle:0,steer:0};view?.stopDrive?.();
       if((screen==='game' || briefingActive) && !document.querySelector('dialog[open]')) {openModal('#settings-modal');announce('Controller disconnected. Journey paused. Reconnect or close settings to continue with other controls.');}
     }
     document.body.classList.toggle('controller-connected',status.connected);
-    if(!status.connected)document.body.dataset.input='pointer';
+    if(!status.connected && usingController())activeInput.use(settings.touch?'touch':'keyboard');
     const detectedFamily = controllerFamily(status.id);
     $('#controller-status').textContent=status.connected ? `${detectedFamily==='playstation'?'PlayStation controller':detectedFamily==='xbox'?'Xbox controller':'Controller'} connected · ${status.haptics?'vibration available':'vibration unavailable in this browser'}` : 'Connect a controller, then press any button.';
-    inputDevice = status.connected ? (detectedFamily==='playstation' ? 'dualsense' : 'gamepad') : settings.touch ? 'touch' : 'keyboard';
     refreshControllerPrompts();
-    if(connectionChanged && screen==='game' && (geologyActive || ['transmit','received'].includes(state.phase)))renderGame();
-    if(contacting)resetUpload();
+    if(disconnected && contacting)resetUpload();
     $('#adaptive-connect').disabled=!status.adaptiveSupported || status.adaptiveOpen;
     $('#adaptive-disconnect').hidden=!status.adaptiveOpen;
     $('#adaptive-status').textContent=status.message || (status.adaptiveConnected?'USB trigger feedback connected.':status.adaptiveSupported?'Optional: original DualSense via USB. Click or tap to connect.':'USB trigger effects unavailable here. Standard trigger controls still work.');
@@ -1078,4 +1110,8 @@ try { view=createLandscape(canvas); } catch(error) {
   console.error(error);
 }
 applySettings();
+$('#sound-toggle').setAttribute('aria-pressed',String(settings.sound));
+$('#sound-toggle').setAttribute('aria-label',settings.sound?'Mute sound':'Enable sound');
+$('#sound-toggle .button-label').textContent=settings.sound?'SOUND ON':'SOUND OFF';
+$('#sound-setting').checked=settings.sound;
 renderTitle();

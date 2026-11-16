@@ -15,7 +15,7 @@ test('controller ready states require triggers and retain a received Continue', 
     assert.match(ready, /data-squeeze="release"/);
     assert.match(ready, /upload-terminal__half--left/);
     assert.match(ready, /upload-terminal__half--right/);
-    assert.equal((ready.match(/data-action="transmit"/g) || []).length, 0);
+    assert.match(ready, /hidden data-action="transmit"/);
     assert.doesNotMatch(ready, /SWIPE|right stick|touchpad|↑/i);
     for (const stage of ['sending', 'received']) assert.doesNotMatch(render(mode, stage), /<progress/);
   }
@@ -25,7 +25,7 @@ test('input instructions distinguish controller commitment from button fallback'
   assert.match(render('reply', 'ready'), /data-input="pointer"/);
   assert.match(render('reply', 'ready'), /data-action="transmit"/);
   assert.doesNotMatch(render('reply','ready',{input:'controller'}),/squeeze-sequence|Hold to charge/);
-  assert.doesNotMatch(render('reply','ready',{input:'controller'}),/data-action="transmit"/);
+  assert.match(render('reply','ready',{input:'controller'}),/hidden data-action="transmit"/);
   assert.match(render('reply', 'ready'), /Send this memory home with the button below/);
   assert.match(render('reply', 'ready'), />Upload memory /);
   assert.match(render('silence', 'ready'), />Call Opportunity /);
@@ -114,7 +114,7 @@ test('integrated thoughts keep controller sending and silence receipts without d
   const story='<section class="story-console">My thought</section>';
   const ready=render('reply','ready',{story,input:'controller',meaning:'Duplicate meaning'});
   assert.equal((ready.match(/My thought/g)||[]).length,1);
-  assert.doesNotMatch(ready,/Duplicate meaning|data-action="transmit"|upload-terminal__memory/);
+  assert.doesNotMatch(ready,/Duplicate meaning|upload-terminal__memory/);
   assert.match(ready,/id="squeeze-hint"/);
   const silence=render('silence','received',{story,voice:false,response:'No signal from Opportunity.'});
   assert.match(silence,/NO REPLY/);assert.match(silence,/No signal from Opportunity\./);

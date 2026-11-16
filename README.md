@@ -18,6 +18,7 @@ A playable project developed for the **2026 NASA Space Apps storytelling challen
 - **Work with the evidence.** Trace crossing rock layers, brush dust from a surface, and compare two sample readings.
 - **Frame a discovery.** Frame five mission moments: the landing site, Last Chance, Berry Bowl, Perseverance Valley and the final incomplete image. The camera looks out from the rover into the same world you explore, then reveals the original NASA observation before sending.
 - **Make contact.** Squeeze both triggers, hold the signal, then release to send your discovery toward Earth.
+- **Listen from Earth.** Take a seat at a recovery workstation, with Opportunity’s last known position reconstructed overhead in the storm. Send a call and wait for the answer that never comes.
 - **Hear the journey.** An original adaptive score and musical call-and-response accompany the discoveries.
 
 <details>
@@ -37,9 +38,9 @@ A playable project developed for the **2026 NASA Space Apps storytelling challen
 
 **Desktop browser + controller is the primary target.** Keyboard and mouse controls are also available. The 3D scene requires WebGL 2; a story fallback is available if graphics cannot start. No install, account, or AI API key is needed.
 
-Connect a controller, press a button, and begin. Optional original-DualSense USB trigger effects are experimental and depend on browser and device support; see [setup and limits](docs/CONTROLLERS.md). Sound can be muted, progress saves locally, and the camera button downloads a HUD-free photo.
+Connect a controller, press a button, and begin. Optional original-DualSense USB trigger effects are experimental and depend on browser and device support; see [setup and limits](docs/CONTROLLERS.md). Sound starts enabled with the first interaction and remembers an explicit mute, prompts follow your active input, progress saves locally, and the camera button downloads a HUD-free photo.
 
-The intended session is around 10–15 minutes; this is a design target, not a measured average. **Playable build: v0.21.1.**
+The intended session is around 10–15 minutes; this is a design target, not a measured average. **Playable build: v0.22.0.**
 
 ## Run locally
 

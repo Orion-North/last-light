@@ -10,29 +10,36 @@ export function renderStoryConsole({ line, time = '' }) {
 
 /** Rebinding a rerendered line preserves progress; controls never wait on the reveal. */
 export function createStoryWriter({ requestFrame = requestAnimationFrame, cancelFrame = cancelAnimationFrame,
-  paused = () => false, pulse = () => {} } = {}) {
-  let frame = 0, target = null, key = null, text = '', speaker = 'record';
-  let elapsed = 0, previous = null, lastPulse = 0, pulses = 0, duration = 0, started = false;
+  paused = () => false, reducedMotion = () => false, pulse = () => {} } = {}) {
+  let frame = 0, target = null, key = null, characters = [], deadlines = [], speaker = 'record';
+  let elapsed = 0, previous = null, lastPulse = -Infinity, count = 0, sounded = false;
   function paint() {
     if (!target) return;
-    const count = Math.min(text.length, Math.ceil(text.length * elapsed / duration));
-    target.textContent = text.slice(0, count);
-    target.closest('.story-console')?.classList.toggle('is-writing', count < text.length);
+    target.textContent = characters.slice(0, count).join('');
+    target.closest('.story-console')?.classList.toggle('is-writing', count < characters.length);
   }
+  function complete() { count=characters.length;elapsed=deadlines.at(-1) || 0;paint(); }
   function tick(now) {
     frame = 0;
     if (!target?.isConnected) return;
     const delta = previous === null ? 0 : Math.max(0, Math.min(now - previous, 80));
     previous = now;
+    if (reducedMotion()) { complete();return; }
     if (!paused()) {
-      elapsed = Math.min(duration, elapsed + delta);
-      if (!started) { started = true; pulse({speaker, first:true}); }
-      else if (elapsed - lastPulse >= 135 && elapsed < duration && pulses < 16) {
-        lastPulse = elapsed; pulses++; pulse({speaker, first:false});
+      elapsed += delta;
+      const before=count;
+      while(count<characters.length && elapsed>=deadlines[count])count++;
+      if(count>before) {
+        // One current key sound per frame, never a burst of overdue audio.
+        const character=characters.slice(before,count).findLast(c=>!/\s/.test(c));
+        if(character && elapsed-lastPulse>=65) {
+          pulse({speaker,first:!sounded,character,index:count-1,punctuation:/[,.!?;:…]/.test(character)});
+          sounded=true;lastPulse=elapsed;
+        }
       }
       paint();
     }
-    if (elapsed < duration) frame = requestFrame(tick);
+    if (count < characters.length) frame = requestFrame(tick);
   }
   return {
     mount(element, line, nextKey) {
@@ -40,12 +47,22 @@ export function createStoryWriter({ requestFrame = requestAnimationFrame, cancel
       frame = 0; target = element?.querySelector('.story-console__typed') || null;
       if (!target || !line.text) return;
       if (key !== nextKey) {
-        key = nextKey; text = line.text; speaker = line.speaker;
-        elapsed = 0; lastPulse = 0; pulses = 0; started = false;
-        duration = Math.min(2800, Math.max(700, text.length * 19));
+        key = nextKey; characters = Array.from(line.text); speaker = line.speaker;
+        elapsed = 0; lastPulse = -Infinity; count=0;sounded=false;
+        let time=40;
+        deadlines=characters.map((character,index)=>{
+          const at=time;
+          // A little irregularity reads as a thought arriving, not a progress bar.
+          time+=/\s/.test(character)?22:30+(index%3)*4;
+          if(/[,.!?;:…]/.test(character))time+=/[.!?…]/.test(character)?220:110;
+          return at;
+        });
+        const scale=Math.min(1,4200/(deadlines.at(-1) || 1));
+        deadlines=deadlines.map(at=>at*scale);
       }
-      previous = null; paint();
-      if (elapsed < duration) frame = requestFrame(tick);
+      previous = null;
+      if(reducedMotion())complete();else paint();
+      if (count < characters.length) frame = requestFrame(tick);
     },
     stop() {
       if (frame) cancelFrame(frame);

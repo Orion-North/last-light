@@ -864,3 +864,117 @@ strong reference match. 71 syntax checks, 12 scene contracts and static build pa
 A planned additional controller/portrait fixture rerun did not execute after the
 local preview connection dropped. The completed five-scene matrix, keyboard drive,
 brush and full-window reviews above are the checks actually run for this correction.
+
+## WORLD-42 — v0.22.0 geology and photo responsiveness (2026-11-15)
+
+Last Chance uses one forward/inverse deformation across physical geometry,
+contact rays, trace guides, dust and pointer picking. Its lower exposure retains
+crossing beds with a fuller rounded host rock. Berry Bowl is joined to irregular,
+partly buried rear/left fragments. Independent Sol criticism rejected the first
+thin plaque and paving-ring versions; revised geometry cleared the bounded review.
+See reviews/WORLD-42.md for explicit remaining stylization.
+
+Native mouse drags completed both Last Chance paths and the comparison button
+opened the real mast camera. This caught/fixed the transparent readings dock
+intercepting the second path. Readings now pass pointer strokes through, while
+actual buttons remain interactive.
+
+The user-reported capture delay is reduced by cropping the rendered canvas before
+one JPEG encoding (1600 px longest-edge cap), instead of a full PNG encode, bitmap
+decode and second encoding. Uncropped downloadable photos remain PNG. Normal
+reveal/handoff takes 900 + 450 ms before the unchanged Earth sending interaction;
+image wait is capped at 1000 ms. Paused/background time does not advance it.
+The mast eye follows a .34 m gaze-aligned arc outside the bundled model's head.
+A GLB vertex bound check found a .2443 m maximum head radius; real deck remains
+visible. Native right/down aiming was visually checked clear of the head.
+
+All five capture, NASA reveal, original uplink and correct receipt paths passed.
+The preview server exited during the first matrix run, causing model-fetch/title
+failures for the final three scenes. Those three passed after restarting it.
+Berry Bowl also passed the 390 px portrait fixture with simulated-controller
+sending, keyboard aiming, reveal/handoff pause, premature-send rejection and saved
+receipt. Capture-to-reveal measured 115 ms in that run; this is not a device-wide
+performance guarantee. 29 engine files, 71 syntax checks, scene/assets checks and
+static build passed before Earth-side integration. No physical controller test or
+fresh complete emotional playthrough is claimed; harness saves and visibility are
+isolated for reproducibility.
+
+Final WORLD-42 brush check: two native mouse strokes cleared 73% of the existing
+Berry patch; the reticle/dust remained on the same slab. Independent critic
+reviewed the ordinary and right/down mast views: camera head absent, actual deck
+still visible, landform continuity intact.
+
+## EARTH-43 — Earth recovery workstation (2026-11-15)
+
+The same rover and storm terrain now appear overhead inside a physical monitor,
+with an authored desk, stand and keyboard. The initial small/dark rover failed
+critical review; a closer view and restrained local fill resolved subject clarity.
+A short reconstruction label preserves historical honesty. Earth UI stays usable
+below the monitor, with scrolling on small screens. See reviews/EARTH-43.md.
+
+The production fixture passed all nine Earth scene/phase presentations, pause and
+resume, title viewport restoration, Mars-to-Earth handover, recovery silence,
+archive behavior, final-call ending and restart. A separate 960×540 reduced-motion
+run passed all three sends with simulated trigger input. Native pointer calling at
+390×844 visibly reached NO REPLY and Continue. Full desktop/portrait receipts and
+short-screen composition were critically reviewed. The normal rover viewport
+restores on title/ending/restart. 29 engine files, 72 source syntax checks, contracts,
+assets and static build passed after this integration.
+
+## INPUT-44 — active controls and first-run audio (2026-11-15)
+
+The input-experience fixture passed six checks: connected idle pad keeps keyboard
+prompts, default sound enabled, meaningful pad/keyboard takeover, first mouse click
+survives device switch, explicit mute survives reload, and Enter starts from the
+canvas without skipping intro. A native Enter press unlocked an AudioContext
+reported as running. This verifies browser audio activation, not subjective mix.
+
+Native mouse tracing completed both Last Chance paths; Enter compared, arrow keys
+aimed, Enter captured then sent, and EARTH RECEIVED appeared. The mast view showed
+clear head separation and concise keyboard aiming/capture cues. Following input
+integration, all three Earth recovery calls passed simulated triggers at 960×540
+with reduced motion. Full Earth lifecycle and five-photo matrix evidence above
+remains applicable; no physical controller or full fresh playthrough is claimed.
+
+The full engine run caught overbroad hint matching that swallowed custom geology
+text. Matching now targets exact built-in instructions; focused escaping and prompt
+tests pass. Final integrated checks: 32 engine test files, 77 source syntax checks,
+scene/contracts/assets verification and static build passed.
+
+## EARTH-45 — rendered workstation (2026-11-15)
+
+Rebuilt the rejected CSS room as Three.js geometry using the production renderer
+and an HDR monitor render target. Critique caught/fixed occluded screen geometry,
+black rear walls, overbright desk/keys, and floating controls. Final desktop review
+found no material blocker; bright wall practicals/angular mouse remain polish.
+Portrait preview preserves monitor and action readability. Full Earth fixture
+passed nine scene/phase states plus pause, handover, no-driving, recovery/archive,
+ending and restart. All 32 engine files, 78 syntax checks, assets/contracts and
+build passed. Additional camera-head/capture changes were removed per user deferral.
+The local server exited during the later short-screen run; that run was restarted
+rather than treating connection failures as product failures.
+
+The restarted 960×540 reduced-motion simulated-trigger run passed all three calls.
+A native pointer call visibly reached NO REPLY and Continue in the new workstation.
+
+## SIGNAL-46 / VOICE-47 — monitor signal and typed thoughts
+
+The Earth call path is drawn on a transparent instrument plane on the physical
+monitor. A native call visibly moved its packet from Earth toward Mars and reached
+NO REPLY. The storm reconstruction remains visible. Desktop and 390 px portrait
+compositions were inspected. DOM descriptions remain accessible; a graphics failure
+retains the original DOM signal fallback. Archive graphics collect at Earth;
+reduced motion makes the packet static and pause freezes the world clock.
+
+Production-writer/audio browser fixture: native Type thought started audio,
+revealed 18/62 characters and 8 pulse callbacks, then remained exactly there while
+paused. Reduced motion immediately completed 62/62 with zero pulse callbacks.
+Muted typing still progressed. These verify activation/scheduling behavior, not
+subjective loudness or emotional quality. Writer and audio lifecycle tests cover
+rerender continuity, punctuation timing, pause/mute/suspension and missing replies.
+
+Final integrated checks passed:32 engine files,78 syntax checks,12 scene
+contracts, local assets and static build. The first full test run found an older
+audio fake missing playbackRate; the updated fake and bounded voice assertions
+pass without weakening mute/pause or missing-reply behavior. Native portrait
+calling also reached NO REPLY after the monitor integration.

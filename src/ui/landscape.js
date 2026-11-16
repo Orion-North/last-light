@@ -1,7 +1,8 @@
-import { refineLastChance, refineBerryBowl } from './world-geology-refinement.js';
+import { refineLastChance, refineBerryBowl, mapLastChancePoint, inverseLastChanceFace } from './world-geology-refinement.js';
 import { convexHull, componentHulls, clearRoverPose, sweepRover, clearCamera } from '../engine/rock-collision.js';
 import { createGeologyTool } from '../engine/geology-tool.js';
 import { createSky } from './sky.js';
+import { createEarthRoom } from './earth-room.js';
 import { createDriveMotion } from '../engine/drive-motion.js';
 import { sampleSurface } from '../input/surface.js';
 import * as THREE from 'three';
@@ -12,7 +13,7 @@ import { mergeVertices, mergeGeometries } from 'three/addons/utils/BufferGeometr
 /** A real, navigable Martian diorama. NASA's rover is loaded from a local GLB. */
 export function createLandscape(canvas) {
   const noop = () => {};
-  const empty = { capturePhoto: async () => null, setDiscoveryCamera: () => false, setDiscoveryCameraFrozen: noop, setToolMode: () => false, setToolInput: noop, compareToolSamples: () => false, setMissionAge: noop, setScene: noop, setPaused: noop,
+  const empty = { setEarthSignal: noop, capturePhoto: async () => null, setDiscoveryCamera: () => false, setDiscoveryCameraFrozen: noop, setToolMode: () => false, setToolInput: noop, compareToolSamples: () => false, setMissionAge: noop, setScene: noop, setPaused: noop,
     setMode: noop, setIntro: noop, previewMemory: noop, revealFirstView: noop, setRemoteView: noop, setDrive: noop, stopDrive: noop, setSurvey: noop, setInvestigation: noop, setContact: noop, setContactInput: noop, nudgeContact: noop, sendContact: noop, cancelContactPulse: noop, focusRover: noop, inspect: noop,
     setWaypoint: noop, setObservationTarget: noop, reset: noop, destroy: noop };
   const status = (state, message) => canvas?.dispatchEvent(new CustomEvent('world-status', {
@@ -93,6 +94,35 @@ export function createLandscape(canvas) {
   let observationTarget = null;
   let inspecting = false;
   let remoteView = false;
+  let earthRoom = null;
+  let earthSignalState = { mode: 'recovery', stage: 'ready' };
+  function setEarthSignal(state) {
+    earthSignalState = { ...state };
+    earthRoom?.setSignal(earthSignalState);
+  }
+  let earthTarget = null;
+  let viewportWidth = 1, viewportHeight = 1;
+  const monitorAspect = 4.98 / 2.76;
+  const earthExposure = 1.15;
+  function prepareEarthRoom() {
+    if (!earthRoom) {
+      earthRoom = createEarthRoom(THREE);
+      earthRoom.setSignal(earthSignalState);
+      // Keep the reconstruction in linear HDR until the physical monitor is
+      // drawn. This avoids applying display gamma or ACES twice.
+      earthTarget = new THREE.WebGLRenderTarget(1, 1, {
+        type: THREE.HalfFloatType, colorSpace: THREE.LinearSRGBColorSpace,
+        minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter,
+        depthBuffer: true, stencilBuffer: false,
+      });
+      earthRoom.screen.material.map = earthTarget.texture;
+      earthRoom.screen.material.toneMapped = true;
+      earthRoom.screen.material.needsUpdate = true;
+    }
+    earthRoom.resize(viewportWidth, viewportHeight);
+    const width = Math.max(640, Math.min(1600, Math.round(viewportWidth * renderer.getPixelRatio())));
+    earthTarget.setSize(width, Math.round(width / monitorAspect));
+  }
   let memoryPreview = null;
   let planetState = null;
   const resources = new Set();
@@ -357,7 +387,7 @@ export function createLandscape(canvas) {
   refineLastChance({ THREE, group: lastChance, own, materials: strataMaterials });
   registerLandmark(lastChance);
   observationSites.push({ x: 7, z: -7,
-    target: lastChance.position.clone().add(new THREE.Vector3(0, .67, .5)),
+    target: lastChance.position.clone().add(new THREE.Vector3().copy(mapLastChancePoint(0, .67, .5))),
     normal: new THREE.Vector3(0, 0, 1), kind: 'layers',
     offset: new THREE.Vector3(.5, 1.0, 3.2), min: 2.1, max: 6.5 });
 
@@ -461,21 +491,24 @@ export function createLandscape(canvas) {
   const toolSurfaceRay = new THREE.Raycaster();
   lastChance.updateMatrixWorld(true);
   function layerSurface(x, y) {
-    toolSurfaceRay.set(lastChance.position.clone().add(new THREE.Vector3(x, y, 2)), new THREE.Vector3(0, 0, -1));
+    const mapped = mapLastChancePoint(x, y, .72);
+    toolSurfaceRay.set(lastChance.position.clone().add(new THREE.Vector3(mapped.x, mapped.y, 2)), new THREE.Vector3(0, 0, -1));
     const hit = toolSurfaceRay.intersectObject(lastChance, true)[0];
-    return { z: hit ? hit.point.z - lastChance.position.z : .72,
+    return { x: mapped.x, y: mapped.y, z: hit ? hit.point.z - lastChance.position.z : mapped.z,
       normal: hit ? hit.face.normal.clone().transformDirection(hit.object.matrixWorld) : new THREE.Vector3(0, 0, 1) };
   }
   function toolPoint(x, y, lift = 0) {
-    return toolBerry ? new THREE.Vector3(x, bowlHeight(x, y * .64) + .035 + lift, y * .64)
-      : new THREE.Vector3(x, .67 - y * .48, layerSurface(x, .67 - y * .48).z + .012 + lift);
+    if (toolBerry) return new THREE.Vector3(x, bowlHeight(x, y * .64) + .035 + lift, y * .64);
+    const surface = layerSurface(x, .67 - y * .48);
+    return new THREE.Vector3(surface.x, surface.y, surface.z).addScaledVector(surface.normal, .012 + lift);
   }
   const layerDustPoints = Array.from({ length: 576 }, (_, index) => toolPoint(-1 + (index % 24 + .5) / 12, -1 + (Math.floor(index / 24) + .5) / 12));
   const layerDustNormals = Array.from({ length: 576 }, (_, index) => layerSurface(-1 + (index % 24 + .5) / 12, .67 - (-1 + (Math.floor(index / 24) + .5) / 12) * .48).normal);
   const localFront = new THREE.Vector3(0, 0, 1);
   function updateToolVisual(state) {
     toolHead.position.copy(toolPoint(state.cursor.x, state.cursor.y, .07));
-    toolHead.rotation.x = toolBerry ? -Math.PI / 2 : 0;
+    if (toolBerry) toolHead.rotation.set(-Math.PI / 2, 0, 0);
+    else toolHead.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), layerSurface(state.cursor.x, .67 - state.cursor.y * .48).normal);
     headRing.rotation.z += state.stage === 'brush' && state.operating ? .12 : 0;
     toolDust.visible = state.mode !== 'trace';
     traceGuide.visible = state.mode === 'trace';
@@ -500,7 +533,9 @@ export function createLandscape(canvas) {
           -(bowlHeight(x, z + h) - bowlHeight(x, z - h)) / (2 * h)).normalize();
         dummy.quaternion.setFromUnitVectors(localFront, normal);
       } else dummy.quaternion.setFromUnitVectors(localFront, layerDustNormals[index]);
-      dummy.scale.set(1, toolBerry ? .64 : .48, 1).multiplyScalar(state.cleared[index] ? 0 : 1);
+      const faceX = -1 + (i + .5) / 12;
+      const heightScale = mapLastChancePoint(faceX, 1).y - mapLastChancePoint(faceX, 0).y;
+      dummy.scale.set(1, toolBerry ? .64 : .48 * heightScale, 1).multiplyScalar(state.cleared[index] ? 0 : 1);
       dummy.updateMatrix(); toolDust.setMatrixAt(index, dummy.matrix);
     }
     toolDust.instanceMatrix.needsUpdate = true;
@@ -594,13 +629,16 @@ export function createLandscape(canvas) {
     investigation = inspecting = false;
     cancelContactPulse(); contactActive = contactFraming = false; contactVisual.visible = false;
     vehicle.updateMatrixWorld(true);
-    // NASA model normalized to 2.4 m: the camera head is at z=.49, y=1.67.
-    // Five centimetres of clearance above it avoids looking through the model
-    // when looking back over the real solar deck or turning toward a landmark.
-    const eye = vehicle.localToWorld(new THREE.Vector3(-.046, 1.72, .49));
+    // The normalized NASA camera head fits a .26 m sphere around this mount.
+    // Place the optical eye .34 m along its actual world-space gaze: the head
+    // stays at least .08 m behind the eye, even at the widest field of view.
+    // Vehicle tilt transforms the mount; the world-space aim keeps world-up.
+    const mountCenter = vehicle.localToWorld(new THREE.Vector3(-.046, 1.585, .487));
+    const lensOffset = .34;
+    const eye = mountCenter.clone();
     let target;
     if (sceneId === 'blueberries') target = berryBowl.position.clone().add(new THREE.Vector3(0, .16, 0));
-    else if (sceneId === 'stone-ripples') target = lastChance.position.clone().add(new THREE.Vector3(0, .67, .55));
+    else if (sceneId === 'stone-ripples') target = lastChance.position.clone().add(new THREE.Vector3().copy(mapLastChancePoint(0, .67, .55)));
     else if (sceneId === 'first-morning') {
       // Look across the landing ground and its persistent low bedrock apron.
       target = new THREE.Vector3(-1, surfaceHeight(-1, -12) + .12, -12);
@@ -615,10 +653,10 @@ export function createLandscape(canvas) {
       const direction = new THREE.Vector3(Math.sin(heading), 1.8, Math.cos(heading)).normalize();
       target = eye.clone().addScaledVector(direction, 20);
     }
-    const safe = clearCamera(target, eye, cameraRocks, cameraClearance(), surfaceHeight, { tether: false });
-    eye.set(safe.x, safe.y, safe.z);
+    const direction = target.clone().sub(mountCenter).normalize();
+    eye.addScaledVector(direction, lensOffset);
     const gaze = new THREE.Spherical().setFromVector3(target.clone().sub(eye));
-    discoveryCamera = { sceneId, eye, target, theta: gaze.theta, phi: gaze.phi,
+    discoveryCamera = { sceneId, eye, target, mountCenter, lensOffset, theta: gaze.theta, phi: gaze.phi,
       distance: gaze.radius, yaw: 0, pitch: 0, frozen: false, returnPosition, returnTarget, returnFov,
       readyAt: elapsed + (immediate ? 0 : .45),
       aspect: Number.isFinite(aspect) && aspect > 0 ? aspect : 4 / 3,
@@ -683,9 +721,11 @@ export function createLandscape(canvas) {
     toolRings.forEach(ring => { ring.visible = false; });
     // Cleared dust remains on the same rock. Probe, rings and trace dots are UI.
     if (!cameraTween) {
+      const direction = new THREE.Vector3().setFromSpherical(new THREE.Spherical(1,
+        THREE.MathUtils.clamp(d.phi + d.pitch, .03, Math.PI - .03), d.theta + d.yaw));
+      d.eye.copy(d.mountCenter).addScaledVector(direction, d.lensOffset);
       camera.position.copy(d.eye);
-      controls.target.copy(d.eye).add(new THREE.Vector3().setFromSpherical(
-        new THREE.Spherical(d.distance, THREE.MathUtils.clamp(d.phi + d.pitch, .03, Math.PI - .03), d.theta + d.yaw)));
+      controls.target.copy(d.eye).addScaledVector(direction, d.distance);
     }
   }
   function sampleDiscovery() {
@@ -753,22 +793,76 @@ export function createLandscape(canvas) {
   bedrock.castShadow = bedrock.receiveShadow = true;
   scene.add(bedrock);
 
-  // Fractured shoulders and talus tie each hero to the ground. Shared geometry
-  // and one instanced batch keep staging inexpensive on mobile GPUs.
-  const talus = own(new THREE.InstancedMesh(rockGeometries[2], strataMaterials[1], 34));
+  // Fractured bedrock continues out from Berry Bowl in asymmetric plates.
+  // This is a persistent sibling of the sampled slab, so the camera measures
+  // the original investigation surface rather than zooming out to fit scenery.
+  const berryApron = new THREE.Group();
+  berryApron.position.copy(berryBowl.position);
+  const apronMaterial = own(strataMaterials[2].clone());
+  apronMaterial.color.set('#c5a27a');
+  apronMaterial.userData.normalStrength = .26;
+  setDrySurface(apronMaterial, .9); setSedimentSurface(apronMaterial);
+  const plateOutlines = [
+    // Broken rear/left exposures, with short inward tongues that disappear
+    // into the sampled host rock. The right and front remain mostly sand.
+    [[-2.55,-.75],[-2.31,-.84],[-2.17,-.70],[-1.94,-.75],[-1.67,-.49],[-1.39,-.29],[-1.30,-.04],[-1.66,.03],[-1.86,.16],[-2.16,.08],[-2.38,-.18],[-2.50,-.24]],
+    [[-2.13,-.94],[-1.94,-1.22],[-1.61,-1.35],[-1.52,-1.29],[-1.34,-1.43],[-.98,-1.28],[-.84,-1.01],[-1.10,-.87],[-1.26,-.62],[-1.54,-.70],[-1.70,-.64]],
+    [[-.69,-1.50],[-.44,-1.75],[-.20,-1.70],[-.04,-1.79],[.18,-1.56],[.47,-1.48],[.55,-1.24],[.31,-.98],[.05,-.79],[-.18,-.86],[-.39,-1.02],[-.62,-1.06]],
+    [[.63,-1.31],[.84,-1.57],[1.16,-1.49],[1.35,-1.21],[1.13,-1.03],[.96,-1.05],[.82,-.88],[.60,-1.02]],
+    [[-2.69,-.22],[-2.57,-.35],[-2.42,-.25],[-2.47,-.05],[-2.61,.04]],
+    [[-1.95,.30],[-1.82,.22],[-1.62,.28],[-1.66,.42],[-1.87,.49]],
+  ];
+  plateOutlines.forEach((outline, index) => {
+    const shape = new THREE.Shape(outline.map(([x, z]) => new THREE.Vector2(x, -z)));
+    const geometry = own(new THREE.ExtrudeGeometry(shape, { depth: .16, steps: 1,
+      bevelEnabled: true, bevelSegments: 2, bevelSize: .009, bevelThickness: .004 }));
+    geometry.rotateX(-Math.PI / 2);
+    const vertices = geometry.attributes.position, uv = geometry.attributes.uv, normals = geometry.attributes.normal;
+    for (let i = 0; i < vertices.count; i++) {
+      const x = vertices.getX(i), y = vertices.getY(i), z = vertices.getZ(i);
+      const ground = surfaceHeight(berryBowl.position.x + x, berryBowl.position.z + z) - berryBowl.position.y;
+      const distance = Math.hypot(x / 1.5, z / .94);
+      const blend = THREE.MathUtils.smoothstep(distance, 1.02, 1.75);
+      // Inner tongues meet the host; outer margins sink into sand rather than
+      // exposing equal-height chamfers around the entire investigation plate.
+      const exposure = -.012 + .04 * (.5 + .5 * Math.sin(index * 2.7 + x * 3.1 - z * 2.3));
+      const top = Math.min(ground + .18, THREE.MathUtils.lerp(bowlHeight(x, z) - .012,
+        ground + exposure, blend)) + .007 * Math.sin(x * 8 - z * 5 + index);
+      vertices.setY(i, top + y - .16);
+      if (Math.abs(normals.getY(i)) > .55) uv.setXY(i, x * 1.35, z * 1.35);
+      else uv.setXY(i, (Math.abs(normals.getX(i)) > .6 ? z : x) * 1.35, y * 1.35);
+    }
+    vertices.needsUpdate = uv.needsUpdate = true;
+    geometry.computeVertexNormals(); geometry.computeBoundingBox();
+    const mesh = new THREE.Mesh(geometry, apronMaterial);
+    mesh.castShadow = mesh.receiveShadow = true;
+    berryApron.add(mesh);
+  });
+  scene.add(berryApron);
+  registerLandmark(berryApron);
+
+  // Low chips fill a few broken joints, without rebuilding the old rounded
+  // talus halo. The rover's front approach remains open through the center.
+  const talus = own(new THREE.InstancedMesh(rockGeometries[2], strataMaterials[1], 28));
   const talusRandom = seededRandom(6021);
   for (let i = 0; i < talus.count; i += 1) {
-    const center = i < 22 ? lastChance.position : berryBowl.position;
-    const angle = talusRandom() * Math.PI * 2;
-    const radius = 1.35 + talusRandom() * .8;
-    const x = center.x + Math.cos(angle) * radius;
-    const z = center.z + Math.sin(angle) * radius * .65;
-    const size = .09 + talusRandom() * .27;
-    dummy.position.set(x, surfaceHeight(x, z) + size * .11, z);
-    dummy.rotation.set(talusRandom() * .5, angle, talusRandom() * .4);
-    dummy.scale.set(size * 1.7, size * .45, size);
+    let x, z, width, depth;
+    if (i < 18) {
+      const angle = talusRandom() * Math.PI * 2, radius = 1.25 + talusRandom() * .85;
+      x = lastChance.position.x + Math.cos(angle) * radius;
+      z = lastChance.position.z + Math.sin(angle) * radius * .65;
+      width = .10 + talusRandom() * .25; depth = width * (.5 + talusRandom() * .45);
+    } else {
+      // Unequal fragments near the left/back joints, never a complete ring.
+      x = berryBowl.position.x + (i % 3 === 0 ? 1.9 : -1.7) + (talusRandom() - .5) * .7;
+      z = berryBowl.position.z - .8 - talusRandom() * .9;
+      width = .07 + talusRandom() * .14; depth = width * (.55 + talusRandom() * .35);
+    }
+    dummy.position.set(x, surfaceHeight(x, z) + .015, z);
+    dummy.rotation.set(0, talusRandom() * Math.PI, 0);
+    dummy.scale.set(width * 1.35, .035 + talusRandom() * .035, depth);
     dummy.updateMatrix(); talus.setMatrixAt(i, dummy.matrix);
-    registerInstance(talus.geometry,dummy.matrix);
+    registerInstance(talus.geometry, dummy.matrix);
   }
   talus.castShadow = talus.receiveShadow = true;
   scene.add(talus);
@@ -812,7 +906,7 @@ export function createLandscape(canvas) {
   loadSurfaceMaps({ map: 'textures/ground/albedo.jpg', normalMap: 'textures/ground/normal.jpg',
     roughnessMap: 'textures/ground/roughness.jpg' }, [terrainMaterial], 80, .45);
   loadSurfaceMaps({ map: 'textures/rock/albedo.jpg', normalMap: 'textures/rock/normal.jpg',
-    roughnessMap: 'textures/rock/roughness.jpg' }, [rockMaterial, ...strataMaterials, bowlMaterial, grainMaterial], 1.1, .7);
+    roughnessMap: 'textures/rock/roughness.jpg' }, [rockMaterial, ...strataMaterials, bowlMaterial, grainMaterial, apronMaterial], 1.1, .7);
 
   const sun = new THREE.DirectionalLight('#ffd4a3', 3.2);
   sun.position.set(-28, 7, -58);
@@ -880,6 +974,11 @@ export function createLandscape(canvas) {
   vehicle.position.set(0, heightAt(0, 0) + 0.008, 0);
   vehicle.rotation.y = heading;
   scene.add(vehicle);
+  // A restrained nearby fill keeps the dark solar deck and wheels readable
+  // in the monitor reconstruction without lifting the surrounding storm.
+  const remoteFill = new THREE.PointLight('#d8c1a3', 0, 6, 2);
+  remoteFill.position.set(.7, 3.2, -1);
+  vehicle.add(remoteFill);
   const wheelContacts = [-.535, .535].flatMap(x => [-.55, -.02, .73].map(z => new THREE.Vector3(x, 0, z)));
   const contactPixels = new Uint8Array(64 * 64 * 4);
   for (let y = 0; y < 64; y += 1) {
@@ -1234,18 +1333,22 @@ export function createLandscape(canvas) {
     environment = Object.hasOwn(palettes, next) ? next : 'dawn';
     canDrive = !(state.power === 0 || state.signal === 0);
     if (!canDrive) stopDrive();
-    planetState = palettes[environment];
+    planetState = remoteView ? palettes.storm : palettes[environment];
     render();
   }
   function applyPalette(blend) {
     if (!planetState) return;
+    // The Earth room still contains a reconstruction of Mars in the storm.
+    // Its lighting is independent of the room's Earth/night story palette.
+    const weather = remoteView ? 'storm' : environment;
+    remoteFill.intensity = remoteView ? 7 : 0;
     for (const key of ['top', 'horizon', 'lower']) {
       skyUniforms[key].value.lerp(new THREE.Color(planetState[key]), blend);
     }
     skyUniforms.sunStrength.value = THREE.MathUtils.lerp(skyUniforms.sunStrength.value, planetState.sun, blend);
     // Static PMREM retains a stable light direction; fade its energy with the sky.
     scene.environmentIntensity = THREE.MathUtils.lerp(scene.environmentIntensity,
-      environment === 'night' ? .08 : environment === 'storm' ? .18 : environment === 'earth' ? .12 : .48, blend);
+      weather === 'night' ? .08 : weather === 'storm' ? .18 : weather === 'earth' ? .12 : .48, blend);
     scene.fog.color.lerp(new THREE.Color(planetState.fog), blend);
     scene.fog.density = THREE.MathUtils.lerp(scene.fog.density, planetState.density, blend);
     sun.color.lerp(new THREE.Color(planetState.light), blend);
@@ -1257,21 +1360,23 @@ export function createLandscape(canvas) {
     groundBounce.copy(skyUniforms.lower.value).multiplyScalar(.22);
     hemisphere.groundColor.lerp(groundBounce, blend);
     fill.color.lerp(skyUniforms.top.value, blend);
-    const fillIntensity = environment === 'storm' ? .12
-      : environment === 'night' ? .045 : environment === 'earth' ? .08 : .32;
+    const fillIntensity = weather === 'storm' ? .12
+      : weather === 'night' ? .045 : weather === 'earth' ? .08 : .32;
     fill.intensity = THREE.MathUtils.lerp(fill.intensity, fillIntensity, blend);
     skyUniforms.sunColor.value.lerp(sun.color, blend);
     renderer.toneMappingExposure = THREE.MathUtils.lerp(renderer.toneMappingExposure, planetState.exposure, blend);
-    dustMaterial.opacity = THREE.MathUtils.lerp(dustMaterial.opacity, environment === 'storm' ? .47 : .14, blend);
-    dustMaterial.size = environment === 'storm' ? .08 : .035;
+    dustMaterial.opacity = THREE.MathUtils.lerp(dustMaterial.opacity, weather === 'storm' ? .47 : .14, blend);
+    dustMaterial.size = weather === 'storm' ? .08 : .035;
   }
 
   function desiredFrame(inspect = false) {
     const narrow = camera.aspect < 0.85;
     if (remoteView && mode === 'game') {
-      const target = vehicle.position.clone().add(new THREE.Vector3(0, .55, 0));
-      const offset = new THREE.Vector3(10, 5.5, 14);
-      offset.multiplyScalar(Math.max(1, .85 / Math.max(camera.aspect, .25)));
+      const target = vehicle.position.clone().add(new THREE.Vector3(0, .35, 0));
+      // Near overhead, but a slight angle keeps the mast, deck and six wheels
+      // legible. Fit the same rover into the physical monitor, not the viewport.
+      const offset = new THREE.Vector3(.75, 7, 1.4);
+      offset.multiplyScalar(Math.max(1, .9 / Math.max(camera.aspect, .25)));
       controls.maxDistance = Math.max(28, offset.length() * 1.2);
       return { position: target.clone().add(offset), target };
     }
@@ -1355,11 +1460,18 @@ export function createLandscape(canvas) {
     inspecting = investigation = false; roverFrame = null; memoryPreview = null;
     setSurvey(false);
     remoteView = next;
+    if (remoteView) prepareEarthRoom();
+    // The Mars camera fits the monitor, while the room camera fits the window.
+    camera.aspect = remoteView ? monitorAspect : viewportWidth / viewportHeight;
+    planetState = remoteView ? palettes.storm : palettes[environment];
+    applyPalette(1);
+    cameraLensTarget = 43; camera.fov = 43; camera.updateProjectionMatrix();
+    controls.minPolarAngle = remoteView ? .08 : .32;
     // Flush any residual pointer damping before freezing the remote composition.
     const damping = controls.enableDamping;
     controls.enableDamping = false; controls.update(); controls.enableDamping = damping;
     controls.enabled = !survey && !remoteView && !paused && !intro;
-    controls.minDistance = 3.3; controls.minPolarAngle = .32;
+    controls.minDistance = 3.3; controls.minPolarAngle = remoteView ? .08 : .32;
     controls.maxPolarAngle = Math.PI * .475;
     // Role handover is a deliberate cut, including while its timeline is paused.
     frameMemory(true);
@@ -1376,7 +1488,7 @@ export function createLandscape(canvas) {
     roverFrame = null;
     controls.minDistance = 3.3;
     controls.maxDistance = 28;
-    controls.minPolarAngle = .32;
+    controls.minPolarAngle = remoteView ? .08 : .32;
     controls.maxPolarAngle = Math.PI * .475;
     const desired = desiredFrame(false);
     if (immediate) {
@@ -1474,8 +1586,15 @@ export function createLandscape(canvas) {
     ray.setFromCamera(new THREE.Vector2((event.clientX - rect.left) / rect.width * 2 - 1, 1 - (event.clientY - rect.top) / rect.height * 2), camera);
     const origin = toolGroup.position.clone().add(toolPoint(0, 0));
     const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(new THREE.Vector3(0, toolBerry ? 1 : 0, toolBerry ? 0 : 1), origin);
-    const hit = ray.ray.intersectPlane(plane, new THREE.Vector3());
-    if (hit) { hit.sub(toolGroup.position); tool.setCursor(hit.x, toolBerry ? hit.z / .64 : (.67 - hit.y) / .48); }
+    // The deformed rock is the contact surface, including its depth relief.
+    // Invert the same mapping used by the trace dots before engine input.
+    const hit = !toolBerry && ray.intersectObject(lastChance, true)[0]?.point
+      || ray.ray.intersectPlane(plane, new THREE.Vector3());
+    if (hit) {
+      hit.sub(toolGroup.position);
+      const face = toolBerry ? hit : inverseLastChanceFace(hit.x, hit.y);
+      tool.setCursor(face.x, toolBerry ? hit.z / .64 : (.67 - face.y) / .48);
+    }
     tool.setInput({ pressure: 1 });
   }
   function surveyPointerMove(event) {
@@ -1763,7 +1882,24 @@ export function createLandscape(canvas) {
     // blocks the near-side rock/grains. Restored on every other world view.
     vehicle.visible = Boolean(discoveryCamera || cameraTween?.restoreControls) || !investigation && !tool && !evidence;
     anchorShadows();
-    renderer.render(scene, camera);
+    if (remoteView && earthRoom && earthTarget) {
+      const target = renderer.getRenderTarget();
+      const exposure = renderer.toneMappingExposure;
+      try {
+        renderer.setRenderTarget(earthTarget);
+        renderer.render(scene, camera);
+        renderer.setRenderTarget(target);
+        // Basic screen shading preserves the rendered image independently of
+        // the room lights. Match Mars exposure at the single final ACES pass.
+        earthRoom.screen.material.color.setScalar(exposure / earthExposure);
+        renderer.toneMappingExposure = earthExposure;
+        earthRoom.update(elapsed);
+        renderer.render(earthRoom.scene, earthRoom.camera);
+      } finally {
+        renderer.setRenderTarget(target);
+        renderer.toneMappingExposure = exposure;
+      }
+    } else renderer.render(scene, camera);
     sampleWaypointGuidance();
   }
   function animate(now) {
@@ -1782,7 +1918,7 @@ export function createLandscape(canvas) {
         emitToolFeedback(state.feedback);
         if (elapsed - toolSampleTime >= .1) { toolSampleTime = elapsed; emitTool(state); }
       } else if (!evidence) moveRover(delta);
-      const speed = environment === 'storm' ? 6.0 : .35;
+      const speed = remoteView || environment === 'storm' ? 6.0 : .35;
       for (let i = 0; i < dustCount; i += 1) {
         dustPositions[i * 3] += delta * speed;
         if (dustPositions[i * 3] > 40) dustPositions[i * 3] -= 80;
@@ -1862,7 +1998,7 @@ export function createLandscape(canvas) {
     }
     controls.enabled = false;
     const t = THREE.MathUtils.clamp(Number(progress) || 0, 0, 1);
-    const hero = lastChance.position.clone().add(new THREE.Vector3(0, .65, .5));
+    const hero = lastChance.position.clone().add(new THREE.Vector3().copy(mapLastChancePoint(0, .65, .5)));
     const heroCamera = hero.clone().add(new THREE.Vector3(-1.5, 1.9, 5.8));
     // One continuous establish-and-return move, driven by the caller's paused clock.
     const amount = t < .55 ? THREE.MathUtils.smoothstep(t, .08, .45)
@@ -1876,10 +2012,12 @@ export function createLandscape(canvas) {
     const rect = canvas.getBoundingClientRect();
     const width = Math.max(1, rect.width || window.innerWidth);
     const height = Math.max(1, rect.height || window.innerHeight);
+    viewportWidth = width; viewportHeight = height;
     const previousAspect = camera.aspect;
-    camera.aspect = width / height;
+    camera.aspect = remoteView ? monitorAspect : width / height;
     camera.updateProjectionMatrix();
     renderer.setSize(width, height, false);
+    if (earthRoom) prepareEarthRoom();
     if (discoveryCamera) {
       // Resize changes the regular full-world projection and measured HUD crop.
       fitDiscoveryLens();
@@ -1926,14 +2064,33 @@ export function createLandscape(canvas) {
   frame = requestAnimationFrame(animate);
 
   return {
-    capturePhoto() {
+    capturePhoto(crop) {
       if (disposed || !modelReady || renderer.getContext().isContextLost()) return Promise.resolve(null);
-      // Read immediately after rendering: keep normal WebGL buffer disposal and
-      // avoid a permanent preserveDrawingBuffer cost during gameplay.
-      render();
-      return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+      // Copy the live buffer before its normal disposal. Mission crops encode
+      // once; the download button keeps its original full-resolution PNG.
+      try {
+        if (crop !== undefined && (!crop || !['x','y','width','height'].every(key => Number.isFinite(crop[key]))
+          || crop.x < 0 || crop.y < 0 || crop.width <= 0 || crop.height <= 0
+          || crop.x + crop.width > 1.000001 || crop.y + crop.height > 1.000001)) return Promise.resolve(null);
+        render();
+        if (crop === undefined) return new Promise(resolve => {
+          try { canvas.toBlob(resolve, 'image/png'); } catch { resolve(null); }
+        });
+        const sx = crop.x * canvas.width, sy = crop.y * canvas.height;
+        const sw = Math.min(crop.width * canvas.width, canvas.width - sx);
+        const sh = Math.min(crop.height * canvas.height, canvas.height - sy);
+        const scale = Math.min(1, 1600 / Math.max(sw, sh));
+        const output = document.createElement('canvas');
+        output.width = Math.max(1, Math.round(sw * scale)); output.height = Math.max(1, Math.round(sh * scale));
+        const context = output.getContext('2d');
+        if (!context) return Promise.resolve(null);
+        context.drawImage(canvas, sx, sy, sw, sh, 0, 0, output.width, output.height);
+        return new Promise(resolve => {
+          try { output.toBlob(resolve, 'image/jpeg', .92); } catch { resolve(null); }
+        });
+      } catch { return Promise.resolve(null); }
     },
-    setDiscoveryCamera, setDiscoveryCameraFrozen,
+    setDiscoveryCamera, setDiscoveryCameraFrozen, setEarthSignal,
     setToolMode, setToolInput, compareToolSamples, setEvidence, getCheckpoint, restoreCheckpoint,
     setMissionAge,
     previewMemory,
@@ -1945,7 +2102,7 @@ export function createLandscape(canvas) {
       const nextMode = ['title', 'game', 'ending'].includes(value) ? value : 'title';
       if (nextMode === mode) return;
       mode = nextMode;
-      if (mode !== 'game') { setDiscoveryCamera(null, { immediate: true }); setToolMode(null); setSurvey(false); remoteView = false; memoryPreview = null; }
+      if (mode !== 'game') { setDiscoveryCamera(null, { immediate: true }); setToolMode(null); setSurvey(false); remoteView = false; memoryPreview = null; camera.aspect = viewportWidth / viewportHeight; camera.updateProjectionMatrix(); }
       controls.enabled = !tool && !evidence && !survey && !remoteView && !paused && !intro && !contactActive && !contactPulse;
       stopDrive();
       marker.visible = mode === 'game' && Boolean(waypoint && !waypoint.reached);
@@ -1991,6 +2148,7 @@ export function createLandscape(canvas) {
       retainedTool = null;
       setSurvey(false);
       remoteView = false; memoryPreview = null;
+      camera.aspect = viewportWidth / viewportHeight; camera.updateProjectionMatrix();
       missionAge.value = 0;
       setIntro(false);
       waypoint = null;
@@ -2036,6 +2194,8 @@ export function createLandscape(canvas) {
       grains.dispose();
       tracks.dispose();
       contacts.dispose();
+      earthTarget?.dispose();
+      earthRoom?.dispose();
       renderer.dispose();
     },
   };

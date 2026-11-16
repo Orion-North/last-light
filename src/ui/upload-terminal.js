@@ -22,8 +22,8 @@ export function renderUploadTerminal({ sceneId = '', sendLabel = '', findings = 
   const showOperationalResponse = !voice && (mode === 'silence' || mode === 'archive');
   const buttonLabel = upload ? (sendLabel || 'Upload memory') : mode === 'silence' ? 'Call Opportunity' : 'Keep memory';
   const commitmentLabel = mode === 'silence' ? 'Call commitment' : mode === 'archive' ? 'Archive commitment' : 'Send commitment';
-  const action = stage === 'ready' && !controller
-    ? `<button class="upload-terminal__button" type="button" data-action="transmit">${buttonLabel} <span aria-hidden="true">→</span></button>`
+  const action = stage === 'ready'
+    ? `<button class="upload-terminal__button" type="button" ${controller?'hidden':''} data-action="transmit">${buttonLabel} <span aria-hidden="true">→</span></button>`
     : stage === 'received' ? '<button class="upload-terminal__button" type="button" data-action="next">Continue <span aria-hidden="true">→</span></button>' : '';
   const exciter = `<div class="signal-exciter" aria-hidden="true"><div class="upload-terminal__half upload-terminal__half--left"><i></i><span data-trigger="left">${controllerGlyph('reverse',family)}</span></div><span class="upload-terminal__seam"></span><div class="upload-terminal__half upload-terminal__half--right"><i></i><span data-trigger="right">${controllerGlyph('forward',family)}</span></div></div>`;
   const guidance = `<div class="upload-terminal__guidance"><p id="squeeze-hint" class="upload-terminal__instruction">${instruction}</p><progress id="upload-progress" max="1" value="0" aria-label="${commitmentLabel}" style="--upload-progress:0"></progress></div>`;
@@ -40,13 +40,12 @@ export function renderUploadTerminal({ sceneId = '', sendLabel = '', findings = 
         </div>
         ${mode!=='archive'?`<div class="signal-dialogue" aria-label="${stage==='received'?(mode==='reply'?'Call and reply complete':'Call sent. The reply is absent.'):'Outgoing call and expected reply'}"><div class="signal-phrase signal-phrase--question"><span>${mode==='partial'?'FRAGMENT':'CALL'}</span><i></i><i></i><i></i><i></i></div><div class="signal-phrase signal-phrase--answer"><span>${stage==='received' && mode!=='reply'?'NO ANSWER':'REPLY'}</span><i></i><i></i><i></i><i></i></div></div>`:''}
         ${story?'':`<div class="upload-terminal__memory"><h2>${escapeHtml(title)}</h2></div>`}
-        ${stage==='ready' && controller ? `<div class="signal-controls">${exciter}${guidance}</div>` : ''}
+        ${stage==='ready' ? `<div class="signal-controls" ${controller?'':'hidden'}>${exciter}${guidance}</div>` : ''}
       </div>
     </div>
     ${story?`<div class="story-shell ${voice?'':'story-voice-absent'}">${contextMarkup}${story}`:''}
     ${story && !voice && mode==='archive' && stage==='ready'?`<p class="story-operational">${escapeHtml(title)}</p>`:''}
     ${!story && stage === 'ready' && meaning ? `<p class="upload-terminal__meaning">${escapeHtml(meaning)}</p>` : ''}
-    ${stage === 'ready' && !controller ? guidance : ''}
     ${!story && stage === 'sending' ? `<p class="upload-terminal__prompt" role="status">${escapeHtml(prompt)}</p>` : ''}
     ${story && stage === 'received' ? `<p class="story-receipt" data-mode="${escapeHtml(mode)}">${status}</p>${showOperationalResponse?`<p class="story-operational">${escapeHtml(operationalResponse)}</p>`:''}`:''}
     ${story && !voice && mode==='silence' && stage==='sending'?`<p class="story-operational" role="status">${escapeHtml(prompt)}</p>`:''}

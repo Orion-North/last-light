@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from '../../vendor/three/three.module.js';
-import { refineLastChance, refineBerryBowl } from '../../src/ui/world-geology-refinement.js';
+import { refineLastChance, refineBerryBowl, mapLastChancePoint, inverseLastChanceFace } from '../../src/ui/world-geology-refinement.js';
 
-test('world weathering retains layer tracing coordinates and shared field geometry', () => {
+test('world weathering maps every layer and solid core without touching shared field geometry', () => {
   const shared = new THREE.BoxGeometry(1, 1, 1);
   const front = new THREE.BoxGeometry(3, 1.3, .72);
+  front.translate(0, .65, .18);
   const materials = [new THREE.MeshStandardMaterial(), new THREE.MeshStandardMaterial()];
   let compiled = 0;
   materials.forEach(material => { material.onBeforeCompile = () => compiled++; });
@@ -26,20 +27,38 @@ test('world weathering retains layer tracing coordinates and shared field geomet
   assert.deepEqual(backing.scale.toArray(), [1, 1, 1]);
   const corePosition = backing.geometry.attributes.position;
   for (const value of corePosition.array) assert.ok(Number.isFinite(value));
-  assert.ok(backing.geometry.boundingBox.max.z < .39, 'core stays behind exposed lamina faces');
+  assert.ok(backing.geometry.boundingBox.max.z < .425, 'core stays behind exposed lamina faces');
+  assert.ok(backing.geometry.boundingBox.min.z < -.4, 'host rock has a substantial rear body');
+  assert.ok(backing.geometry.boundingBox.max.z - backing.geometry.boundingBox.min.z > .8,
+    'rounded body is deeper than the shallow laminated exposure');
+  assert.ok(backing.geometry.boundingBox.max.y > .9 && backing.geometry.boundingBox.max.y < 1,
+    'actual crown is about thirty percent lower');
   const ray = new THREE.Raycaster();
   for (const y of [.2, .5, .8, 1.1]) {
-    ray.set(new THREE.Vector3(0, y, 2), new THREE.Vector3(0, 0, -1));
+    const mapped = mapLastChancePoint(0, y, .385);
+    ray.set(new THREE.Vector3(mapped.x, mapped.y, 2), new THREE.Vector3(0, 0, -1));
     const hit = ray.intersectObject(backing)[0];
     assert.ok(hit, `solid rock backs the lamina openings at y=${y}`);
-    assert.ok(hit.point.z > .35 && hit.point.z < .39);
+    assert.ok(hit.point.z > .39 && hit.point.z < .425);
   }
+  // Rear shaping must not move any front-cap contact: its mapped face is
+  // still the same authoritative source used by forward/inverse tool picking.
+  let frontCaps = 0;
+  for (let i = 0; i < backing.geometry.groups[0].count; i++) {
+    if (corePosition.getZ(i) < .39) continue;
+    const inverse = inverseLastChanceFace(corePosition.getX(i), corePosition.getY(i));
+    const expected = mapLastChancePoint(inverse.x, inverse.y, .385);
+    assert.ok(Math.abs(expected.z - corePosition.getZ(i)) < .00001,
+      'weathered rear leaves the front cap on its original mapped contact surface');
+    frontCaps++;
+  }
+  assert.ok(frontCaps > 10);
   const after = front.attributes.position.array;
   for (let i = 0; i < after.length; i += 3) {
-    assert.equal(after[i], before[i]);
-    assert.equal(after[i + 1], before[i + 1]);
-    assert.ok(Math.abs(after[i + 2] - before[i + 2]) <= .00301);
-    assert.ok(Number.isFinite(after[i + 2]));
+    const expected = mapLastChancePoint(before[i], before[i + 1], before[i + 2]);
+    assert.ok(Math.abs(after[i] - expected.x) < .00001);
+    assert.ok(Math.abs(after[i + 1] - expected.y) < .00001);
+    assert.ok(Math.abs(after[i + 2] - expected.z) < .00001);
   }
   const shader = { vertexShader: '#include <begin_vertex>', fragmentShader: '#include <color_fragment>' };
   materials[0].onBeforeCompile(shader);
@@ -48,9 +67,36 @@ test('world weathering retains layer tracing coordinates and shared field geomet
   const position = front.attributes.position, normal = front.attributes.normal, uv = front.attributes.uv;
   for (let i = 0; i < position.count; i++) {
     if (Math.abs(normal.getY(i)) > .9) {
-      assert.ok(Math.abs(uv.getY(i) - (before[i * 3 + 2] * 1.35)) < .0001,
+      assert.ok(Math.abs(uv.getY(i) - (position.getZ(i) * 1.35)) < .0001,
         'top surfaces sample both texture dimensions instead of stretching one row');
     }
+  }
+});
+
+test('mapped tool coordinates invert and contact the same lowered physical face', () => {
+  const geometry = new THREE.PlaneGeometry(2.6, 1.1, 32, 20);
+  geometry.translate(0, .65, .54);
+  const material = new THREE.MeshStandardMaterial();
+  const mesh = new THREE.Mesh(geometry, material), group = new THREE.Group();
+  group.add(mesh);
+  refineLastChance({ THREE, group, materials: [material] });
+  const ray = new THREE.Raycaster();
+  for (const x of [-1, -.5, 0, .5, 1]) for (const y of [.2, .5, .8, 1.1]) {
+    const mapped = mapLastChancePoint(x, y, .54);
+    const inverse = inverseLastChanceFace(mapped.x, mapped.y);
+    assert.ok(Math.abs(inverse.x - x) < 1e-12 && Math.abs(inverse.y - y) < 1e-12);
+    ray.set(new THREE.Vector3(mapped.x, mapped.y, 2), new THREE.Vector3(0, 0, -1));
+    const hit = ray.intersectObject(group, true)[0];
+    assert.ok(hit, 'mapped contact ray hits the actual face');
+    assert.ok(Math.abs(hit.point.z - mapped.z) < .0002, 'tool lift can start from the physical surface');
+  }
+  const front = mapLastChancePoint(0, .7, .54).z;
+  const core = mapLastChancePoint(0, .7, .385).z;
+  assert.ok(front - core > .05 && front - core < .06, 'relief stays shallow but laminae remain exposed');
+  for (const slope of [-.19, .17]) {
+    const a = mapLastChancePoint(-1, .6 - slope, .54);
+    const b = mapLastChancePoint(1, .6 + slope, .54);
+    assert.equal(Math.sign(b.y - a.y), Math.sign(slope), 'crossing beds retain opposite dips');
   }
 });
 

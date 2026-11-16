@@ -972,3 +972,99 @@ framing, fractures, grain scale, hollow gaps and top UVs before clearing this
 bounded correction. All five capture flows and 29 engine files pass. Actual
 short drive/survey/mast transition and active tracing/brushing visually checked.
 Residual model and terrain limitations remain in reviews/WORLD-41.md.
+
+## WORLD-42 — weathered landforms in the playable world
+
+User requests continued development following WORLD-41 critique. Shared branch
+feat/weathered-world-geology; disjoint continuing GPT-6.1 Sol lanes:
+- world_geology: src/ui/world-geology-refinement.js and its focused engine test.
+  Lower/round Last Chance and reduce deep shelves with one shared coordinate
+  mapping; provide mapping contract for tools. Preserve source-informed lamination.
+- world_camera: src/ui/landscape.js only. Apply agreed coordinate mapping to tool
+  contact/raycast/camera targets. Integrate Berry Bowl into persistent fractured
+  bedrock surroundings and review route/collision implications.
+- world_critic: read-only source/reference and full-window screenshot critique;
+  report concrete blockers, regressions and remaining limitations.
+- Root: fixtures, integration, source attribution/docs, checks, publication.
+  Own story-console.css pointer-through fix; main.js and discovery-handoff timing
+  plus tests for user-reported post-capture delay. Camera owner also fixes rover
+  head intrusion and single-encode cropped capture in landscape.js.
+One world throughout. No detached stages, extra HUD/filler or retake controls.
+Preserve original capture/reveal/Earth sending and audio. Require active fieldwork
+and mast views to agree after shape changes; tests alone do not establish quality.
+
+## EARTH-43 — Earth recovery workstation
+
+User explicitly requests a second Sol team: show a NASA-style computer with an
+ overhead view of Opportunity in the storm so the Earth perspective is clear.
+- earth_station: new src/ui/earth-station.js and earth-station.css; index.html
+  imports only. Own workstation shell, desk, monitor framing and responsive style.
+- earth_world: src/ui/landscape.js and src/main.js integration; new Earth browser
+  fixture. Own overhead storm view, correct Earth lifecycle and station mount.
+- world_critic: read-only independent Earth presentation critique after WORLD-42.
+- Root: integration, tests/docs, publication. Existing photo work must be preserved.
+Contract: presentation exports renderEarthStation() static HTML; world owner mounts
+it once in a separate #earth-station host in index. CSS scopes to body perspective
+Earth and game/passage screens, frames existing canvas inside monitor; real same
+rover/world in overhead storm composition. No fake live telemetry or recovered
+contact; use brief 'Last known position' monitor label. Existing recovery and
+archive controls remain usable, preferably visually seated at workstation.
+
+WORLD-42 implementation and critical review complete. Both native traces and
+comparison passed; native brush reached 73%. All five photo lifecycles passed;
+portrait simulated-controller/pause guards passed. One preview server exit required
+rerunning the remaining three matrix scenes. Publication follows EARTH-43 integration.
+
+## INPUT-44 — keyboard/mouse, active-device prompts and first-run sound
+
+User requests another Sol team to improve keyboard/keyboard+mouse controls, change
+controller glyphs to keyboard keys based on current input, and enable sound by
+default so judges experience the intended game.
+- input_runtime: src/input/controller.js; new active-input helper and tests.
+  Report meaningful controller activity, ignore stick drift/idle connected pads.
+- input_experience: src/main.js and UI prompt modules/styles/tests as agreed.
+  Use active input rather than mere controller connection; improve keyboard/mouse
+  interaction consistency and truthful context hints. Own main integration of audio.
+- first_run: new first-run preference helper/tests; independent first-run audit
+  and recommendations to integrator/main owner. Sound starts on first intentional
+  interaction, defaults enabled, remembers explicit mute, honors browser policy.
+- Root: integration, browser QA, docs, publication and critical acceptance.
+Preserve all WORLD-42/EARTH-43 edits. No new filler panels, forced tutorials,
+accidental skipping or changes to the critical Earth sending ritual.
+
+EARTH-43 complete: independent critique cleared workstation after enlarging and
+lighting the rover. Nine presentation states, handover, recovery/archive/final call,
+pause, title/ending/restart viewport restoration pass. Native phone call and
+short-screen reduced-motion simulated-controller sends pass. Publication is held
+for the user's added INPUT-44 work, not for further Earth redesign.
+
+INPUT-44 complete: meaningful-input switching, keyboard primary actions and
+aiming, mouse first-click preservation, default sound and saved mute all passed.
+Native tracing, comparison, photo capture and Earth receipt passed. Short-screen
+reduced-motion simulated-controller recovery calls passed again after integration.
+See reviews/INPUT-44.md and VERIFICATION.md for evidence and limitations.
+
+## EARTH-45 — workstation visual rebuild
+User rejected the CSS workstation quality. Sol station_render owns new earth-room.js;
+Sol station_integration owns landscape render-target integration; Sol station_critic
+provides independent critique. Root owns CSS/label, fixtures, visual QA and docs.
+Use actual 3D materials, lighting and geometry at the main game standard. Preserve
+Earth call/archive behavior, active input and original photo sending animation.
+
+EARTH-45 built and reviewed on desktop/portrait. Full Earth lifecycle passed.
+Additional camera changes deferred per user; original tested camera retained.
+Public deployment still awaits explicit authorization after auto-review rejection.
+
+## SIGNAL-46 / VOICE-47 — monitor signal and terminal personality
+Sol station_render owns earth-room.js/landscape: Earth signal rendered on monitor.
+Sol station_critic owns story-console.js/css + writer tests: typed rhythm/caret.
+Sol station_integration owns sound.js/audio tests: quiet character ticks.
+Root owns main integration, Earth CSS/fallback, fixtures, docs and checks.
+No new camera bug changes; previous deferral remains in effect. No publishing
+without explicit authorization following prior automatic approval rejection.
+
+SIGNAL-46 / VOICE-47 complete: monitor-local call and silent receipt verified
+on desktop/portrait. Terminal audio started natively; pause held partial text,
+reduced motion showed full text without pulses, mute preserved text progression.
+Audio test harness updated for real playbackRate and bounded phrase-start cue.
+Camera deferral and unpublished status retained.

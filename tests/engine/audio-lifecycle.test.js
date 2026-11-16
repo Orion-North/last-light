@@ -16,11 +16,11 @@ function musicHarness() {
 
   function parameter() {
     return {
-      value: 0, target: null,
+      value: 0, target: null, events: [],
       cancelScheduledValues() {},
       setTargetAtTime(value) { this.target = value; },
       setValueAtTime(value) { this.target = value; },
-      linearRampToValueAtTime(value) { this.target = value; },
+      linearRampToValueAtTime(value) { this.target = value; this.events.push(value); },
       exponentialRampToValueAtTime(value) { this.target = value; },
     };
   }
@@ -28,7 +28,7 @@ function musicHarness() {
   function node(kind) {
     const result = {
       kind, connections: [],
-      gain: parameter(), pan: parameter(), frequency: parameter(), Q: parameter(),
+      gain: parameter(), pan: parameter(), frequency: parameter(), Q: parameter(), playbackRate: parameter(),
       threshold: parameter(), knee: parameter(), ratio: parameter(),
       attack: parameter(), release: parameter(),
       connect(destination) { this.connections.push(destination); return destination; },
@@ -230,6 +230,65 @@ test('partial and recovery signals leave the authored answer window empty', asyn
       h.advance(2.2);
       assert.equal(h.sources.length, afterQuestion, 'no answer, text pulse, or score fills the missing reply');
       h.assertAmbienceSilent();
+    }
+  });
+});
+
+
+test('terminal articulation varies gently, continues long thoughts and never catches up', async () => {
+  await withMusic(async (sound, h) => {
+    await sound.start();
+    const before = h.sources.length;
+    sound.textPulse({ first: true, character: 'I', index: 0 });
+    const opening = h.sources.slice(before);
+    assert.equal(opening.length, 2, 'one key and one gentle phrase-start voice');
+    assert.ok(opening.every(source => source.stopped - source.started <= .08));
+    assert.ok(opening[1].connections[0].gain.events[0] <= .006);
+    const firstKey = opening[0];
+    const firstCutoff = firstKey.connections[0].frequency.value;
+    const afterOpening = h.sources.length;
+    sound.textPulse({ character: 'x', index: 1 });
+    sound.textPulse({ character: 'y', index: 2 });
+    assert.equal(h.sources.length, afterOpening, 'same-frame characters never create a burst');
+    h.advance(.07);
+    sound.textPulse({ character: 'a', index: 3 });
+    const nextKey = h.sources.at(-1);
+    assert.equal(h.sources.length, afterOpening + 1, 'ordinary characters have no pitched voice');
+    assert.notEqual(nextKey.playbackRate.value, firstKey.playbackRate.value);
+    assert.notEqual(nextKey.connections[0].frequency.value, firstCutoff);
+    for (let i = 4; i < 30; i++) { h.advance(.07); sound.textPulse({ character: 'e', index: i }); }
+    const count = h.sources.length;
+    h.advance(.07); sound.textPulse({ character: ' ', index: 30 });
+    assert.equal(h.sources.length, count, 'spaces stay silent');
+    assert.equal(h.sources.filter(source => source.buffer === firstKey.buffer).length, 28, 'later words remain articulated beyond the old sixteen-key limit');
+    h.advance(.07);
+    sound.textPulse({ character: ',', index: 31, punctuation: true });
+    const punctuation = h.sources.at(-1);
+    assert.ok(punctuation.connections[0].connections[0].gain.events[0] < .025 * .7, 'punctuation is softer than an ordinary key');
+  });
+});
+
+test('terminal keys respect inactive audio and resume without deferred characters', async () => {
+  await withMusic(async (sound, h) => {
+    sound.textPulse({ first: true, character: 'A' });
+    assert.equal(h.sources.length, 0, 'typing cannot unlock audio');
+    await sound.start();
+    for (const gate of [
+      { stop: () => sound.setMuted(true), resume: () => sound.setMuted(false) },
+      { stop: () => sound.pause(), resume: () => sound.resume() },
+      { stop: () => h.setHidden(true), resume: () => h.setHidden(false) },
+      { stop: () => { h.contexts[0].state = 'suspended'; }, resume: () => sound.start() },
+    ]) {
+      h.advance(.1); sound.textPulse({ first: true, character: 'A' });
+      gate.stop();
+      const count = h.sources.length;
+      for (let i = 0; i < 5; i++) sound.textPulse({ first: i === 0, character: 'B', index: i });
+      assert.equal(h.sources.length, count);
+      await gate.resume();
+      assert.equal(h.sources.length, count, 'resume cannot replay skipped characters');
+      h.advance(.1);
+      sound.textPulse({ character: 'C', index: 8 });
+      assert.equal(h.sources.length, count + 1, 'only a newly revealed character speaks');
     }
   });
 });

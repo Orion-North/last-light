@@ -43,8 +43,8 @@ body[data-screen="game"] .topbar,body[data-screen="ending"] .topbar { position:f
 .world-controls { left:auto;right:28px;bottom:28px;transform:none;max-width:440px; }
 .waypoint-hud { top:155px;left:50%;transform:translateX(-50%);font-size:10px; }
 .exploring .interaction-dock { visibility:hidden;pointer-events:none; }
-.controller-connected .drive-pad { display:none; }
-.controller-connected .world-controls .world-help { color:#fff0d8; }
+.controller-active .drive-pad { display:none; }
+.controller-active .world-controls .world-help { color:#fff0d8; }
 .brief-ending { position:fixed;bottom:32px;left:32px;margin:0;padding:28px;width:min(640px,calc(100vw - 64px));max-height:80svh;overflow:auto;border:1px solid #efd1a838;border-radius:4px;background:#0e151cec; }
 .brief-ending .ending-title { font-size:clamp(40px,5vw,64px);margin-bottom:14px; }
 .brief-ending > .eyebrow { margin-bottom:12px; }

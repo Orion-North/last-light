@@ -15,11 +15,50 @@ const OUTCROP_OUTLINE = [[-1.5, .06], [-1.32, .58], [-1.03, .99],
   [1.48, .13], [.92, -.09], [-.91, -.07]];
 
 function makeOutcropCore(THREE) {
-  const shape = new THREE.Shape(OUTCROP_OUTLINE.map(([x, y]) => new THREE.Vector2(x, y)));
-  const geometry = new THREE.ExtrudeGeometry(shape, { depth: .56, steps: 1,
-    bevelEnabled: true, bevelSegments: 2, bevelSize: .022, bevelThickness: .018 });
+  const shape = new THREE.Shape();
+  // Round the actual host-rock corners, while retaining the layered plates'
+  // chipped margins. Short curves avoid the previous faceted polygon crown.
+  OUTCROP_OUTLINE.forEach(([x, y], i) => {
+    const previous = OUTCROP_OUTLINE[(i + OUTCROP_OUTLINE.length - 1) % OUTCROP_OUTLINE.length];
+    const next = OUTCROP_OUTLINE[(i + 1) % OUTCROP_OUTLINE.length];
+    const before = Math.min(.09 / Math.hypot(x - previous[0], y - previous[1]), .25);
+    const after = Math.min(.09 / Math.hypot(next[0] - x, next[1] - y), .25);
+    const ax = x + (previous[0] - x) * before, ay = y + (previous[1] - y) * before;
+    if (i === 0) shape.moveTo(ax, ay); else shape.lineTo(ax, ay);
+    shape.quadraticCurveTo(x, y, x + (next[0] - x) * after, y + (next[1] - y) * after);
+  });
+  shape.closePath();
+  const geometry = new THREE.ExtrudeGeometry(shape, { depth: .56, steps: 8, curveSegments: 4,
+    bevelEnabled: true, bevelSegments: 3, bevelSize: .035, bevelThickness: .025 });
   geometry.translate(0, 0, -.20);
   return geometry;
+}
+
+function roundCoreRear(point, x, y, z) {
+  // The teaching face remains a shallow exposure on a substantial host rock.
+  // Preserve its entire front cap/bevel; extend and weather only the body
+  // behind it, with enough depth rings for a rounded rather than slabbed top.
+  const rear = Math.min(1, Math.max(0, (.36 - z) / .56));
+  const crown = Math.max(0, Math.min(1, y / 1.1));
+  const round = Math.sin(rear * Math.PI);
+  point.x *= 1 - .085 * rear + .02 * round;
+  point.y += -.12 * rear * Math.max(0, point.y) + .085 * round * crown;
+  // Small coherent chips break the crown without new ridges across the trace.
+  point.y += .012 * round * crown * Math.sin(x * 11 + rear * 9);
+  point.z -= .65 * rear;
+  return point;
+}
+
+/** Shared by the physical meshes, contact rays, pointer picking and cameras. */
+export function mapLastChancePoint(x, y, z = 0) {
+  const shoulder = (x / 1.5) ** 2;
+  return { x, y: y * (.70 - .055 * shoulder),
+    z: .43 + (z - .43) * .36 - .025 * shoulder + .008 * Math.sin(x * 2 + y * 3) };
+}
+
+/** Invert the mapped local face before converting pointer hits to tool space. */
+export function inverseLastChanceFace(x, y) {
+  return { x, y: y / (.70 - .055 * (x / 1.5) ** 2) };
 }
 
 function mapRockFaces(geometry) {
@@ -84,7 +123,7 @@ function weatherMaterial(material, kind) {
   material.needsUpdate = true;
 }
 
-/** Preserve the tracing face's x/y domain while breaking its clean extrusion. */
+/** Weather one persistent outcrop, sharing its coordinate mapping with tools. */
 export function refineLastChance({ THREE, group, own = value => value, materials }) {
   const palette = ['#c2baa8', '#b9b19f', '#c6bdab', '#beb5a3'];
   materials.forEach((material, i) => {
@@ -95,26 +134,25 @@ export function refineLastChance({ THREE, group, own = value => value, materials
   group.children.forEach(mesh => {
     if (!mesh.isMesh) return;
     // Replace the existing backing mesh, preserving the original shared field
-    // geometry. The core front is z=.378 including bevel, behind the exposed
-    // laminae (~.54), so gaps have solid host rock without masking the layers.
-    if (mesh.scale.x !== 1 || mesh.scale.y !== 1 || mesh.scale.z !== 1) {
+    // geometry. The core stays behind the exposed laminae after the same
+    // mapping, so gaps have solid host rock without masking the crossing beds.
+    const core = mesh.scale.x !== 1 || mesh.scale.y !== 1 || mesh.scale.z !== 1;
+    if (core) {
       mesh.geometry = own(makeOutcropCore(THREE));
       mesh.position.set(0, 0, 0);
       mesh.rotation.set(0, 0, 0);
       mesh.scale.set(1, 1, 1);
     }
-    mapRockFaces(mesh.geometry);
     const vertices = mesh.geometry.attributes.position;
     for (let i = 0; i < vertices.count; i++) {
       const x = vertices.getX(i), y = vertices.getY(i), z = vertices.getZ(i);
-      // Move only depth: every existing trace point stays on the same layer.
-      // Matching shared vertex coordinates keeps broad faces watertight.
-      const wear = .003 * Math.sin(x * 17.0 + y * 11.0)
-        * Math.sin(y * 23.0 - x * 5.0);
-      vertices.setZ(i, z + wear);
+      const point = mapLastChancePoint(x, y, z);
+      if (core) roundCoreRear(point, x, y, z);
+      vertices.setXYZ(i, point.x, point.y, point.z);
     }
     vertices.needsUpdate = true;
     mesh.geometry.computeVertexNormals();
+    mapRockFaces(mesh.geometry);
     mesh.geometry.computeBoundingBox();
     mesh.geometry.computeBoundingSphere();
   });

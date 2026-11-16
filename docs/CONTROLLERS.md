@@ -19,7 +19,7 @@ Connect a controller by USB or Bluetooth, then press a button. Last Light uses t
 | Options / Start | Pause / settings |
 | D-pad | Navigate menus |
 
-**With a controller connected, sending requires both triggers.** Cross/A cannot substitute for the send gesture. Disconnecting pauses the game; after resuming without a controller, the button alternative becomes available. A fresh release is required after reconnecting.
+Use both triggers for the controller sending gesture. Prompts follow your current input: keyboard or mouse use shows keycaps and the button alternative while the controller remains connected. An idle stick or trigger does not switch them back. Disconnecting the controller while it is in use pauses the journey; a fresh release is required after reconnecting.
 
 ## Ordinary vibration
 

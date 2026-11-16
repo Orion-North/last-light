@@ -45,7 +45,6 @@ export function createSound() {
   let scoreSpace = null;
   let textBuffer = null;
   let lastTextTime = -Infinity;
-  let textPulses = 0;
   const doc = typeof document === 'undefined' ? null : document;
   let hidden = Boolean(doc?.hidden);
   const midi = note => 440 * Math.pow(2, (note - 69) / 12);
@@ -374,16 +373,16 @@ export function createSound() {
     playSignal(question);
   }
 
-  function textPulse({ speaker = 'rover', first = false } = {}) {
+  function textPulse({ speaker = 'rover', first = false, character = '', index = 0, punctuation = false } = {}) {
     // These are local reading articulations, never radio receipts. Leave the
     // learned signal and its missing answer completely exposed, including silence.
     if (!canPlay() || section === 'silence' || transmission !== null || context.currentTime < signalHoldUntil) return;
     const now = context.currentTime;
-    if (now - lastTextTime < .095) return;
-    if (first) textPulses = 0;
-    if (textPulses >= 16) return;
+    if (character && !character.trim()) return;
+    // Articulate the live character only. Never schedule a backlog, even when
+    // the writer catches up after a slow frame or the audio context resumes.
+    if (now - lastTextTime < .065) return;
     lastTextTime = now;
-    textPulses += 1;
     if (!textBuffer) {
       const rate = Math.min(context.sampleRate, 24000);
       textBuffer = context.createBuffer(1, Math.ceil(rate * .065), rate);
@@ -399,23 +398,45 @@ export function createSound() {
     const colour = { rover: [1150, .030, .025], earth: [760, .038, .022], record: [440, .044, .020] }[speaker]
       || [1150, .030, .025];
     const [cutoff, tail, level] = colour;
-    const duration = tail + (first ? .012 : 0);
+    const letter = character.codePointAt(0) || 79;
+    const step = Number.isFinite(index) ? Math.max(0, Math.floor(index)) : 0;
+    const variation = ((letter * 17 + step * 13) % 19) / 18;
+    const stop = punctuation || /[,.!?;:…]/u.test(character);
+    const duration = tail + (first ? .012 : 0) + (stop ? .008 : 0);
     const source = context.createBufferSource();
     source.buffer = textBuffer;
+    source.playbackRate.value = .88 + variation * .24;
     const filter = context.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.value = cutoff;
-    filter.Q.value = .35;
+    filter.frequency.value = cutoff * (.82 + variation * .36) * (stop ? .8 : 1);
+    filter.Q.value = .3 + variation * .12;
     const gain = context.createGain();
     gain.gain.value = 0;
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(level * (first ? 1 : .7), now + .004);
+    gain.gain.linearRampToValueAtTime(level * (first ? 1 : .7) * (stop ? .65 : 1), now + .004);
     gain.gain.exponentialRampToValueAtTime(.0001, now + duration);
     gain.gain.setValueAtTime(0, now + duration + .002);
     source.connect(filter).connect(gain).connect(master);
     registerVoice([source], [source, filter, gain]);
     source.start(now);
     source.stop(now + duration + .003);
+    if (first) {
+      // A tiny rounded startup murmur gives Oppy a presence without turning
+      // each letter into a musical beep or borrowing the radio-answer motif.
+      const voice = context.createOscillator();
+      const envelope = context.createGain();
+      voice.type = 'sine';
+      const pitch = speaker === 'earth' ? 285 : speaker === 'record' ? 210 : 420;
+      voice.frequency.setValueAtTime(pitch, now);
+      voice.frequency.exponentialRampToValueAtTime(pitch * .88, now + .065);
+      envelope.gain.setValueAtTime(0, now);
+      envelope.gain.linearRampToValueAtTime(.006, now + .008);
+      envelope.gain.exponentialRampToValueAtTime(.0001, now + .075);
+      voice.connect(envelope).connect(master);
+      registerVoice([voice], [voice, envelope]);
+      voice.start(now);
+      voice.stop(now + .08);
+    }
   }
 
   function cancelTransmission() {

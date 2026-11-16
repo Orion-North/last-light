@@ -7,7 +7,7 @@ function fixture(onAction = () => {}) {
   doc.hidden = false;
   let timeNow = 0;
   let raf, cancelled = false, pads = [], resets = 0;
-  const pulses = [], inputs = [], actions = [], statuses = [], touches = [], scrolls = [];
+  const pulses = [], inputs = [], actions = [], statuses = [], touches = [], scrolls = [], activities = [];
   win.requestAnimationFrame = fn => { raf = fn; return 1; };
   win.cancelAnimationFrame = () => { cancelled = true; };
   const pad = { id: 'DualSense', index: 0, connected: true, mapping: 'standard', axes: [0, 0, 0, 0],
@@ -15,9 +15,9 @@ function fixture(onAction = () => {}) {
     vibrationActuator: { effects: ['dual-rumble'], playEffect: async (...args) => pulses.push(args), reset: async () => { resets++; } } };
   const nav = { getGamepads: () => pads, hid };
   const driver = createController({ navigator: nav, window: win, document: doc, now: () => timeNow,
-    onInput: value => inputs.push(value), onAction: value => { actions.push(value); onAction(value); }, onStatus: value => statuses.push(value),
+    onActivity: () => activities.push(timeNow), onInput: value => inputs.push(value), onAction: value => { actions.push(value); onAction(value); }, onStatus: value => statuses.push(value),
     onTouch: value => touches.push(value), onScroll: value => scrolls.push(value) });
-  return { win, doc, hid, pad, driver, inputs, actions, statuses, pulses, nav, touches, scrolls,
+  return { win, doc, hid, pad, driver, inputs, actions, statuses, pulses, nav, touches, scrolls, activities,
     tick: (time = 0) => { timeNow = time; raf(time); }, pads: value => { pads = value; }, get resets() { return resets; }, get cancelled() { return cancelled; } };
 }
 const settle = () => new Promise(resolve => setImmediate(resolve));
@@ -806,5 +806,118 @@ test('a restarted tool sequence establishes a quiet baseline then emits its firs
   update(1); await settle(); assert.equal(device.reports.at(-1).data[10], 0x21);
   f.tick(40); update(0); await settle(); assert.equal(device.reports.at(-1).data[10], 5);
   update(1); await settle(); assert.equal(device.reports.at(-1).data[10], 0x21);
+  await f.driver.destroy();
+});
+
+
+test('connected idle pads and stick drift do not report intentional activity', async () => {
+  const f = fixture(); f.pads([f.pad]); f.tick();
+  f.pad.axes = [.12, -.18, .2, -.22]; f.tick(16); f.tick(32);
+  f.pad.buttons[6].value = .04; f.pad.buttons[7].value = .1; f.tick(48);
+  assert.deepEqual(f.activities, []);
+  assert.equal(f.statuses.at(-1).connected, true);
+  await f.driver.destroy();
+});
+
+test('new buttons, trigger pressure and deliberate stick movement report activity once per intent', async () => {
+  const f = fixture(); f.pads([f.pad]); f.tick();
+  f.pad.buttons[0].pressed = true; f.tick(10); f.tick(20);
+  assert.deepEqual(f.activities, [10]);
+  f.pad.buttons[0].pressed = false; f.tick(30);
+  f.pad.buttons[0].pressed = true; f.tick(40);
+  f.pad.buttons[7].value = .15; f.tick(50); f.tick(60);
+  f.pad.buttons[7].value = .16; f.tick(70);
+  assert.deepEqual(f.activities, [10, 40, 50]);
+  f.pad.buttons[7].value = .3; f.tick(80);
+  f.pad.axes[2] = .5; f.tick(90); f.tick(100);
+  f.pad.axes[2] = .52; f.tick(110);
+  assert.deepEqual(f.activities, [10, 40, 50, 80, 90]);
+  f.pad.axes[2] = .7; f.tick(120);
+  f.pad.axes[2] = 0; f.tick(130);
+  f.pad.axes[2] = .5; f.tick(140);
+  assert.deepEqual(f.activities, [10, 40, 50, 80, 90, 120, 140]);
+  await f.driver.destroy();
+});
+
+test('held controls cannot repeatedly steal prompts back after keyboard or pointer use', async () => {
+  const f = fixture(); f.pads([f.pad]); f.tick();
+  let activeDevice = 'keyboard';
+  // Represent the consumer changing input in response to the activity callback.
+  f.pad.axes[0] = .8; f.pad.buttons[7].value = 1; f.pad.buttons[1].pressed = true;
+  f.tick(16); if (f.activities.at(-1) === 16) activeDevice = 'controller';
+  assert.equal(activeDevice, 'controller');
+  activeDevice = 'mouse';
+  for (const time of [32, 48, 64, 1000]) { f.tick(time); if (f.activities.at(-1) === time) activeDevice = 'controller'; }
+  assert.equal(activeDevice, 'mouse'); assert.equal(f.activities.length, 1);
+  f.pad.buttons[1].pressed = false; f.tick(1016);
+  f.pad.buttons[1].pressed = true; f.tick(1032);
+  assert.deepEqual(f.activities, [16, 1032]);
+  await f.driver.destroy();
+});
+
+test('menu activity works while paused and hidden, disabled or blurred inputs are consumed quietly', async () => {
+  const f = fixture(); f.pads([f.pad]); f.tick();
+  f.driver.setPaused(true); f.driver.setInputMode('menu');
+  f.pad.buttons[13].pressed = true; f.tick(16);
+  assert.deepEqual(f.activities, [16]); assert.equal(f.actions.at(-1), 'navDown');
+  f.win.dispatchEvent(new Event('blur'));
+  f.pad.buttons[0].pressed = true; f.tick(32);
+  f.win.dispatchEvent(new Event('focus')); f.tick(48);
+  assert.deepEqual(f.activities, [16]);
+  f.doc.hidden = true; f.doc.dispatchEvent(new Event('visibilitychange'));
+  f.pad.axes[0] = .8; f.tick(64);
+  f.doc.hidden = false; f.doc.dispatchEvent(new Event('visibilitychange')); f.tick(80);
+  assert.deepEqual(f.activities, [16]);
+  f.driver.setEnabled(false); f.pad.buttons[7].value = .9; f.tick(96);
+  f.driver.setEnabled(true); f.tick(112);
+  assert.deepEqual(f.activities, [16]);
+  f.pad.buttons[7].value = 0; f.tick(128);
+  f.pad.buttons[7].value = .15; f.tick(144);
+  assert.deepEqual(f.activities, [16, 144]);
+  await f.driver.destroy();
+});
+
+test('controller activity precedes action dispatch and new hardware does not reuse old stick state', async () => {
+  let f;
+  f = fixture(() => assert.equal(f.activities.at(-1), 16));
+  f.pads([f.pad]); f.tick(); f.pad.buttons[0].pressed = true; f.tick(16);
+  f.pad.axes[0] = .8; f.tick(32);
+  f.pads([]); f.tick(48);
+  f.pads([{ ...f.pad, id: 'Xbox', index: 1, buttons: [], axes: [.8, 0, 0, 0] }]); f.tick(64);
+  assert.deepEqual(f.activities, [16, 32, 64]);
+  await f.driver.destroy();
+});
+
+
+test('resting trigger noise stays quiet and a slow intentional press crosses the activity threshold', async () => {
+  const f = fixture(); f.pads([f.pad]); f.tick();
+  for (let i = 1; i <= 12; i++) { f.pad.buttons[7].value = i / 100; f.tick(i); }
+  assert.deepEqual(f.activities, []);
+  f.pad.buttons[7].value = .13; f.tick(13);
+  assert.deepEqual(f.activities, [13]);
+  for (let i = 14; i <= 20; i++) { f.pad.buttons[7].value = i / 100; f.tick(i); }
+  assert.deepEqual(f.activities, [13]);
+  f.pad.buttons[7].value = .3; f.tick(30);
+  assert.deepEqual(f.activities, [13, 30]);
+  f.pad.buttons[7].value = .02; f.tick(31);
+  assert.deepEqual(f.activities, [13, 30]);
+  f.pad.buttons[7].value = .13; f.tick(32);
+  assert.deepEqual(f.activities, [13, 30, 32]);
+  await f.driver.destroy();
+});
+
+
+test('focus consumes a held input from a fresh browser gamepad snapshot', async () => {
+  const f = fixture(); f.pads([f.pad]); f.tick();
+  f.win.dispatchEvent(new Event('blur'));
+  // Background requestAnimationFrame may stop entirely; browsers may return
+  // new snapshot objects rather than mutating the previous gamepad object.
+  const next = { ...f.pad, axes: [.8, 0, 0, 0], buttons: f.pad.buttons.map(b => ({ ...b })) };
+  next.buttons[7].value = 1; f.pads([next]);
+  f.win.dispatchEvent(new Event('focus')); f.tick(1000);
+  assert.deepEqual(f.activities, []);
+  next.axes[0] = 0; next.buttons[7].value = 0; f.tick(1016);
+  next.axes[0] = .8; f.tick(1032);
+  assert.deepEqual(f.activities, [1032]);
   await f.driver.destroy();
 });

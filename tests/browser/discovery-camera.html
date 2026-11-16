@@ -42,8 +42,10 @@ document.querySelector('#verify').onclick=async()=>{
   check(!d.querySelector('[data-action="assist-observation"],[data-action="skip-intro"]'),'no inline skips');
   const before=samples.at(-1).yaw;d.dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));await sleep(450);d.dispatchEvent(new w.KeyboardEvent('keyup',{key:'ArrowRight',bubbles:true}));await sleep(150);
   check(Math.abs(samples.at(-1).yaw-before)>.03,'keyboard changes framing');
+  const captureAt=performance.now();
   d.querySelector('[data-action="capture-discovery"]').click();
   await waitFor(()=>d.querySelector('.discovery-camera[data-stage="revealing"]') || d.querySelector('.photo-uplink'));
+  check(performance.now()-captureAt<2000,'capture becomes reveal in '+Math.round(performance.now()-captureAt)+' ms');
   // Capture and authentic-image proof belong to the reveal, before the original uplink takes over.
   await waitFor(()=>d.querySelector('.discovery-camera[data-stage="revealing"] [data-discovery-photo]')?.naturalWidth>0);
   check(true,'authentic NASA photograph appears during reveal');

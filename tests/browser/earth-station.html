@@ -1,0 +1,73 @@
+<!doctype html><meta charset="utf-8"><title>Earth recovery workstation review</title>
+<style>body{margin:12px;background:#15191c;color:#eee;font:14px system-ui}button,select{padding:9px}label{display:inline-block;margin:6px}output{display:block;white-space:pre-wrap;padding:10px 0}iframe{display:block;width:100%;height:760px;border:1px solid #53606a}</style>
+<label>Scene <select id="scene"><option>earth-listens</option><option>months</option><option>last-call</option><option value="handover">Mars → Earth passage</option></select></label>
+<label>Phase <select id="phase"><option>observe</option><option>transmit</option><option>received</option></select></label>
+<label>Size <select id="size"><option value="full">Full width</option><option value="portrait">390 × 844</option><option value="short">960 × 540</option></select></label>
+<label><input id="reduced" type="checkbox">Reduced motion</label><label><input id="controller" type="checkbox">Simulated controller</label>
+<button id="preview">Preview</button><button id="run">Run transition checks</button><button id="recovery">Run recovery controls</button>
+<output>Isolated saves; muted audio. Preview each Earth scene and phase. Checks exercise the real production renderer, handover, recovery/no reply, archive, ending and restart. Controller simulation cannot verify hardware feel.</output>
+<iframe title="Production Earth workstation"></iframe>
+<script type="module">
+import {scenes} from '../../src/content/story.js';
+const $=s=>document.querySelector(s),frame=$('iframe'),out=$('output'),key='last-light-journey-v1';
+const params=new URLSearchParams(location.search);if(params.has('reduced'))$('#reduced').checked=true;if(params.has('controller'))$('#controller').checked=true;if(params.has('size'))$('#size').value=params.get('size');if(params.has('scene'))$('#scene').value=params.get('scene');if(params.has('phase'))$('#phase').value=params.get('phase');
+let memory=new Map(),errors=[],html='',results=[];
+const pad={id:'DualSense',index:0,mapping:'standard',connected:true,axes:[0,0,0,0],buttons:Array.from({length:17},()=>({value:0,pressed:false}))};
+window.installEarthReview=win=>{
+ const backing=memory,caseErrors=errors,controller=$('#controller').checked;
+ Object.defineProperty(win.document,'hidden',{configurable:true,get:()=>false});win.addEventListener('blur',e=>e.stopImmediatePropagation(),true);
+ Object.defineProperty(win,'localStorage',{value:{getItem:k=>backing.get(k)??null,setItem:(k,v)=>backing.set(k,String(v)),removeItem:k=>backing.delete(k)}});
+ Object.defineProperty(win.navigator,'getGamepads',{value:()=>controller?[pad]:[]});
+ win.addEventListener('error',e=>caseErrors.push(e.message));win.addEventListener('unhandledrejection',e=>caseErrors.push(String(e.reason)));
+};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms)),doc=()=>frame.contentDocument;
+const assert=(value,message)=>{if(!value)throw Error(message);};
+async function until(test,label,limit=18000){const end=Date.now()+limit;while(!test()){if(Date.now()>end)throw Error('Timed out: '+label);await sleep(35);}}
+function click(selector){const el=doc().querySelector(selector);assert(el,'Missing '+selector);el.click();}
+function size(){const mode=$('#size').value;frame.style.width=mode==='portrait'?'390px':mode==='short'?'960px':'100%';frame.style.height=mode==='portrait'?'844px':mode==='short'?'540px':'760px';}
+async function load(id,phase='observe'){
+ if(!html)html=await(await fetch('../../index.html')).text();errors=[];pad.axes.fill(0);pad.buttons.forEach(b=>{b.value=0;b.pressed=false;});
+ const index=scenes.findIndex(s=>s.id===id),count=index+(['transmit','received'].includes(phase)?1:0);
+ memory=new Map([['last-light-settings',JSON.stringify({touch:false,haptics:false,reducedMotion:$('#reduced').checked,prompts:'auto'})],[key,JSON.stringify({version:1,sceneIndex:index,phase,choices:scenes.slice(0,count).map(s=>s.choices[0].id),checkpoint:{sceneId:id,reached:true,position:{x:3,z:-4,heading:0}}})]]);
+ const loaded=new Promise(r=>frame.addEventListener('load',r,{once:true}));size();frame.srcdoc=html.replace('<head>','<head><base href="../../"><script>parent.installEarthReview(window);<\/script>');await loaded;
+ await until(()=>doc()?.querySelector('[data-action="begin"]'),'title');click('[data-action="begin"]');await until(()=>doc().body.dataset.screen==='game','game');
+}
+async function station(){
+ await until(()=>doc().body.dataset.perspective==='earth','Earth perspective');await until(()=>doc().querySelector('#world-status')?.dataset.state==='ready','rover model',45000);await sleep(250);
+ assert(doc().querySelectorAll('#earth-station').length===1,'station mounted more than once');assert(doc().querySelector('#earth-station').textContent.includes('Last known position'),'missing archival monitor label');
+ const canvas=doc().querySelector('#atmosphere'),rect=canvas.getBoundingClientRect(),win=frame.contentWindow;
+ assert(rect.width>150&&rect.height>100,'monitor canvas too small');assert(rect.width>=win.innerWidth*.98&&rect.height>=win.innerHeight*.98,'3D room canvas is not full viewport');assert(Math.abs(canvas.width/canvas.height-rect.width/rect.height)<.02,'drawing buffer does not match monitor aspect');assert(!errors.length,'runtime errors: '+errors.join('; '));
+}
+async function send(mode){
+ await until(()=>doc().querySelector('.upload-terminal[data-stage="ready"]'),'terminal ready');
+ if($('#controller').checked){pad.buttons[12]={value:1,pressed:true};await sleep(100);pad.buttons[12]={value:0,pressed:false};await sleep(100);await until(()=>doc().querySelector('.upload-terminal[data-squeeze="ready"]'),'fresh triggers');for(const i of [6,7])pad.buttons[i]={value:1,pressed:true};await until(()=>doc().querySelector('.upload-terminal[data-squeeze="charged"]'),'charged');for(const i of [6,7])pad.buttons[i]={value:0,pressed:false};}
+ else click('[data-action="transmit"]');
+ await until(()=>doc().querySelector('[data-action="next"]'),'receipt');assert(doc().querySelector('.upload-terminal[data-mode="'+mode+'"]'),'wrong receipt behavior');assert(JSON.parse(memory.get(key)).phase==='received','receipt not saved');
+}
+$('#size').onchange=size;
+$('#preview').onclick=async()=>{try{const id=$('#scene').value;await load(id==='handover'?'last-image':id,id==='handover'?'received':$('#phase').value);if(id==='handover')click('[data-action="next"]');else await station();out.textContent='PREVIEW '+id+' · '+$('#phase').value;}catch(e){out.textContent='FAIL '+e.message;}};
+$('#recovery').onclick=async()=>{
+ const buttons=['#preview','#run','#recovery'].map($);buttons.forEach(button=>button.disabled=true);const quick=[];
+ try{for(const [id,mode] of [['earth-listens','silence'],['months','archive'],['last-call','silence']]){
+ out.textContent=quick.join('\n')+'\nRUNNING '+id+' recovery controls';await load(id,'transmit');await station();await send(mode);await station();
+ quick.push('PASS '+id+' · '+mode+' · '+($('#controller').checked?'simulated triggers':'button')+' · '+($('#reduced').checked?'reduced motion':'motion'));
+ }}catch(e){quick.push('FAIL '+e.message);}finally{out.textContent=quick.join('\n')+'\nDONE';buttons.forEach(button=>button.disabled=false);}
+};
+$('#run').onclick=async()=>{
+ $('#run').disabled=true;results=[];const pass=m=>{results.push('PASS '+m);out.textContent=results.join('\n');};
+ try{
+ for(const id of ['earth-listens','months','last-call'])for(const phase of ['observe','transmit','received']){await load(id,phase);await station();assert(doc().body.dataset.phase===phase,'wrong phase '+id+' '+phase);pass(id+' '+phase+' uses 3D workstation');}
+ click('#settings-toggle');await until(()=>doc().querySelector('#settings-modal').open,'pause');await station();click('#settings-modal [data-close]');await until(()=>!doc().querySelector('#settings-modal').open,'resume');pass('pause/resume retains workstation');
+ doc().querySelector('.brand').click();await until(()=>doc().body.dataset.screen==='title','title');assert(doc().body.dataset.perspective==='rover','title retains Earth perspective');await sleep(250);assert(doc().querySelector('#atmosphere').getBoundingClientRect().width>=frame.contentWindow.innerWidth*.98,'title viewport not restored');pass('title restores full viewport');
+ await load('last-image','received');click('[data-action="next"]');await until(()=>doc().body.dataset.screen==='passage','handover');await station();pass('Earth handover mounts 3D station immediately');
+ await until(()=>doc().body.dataset.screen==='game','handover complete');await station();pass('Earth gameplay retains workstation');
+ await load('earth-listens','transmit');await station();
+ const before=JSON.parse(memory.get(key)).checkpoint?.position;pad.axes[1]=-1;doc().dispatchEvent(new frame.contentWindow.KeyboardEvent('keydown',{key:'w',bubbles:true}));await sleep(500);pad.axes[1]=0;doc().dispatchEvent(new frame.contentWindow.KeyboardEvent('keyup',{key:'w',bubbles:true}));
+ assert(JSON.stringify(JSON.parse(memory.get(key)).checkpoint?.position)===JSON.stringify(before),'Earth input moved rover checkpoint');await send('silence');pass('Earth recovery call receives silence; driving input leaves position');
+ await load('months','transmit');await station();await send('archive');pass('archive behavior preserved');
+ await load('last-call','transmit');await station();await send('silence');click('[data-action="next"]');await until(()=>doc().body.dataset.screen==='ending','ending');
+ assert(doc().body.dataset.perspective==='rover','ending retains Earth perspective');await sleep(250);assert(doc().querySelector('#atmosphere').getBoundingClientRect().width>=frame.contentWindow.innerWidth*.98,'ending viewport not restored');pass('final call ends without reply; full viewport restored');
+ click('[data-action="restart"]');click('#confirm-restart');await until(()=>doc().body.dataset.screen==='intro','restart introduction');assert(doc().body.dataset.perspective==='rover','restart retains Earth perspective');pass('restart returns rover perspective');assert(!errors.length,'runtime errors: '+errors.join('; '));
+ }catch(e){results.push('FAIL '+e.message);}finally{out.textContent=results.join('\n')+'\nDONE';$('#run').disabled=false;}
+};
+</script>

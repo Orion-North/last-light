@@ -27,6 +27,7 @@
     <link rel="stylesheet" href="./src/ui/story-console.css">
     <link rel="stylesheet" href="./src/ui/layout-polish.css">
     <link rel="stylesheet" href="./src/ui/discovery-camera.css">
+    <link rel="stylesheet" href="./src/ui/earth-station.css">
     <script type="importmap">{"imports":{"three":"./vendor/three/three.module.js","three/addons/":"./vendor/three/addons/"}}</script>
   </head>
   <body data-screen="title" data-environment="sunset">
@@ -35,6 +36,7 @@
       <canvas id="atmosphere"></canvas>
       <div class="vignette" aria-hidden="true"></div><div class="scan-reticle" aria-hidden="true"><span>ANALYZING</span></div>
     </div>
+    <div id="earth-station" aria-hidden="true"></div>
     <a class="skip-link" href="#app">Skip to story</a>
     <header class="topbar">
       <a class="brand" href="#" aria-label="Last Light title screen"><svg class="brand-rover" viewBox="0 0 36 30" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 15V7m-3-4h7v5h-7zM5 15h23l4 5H8zM9 21l5 3 7-3 8 3"/><circle cx="7" cy="25" r="3"/><circle cx="19" cy="25" r="3"/><circle cx="31" cy="25" r="3"/><path d="M24 14V8m-2 0h4"/></svg> LAST LIGHT <span class="brand-divider">/</span><span class="brand-subtitle"> AN OPPORTUNITY STORY</span></a>
@@ -71,7 +73,7 @@
           <label class="setting-row"><span>Controller vibration<small>Terrain texture and stronger sending feedback, when supported.</small></span><input id="haptics-setting" type="checkbox" checked></label>
           <label class="setting-row"><span>Music and sound<small>An original score that changes with the story. Headphones optional.</small></span><input id="sound-setting" type="checkbox"></label>
         </div>
-        <section class="controller-settings"><h3>DualSense / controller</h3><p id="controller-status" role="status">Connect a controller, then press any button.</p><fieldset class="prompt-family"><legend>Button prompts</legend><div class="prompt-options"><label class="prompt-choice"><input type="radio" name="prompt-style" value="auto" checked>Auto</label><label class="prompt-choice"><input type="radio" name="prompt-style" value="playstation">PlayStation</label><label class="prompt-choice"><input type="radio" name="prompt-style" value="xbox">Xbox</label><label class="prompt-choice"><input type="radio" name="prompt-style" value="generic">Generic</label></div></fieldset><p class="hint controller-guide" id="controller-guide"></p><button id="adaptive-connect" class="secondary-button">Connect DualSense USB features</button><button id="adaptive-disconnect" class="quiet-button" hidden>Disconnect USB features</button><p id="adaptive-status" class="hint">Optional trigger resistance and vibration for an original DualSense connected by USB.</p></section>
+        <section class="controller-settings"><h3>Controls and controller feedback</h3><p id="controller-status" role="status">Connect a controller, then press any button.</p><fieldset class="prompt-family"><legend>Controller button style</legend><div class="prompt-options"><label class="prompt-choice"><input type="radio" name="prompt-style" value="auto" checked>Auto</label><label class="prompt-choice"><input type="radio" name="prompt-style" value="playstation">PlayStation</label><label class="prompt-choice"><input type="radio" name="prompt-style" value="xbox">Xbox</label><label class="prompt-choice"><input type="radio" name="prompt-style" value="generic">Generic</label></div></fieldset><p class="hint controller-guide" id="controller-guide"></p><button id="adaptive-connect" class="secondary-button">Connect DualSense USB features</button><button id="adaptive-disconnect" class="quiet-button" hidden>Disconnect USB features</button><p id="adaptive-status" class="hint">Optional trigger resistance and vibration for an original DualSense connected by USB.</p></section>
         <p class="modal-description">Self-paced · No timed choices · Keyboard and touch supported<br>WASD or arrow keys drive. Drag to look; pinch or scroll to zoom. Escape pauses the story.</p>
         <div class="modal-actions"><button class="primary-button" data-close>Return to the story <span aria-hidden="true">↗</span></button><button id="activity-help" class="secondary-button" hidden>Help with this activity</button><button id="restart-button" class="secondary-button">Begin again</button><button id="credits-button" class="secondary-button">The real Opportunity & credits</button></div>
         <p class="save-note">Progress is saved on this device when browser storage is available.</p>

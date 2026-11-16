@@ -25,7 +25,7 @@ export function renderDiscoveryCamera({photo={},stage='aim',captureUrl='',ready=
     <div class="discovery-camera__reading">
       ${authentic?'<div class="discovery-camera__credit">NASA · Opportunity</div>':''}
       <p id="discovery-camera-status" class="discovery-camera__status${visibleError?'':' sr-only'}" role="status">${escape(status)}</p>
-      <div class="discovery-camera__actions">${unavailable?button('use-discovery-photo','Use mission image'):aiming && error?button('capture-discovery','Try again',!ready)+button('use-discovery-photo','Use mission image',false,false):aiming?button('capture-discovery','Take picture',!ready || stage==='capturing'):''}</div>
+      ${aiming?'<div id="camera-input-hint" class="discovery-camera__input" aria-label="Camera controls"></div>':''}<div class="discovery-camera__actions">${unavailable?button('use-discovery-photo','Use mission image'):aiming && error?button('capture-discovery','Try again',!ready)+button('use-discovery-photo','Use mission image',false,false):aiming?button('capture-discovery','Take picture',!ready || stage==='capturing'):''}</div>
     </div>
   </section>`;
 }

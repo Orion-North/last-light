@@ -165,3 +165,13 @@ The local audition page exports production-graph WAVs. Structural and signal
 checks do not establish emotional quality or perceived balance. Listen especially
 for the Earth reed against sustained harmony and the repeated pulse's restraint.
 See VERIFICATION.md for metrics and reviews/SCORE-18.md for research and critique.
+
+## Terminal voice refinement
+
+Oppy's imagined thoughts now arrive as individual characters with short clause
+and sentence pauses. Quiet dry electronic key sounds vary deterministically with
+the character; the first key has a small rounded startup cue. These are local
+voice articulations, separate from the learned radio call/reply motif. Mute,
+pause, hidden/suspended audio and narrative silence suppress them; reduced motion
+shows the complete line immediately with no typing cues. Controls remain usable
+while text types, and assistive technology receives the whole thought at once.

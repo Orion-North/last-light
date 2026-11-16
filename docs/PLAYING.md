@@ -6,7 +6,7 @@ You are Opportunity, exploring Mars and sending discoveries home. Follow the des
 
 ## Getting started
 
-Use a desktop browser with WebGL 2. Connect a standard gamepad and press a button to let the browser detect it, or use keyboard and mouse. The opening introduces the mission. Assistance is available deliberately through Pause → Help with this activity. On-screen prompts show the action available at each stage.
+Use a desktop browser with WebGL 2. Connect a standard gamepad and press a button to let the browser detect it, or use keyboard and mouse. The opening introduces the mission. Assistance is available deliberately through Pause → Help with this activity. On-screen prompts follow the input you are using, even with a controller still connected. Keyboard keys appear when you type or use the mouse; intentional controller input restores its glyphs.
 
 | Activity | Controller |
 | --- | --- |
@@ -18,9 +18,9 @@ Use a desktop browser with WebGL 2. Connect a standard gamepad and press a butto
 | Memories | Square / X |
 | Pause and settings | Options / Start |
 
-Cross/A continues after a transmission result; it does not send while a controller is connected. A send button is available without a controller. See [all mappings and feedback options](CONTROLLERS.md).
+Cross/A continues after a transmission result. The two-trigger gesture is the controller sending interaction; switching to keyboard or mouse reveals the Send button. See [all mappings and feedback options](CONTROLLERS.md).
 
-With keyboard and mouse, use WASD or arrow keys to drive, drag to look, and follow the displayed tool prompts. Space operates geological tools; Enter compares completed readings. Escape opens settings. Buttons remain available for story actions.
+With keyboard and mouse, use WASD or arrow keys to drive, drag to look, and follow the displayed tool prompts. Drag directly across the rock to trace or brush, or hold Space while using the arrow keys. Enter interacts, compares completed readings, captures a picture or sends when that action is ready. Escape opens settings; J opens Memories. Buttons remain available for story actions.
 
 ## Investigations
 
@@ -34,7 +34,7 @@ Other observations use the rover’s view: align with the indicated subject and 
 
 Progress saves in this browser on this device. Use **Continue your journey** when returning; **Start anew** resets the journey. Clearing site data removes local progress.
 
-The sound toggle mutes music and effects. The camera icon in the upper-right downloads a PNG of the 3D view without the interface. It does not change mission progress.
+Music and effects are enabled by default and start with your first interaction. The sound toggle mutes them; an explicit mute is remembered on this browser. The camera icon in the upper-right downloads a PNG of the 3D view without the interface. It does not change mission progress.
 
 ## If something does not work
 
