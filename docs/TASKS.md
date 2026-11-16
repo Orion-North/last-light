@@ -1164,3 +1164,17 @@ Root owns earth-room.js: user screenshot shows separated/intersecting shade and
 light disc. Put both in one tilted assembly, give shade thickness and an inner
 wall, and recess the diffuser inside the aperture. Actual production room render
 verified: diffuser sits within the metal lip, with no detached face or shade clipping.
+
+## ROOM/TRAILER-56 — judging presentation and room refinement
+Shared checkout main, disjoint ownership: Sol room_layout56 owns earth-station.js/CSS;
+Sol room_props56 owns earth-room.js and any new credited prop assets; station_render
+owns original 90-second soundtrack under the external trailer output directory.
+Root owns capture/editing, integration, browser QA, task board and publication.
+Done: stable room layout across inputs/phases/viewports, credible mouse/headset,
+verified game release and a paced submission MP4 using actual game footage.
+
+ROOM-56 validation: unified unboxed flow removes stale controller-only columns;
+fixed logical monitor dimensions survive media breakpoints. Actual production
+960x540 controller recovery and portrait resize checked; no horizontal dock
+overflow. Detailed original props used after CC0 model review; no new external
+assets/dependencies. All33 tests and 80-file source checks passed.

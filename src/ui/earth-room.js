@@ -175,13 +175,47 @@ export function createEarthRoom(THREE) {
   const legendsMat=material('#ffffff',.8);legendsMat.map=legend;legendsMat.transparent=true;legendsMat.depthWrite=false;
   const legends=mesh(new THREE.PlaneGeometry(2.68,.87),legendsMat,0,.135,0,keyboard);legends.rotation.x=-Math.PI/2;legends.castShadow=false;
   contact(3.1,1.1,-.32,1.23,1.29);
-  // A domed optical mouse with a split shell and a rubber wheel.
-  contact(.9,.94,1.77,1.35,1.29);
-  const mouse=new THREE.Group();scene.add(mouse);mouse.position.set(1.77,1.29,1.35);mouse.rotation.y=-.13;
-  const mouseBody=mesh(new THREE.SphereGeometry(1,24,12,0,Math.PI*2,0,Math.PI/2),graphite,0,0,0,mouse);mouseBody.scale.set(.26,.19,.37);
-  tube([[0,.186,-.04],[0,.16,-.22],[0,.075,-.34]],.006,edge,mouse,12);
-  rod([0,.18,-.16],[0,.18,-.07],.025,edge,mouse);
-  tube([[1.78,1.34,1.01],[1.9,1.29,.7],[2.16,1.29,.34],[1.94,1.28,-.23],[1.5,1.28,-1.2]],.012,edge);
+  // Original workstation props: separate moulded shells, rather than a dome
+  // with a painted line. The two front buttons follow the palm shell curvature.
+  const mousePlastic=material('#596467',.61,.06), mouseRubber=material('#182226',.88);
+  contact(.75,.94,1.77,1.35,1.29);
+  const mouse=new THREE.Group();scene.add(mouse);mouse.position.set(1.77,1.292,1.35);mouse.rotation.y=-.13;
+  const mouseBase=mesh(new THREE.SphereGeometry(1,40,20),mouseRubber,0,.047,0,mouse);mouseBase.scale.set(.254,.047,.375);
+  const shellHeight=(x,z)=>.058+.135*Math.sqrt(Math.max(0,1-(x/.255)**2-(z/.375)**2));
+  const mousePanel=(start,end,side=0)=>{
+    const vertices=[],indices=[],rows=24,cols=24;
+    for(let j=0;j<=rows;j++) {
+      const z=start+(end-start)*j/rows, width=.253*Math.sqrt(Math.max(.001,1-(z/.375)**2));
+      for(let i=0;i<=cols;i++) {
+        const t=i/cols;
+        const x=side<0 ? -width+(width-.008)*t : side>0 ? .008+(width-.008)*t : -width+2*width*t;
+        vertices.push(x,shellHeight(x,z),z);
+        if(j<rows&&i<cols){const n=j*(cols+1)+i;indices.push(n,n+cols+1,n+1,n+1,n+cols+1,n+cols+2);}
+      }
+    }
+    const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));geometry.setIndex(indices);geometry.computeVertexNormals();
+    return mesh(geometry,mousePlastic,0,0,0,mouse);
+  };
+  mousePanel(.13,.371);mousePanel(-.371,.113,-1);mousePanel(-.371,.113,1);
+  // The button boundary remains legible from the seated view over the palm rest.
+  tube([-.229,-.15,0,.15,.229].map(x=>[x,shellHeight(x,.12)+.001,.12]),.004,mouseRubber,mouse,24);
+  // Rubber side grips sit below the parting line and follow the tapered body.
+  for(const side of [-1,1]) {
+    const grip=mesh(new THREE.SphereGeometry(1,24,12),mouseRubber,side*.224,.077,.055,mouse);grip.scale.set(.026,.044,.19);
+    for(let i=0;i<6;i++)tube([[side*.247,.083,-.075+i*.037],[side*.247,.106,-.07+i*.037]],.003,graphite,mouse,4);
+  }
+  // A wheel in a recessed slot, with a visible axle and fine transverse tread.
+  const wheelWell=flat(.092,.16,.012,.035,edge,0,.181,-.121,mouse);
+  wheelWell.rotation.z=.0;
+  const wheel=mesh(new THREE.CylinderGeometry(.045,.045,.049,28),mouseRubber,0,.188,-.12,mouse);wheel.rotation.z=Math.PI/2;
+  for(let i=0;i<20;i++) {
+    const angle=i*Math.PI/10;
+    rod([-.026,.188+Math.cos(angle)*.045,-.12+Math.sin(angle)*.045],[.026,.188+Math.cos(angle)*.045,-.12+Math.sin(angle)*.045],.0025,keymat,mouse);
+  }
+  for(const side of [-1,1])flat(.016,.092,.018,.007,graphite,side*.245,.118,.025,mouse);
+  rod([0,.07,-.37],[0,.07,-.43],.021,mouseRubber,mouse);
+  for(let i=0;i<4;i++)rod([0,.07,-.38-i*.012],[0,.07,-.385-i*.012],.024,graphite,mouse);
+  tube([[0,.07,-.42],[.05,.025,-.59],[.31,.017,-.88],[.22,.017,-1.24],[-.02,.017,-1.64]],.011,edge,mouse);
 
   // A pool of task light, a half-used notebook and a pencil provide human scale.
   const notebook=new THREE.Group();scene.add(notebook);notebook.position.set(-2.65,1.317,1.04);notebook.rotation.y=-.12;
@@ -226,14 +260,41 @@ export function createEarthRoom(THREE) {
   mesh(new THREE.CircleGeometry(.202,32),coffee,3.31,1.61,.15).rotation.x=-Math.PI/2;
   const handle=mesh(new THREE.TorusGeometry(.12,.033,8,20),mug,3.54,1.48,.15);handle.scale.set(.8,1,1);
   flat(.58,.58,.02,.19,material('#645847',.96),3.31,1.283,.15);contact(.85,.85,3.31,.15);
+  // A dual-ear operations headset laid cushion-side up. Oval acoustic openings,
+  // separate pads and housings give it thickness and a credible resting pose.
   const headset=new THREE.Group();scene.add(headset);headset.position.set(3.13,1.298,1.17);headset.rotation.y=.24;
-  const band=mesh(new THREE.TorusGeometry(.31,.023,7,32,Math.PI*1.5),silver,0,.04,0,headset);band.rotation.x=Math.PI/2;
-  const padding=mesh(new THREE.TorusGeometry(.32,.045,8,22,Math.PI*.8),edge,0,.04,0,headset);padding.rotation.x=Math.PI/2;
-  flat(.2,.28,.12,.07,fabric,-.27,.06,.14,headset);flat(.13,.22,.08,.05,graphite,.25,.04,.16,headset);
-  tube([[-.27,.05,.16],[-.32,.05,.35],[-.1,.04,.44],[.08,.04,.41]],.013,silver,headset,16);
-  flat(.12,.054,.045,.02,edge,.08,.04,.41,headset);
-  tube([[3.12,1.3,1.23],[3.6,1.29,1.5],[3.9,1.29,1.12],[3.78,1.28,.75],[3.9,1.2,-.7]],.013,edge);
-  contact(1.15,1,3.13,1.17);
+  const headsetPaint=material('#3d4b50',.36,.28), cushion=material('#283437',.91);
+  cushion.bumpMap=grainMap;cushion.bumpScale=.004;
+  const bandPoints=[];
+  for(let i=0;i<=40;i++) {
+    const a=Math.PI*i/40;
+    bandPoints.push([-.365*Math.cos(a),.075+.045*Math.sin(a),.09-.49*Math.sin(a)]);
+  }
+  // Two metal rails sandwich a wider padded headband along its crown.
+  for(const offset of [-.029,.029])tube(bandPoints.map(([x,y,z])=>[x,y+offset*.25,z+offset]),.012,silver,headset,48);
+  tube(bandPoints,.039,headsetPaint,headset,48);
+  tube(bandPoints.slice(7,34).map(([x,y,z])=>[x,y+.025,z+.012]),.034,cushion,headset,36);
+  for(const side of [-1,1]) {
+    const cup=new THREE.Group();headset.add(cup);cup.position.set(side*.346,.0,.16);cup.rotation.y=side*.12;
+    flat(.245,.34,.071,.095,headsetPaint,0,.043,0,cup);
+    flat(.219,.313,.019,.09,edge,0,.087,0,cup);
+    const pad=mesh(new THREE.TorusGeometry(.083,.033,12,40),cushion,0,.119,0,cup);pad.rotation.x=Math.PI/2;pad.scale.set(1,1.43,1);
+    // Dark recessed driver fabric remains visibly below the rolled cushion lip.
+    const driver=mesh(new THREE.CircleGeometry(.076,32),fabric,0,.099,0,cup);driver.rotation.x=-Math.PI/2;driver.scale.y=1.48;
+    const stitch=mesh(new THREE.TorusGeometry(.093,.002,5,40),keymat,0,.137,0,cup);stitch.rotation.x=Math.PI/2;stitch.scale.set(1,1.39,1);
+    for(const z of [-.106,.106]) {
+      rod([side*.104,.07,z],[side*.143,.065,z],.015,silver,cup);
+      mesh(new THREE.SphereGeometry(.023,12,8),graphite,side*.113,.071,z,cup);
+    }
+    tube([[side*.145,.065,-.105],[side*.166,.074,-.025],[side*.145,.065,.105]],.017,headsetPaint,cup,18);
+    flat(.033,.10,.014,.008,silver,side*.034,.115,-.247,headset);
+  }
+  // The boom pivots from the left shell, then clears the pad and desk surface.
+  mesh(new THREE.CylinderGeometry(.043,.043,.025,24),graphite,-.477,.061,.16,headset);
+  tube([[-.475,.08,.16],[-.49,.082,.31],[-.39,.085,.43],[-.20,.085,.46],[-.08,.085,.445]],.012,silver,headset,30);
+  const microphone=mesh(new THREE.SphereGeometry(1,24,14),cushion,-.065,.085,.444,headset);microphone.scale.set(.074,.035,.041);
+  tube([[-.42,.04,.21],[-.57,.018,.34],[-.55,.018,.52],[-.27,.018,.61],[.10,.018,.57],[.36,.018,.39]],.011,edge,headset,36);
+  contact(1.3,1.22,3.13,1.17);
 
   // Secondary stations recede; their dark screens do not compete with the rover.
   for(const [x,z,angle] of [[-5.9,-3.6,.12],[5.8,-4.2,-.17]]) {
