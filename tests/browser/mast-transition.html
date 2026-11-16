@@ -1,0 +1,56 @@
+<!doctype html><meta charset="utf-8"><title>Mast handoff regression</title>
+<script type="importmap">{"imports":{"three":"../../vendor/three/three.module.js","three/addons/":"../../vendor/three/addons/"}}</script>
+<style>body{margin:0;background:#111a1c;color:#eee;font:14px system-ui}nav{padding:12px;min-height:135px}button{padding:10px}output{display:block;white-space:pre-wrap}canvas{display:block;width:100%;height:560px}</style>
+<nav><button id="run" disabled>Run compare and five mast transitions</button><output>Loading actual renderer…</output></nav><canvas></canvas>
+<script type="module">
+import * as THREE from 'three';
+import {createLandscape} from '../../src/ui/landscape.js';
+const canvas=document.querySelector('canvas'),out=document.querySelector('output'),run=document.querySelector('#run');
+const logs=[];let sample=null,eye=null,physicalError=0,worldReady=false,cameraActive=false,entryMax=0,measuringEntry=false;
+// Read the camera actually used by the renderer; compare against the optical
+// eye on the real grounded rover rather than accepting readiness alone.
+THREE.Mesh.prototype.onBeforeRender=function(renderer,scene,camera){
+ const rover=scene.children.find(child=>child.isGroup && child.children.some(o=>o.isPointLight));
+ if(!rover || !camera.isPerspectiveCamera)return;
+ eye=camera.position.clone();
+ if(cameraActive){
+  rover.updateMatrixWorld(true);
+  const mount=rover.localToWorld(new THREE.Vector3(-.046,1.585,.487));
+  const expected=mount.addScaledVector(camera.getWorldDirection(new THREE.Vector3()),.34);
+  physicalError=eye.distanceTo(expected);
+  if(measuringEntry)entryMax=Math.max(entryMax,physicalError);
+ }
+};
+canvas.addEventListener('world-status',e=>{if(e.detail.state==='ready'){worldReady=true;run.disabled=false;out.textContent='Ready. Tests use real meshes, the actual mast and rendered camera.';}});
+canvas.addEventListener('discovery-camera-sample',e=>sample=e.detail);
+const world=createLandscape(canvas);world.setMode('game');
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const print=line=>{logs.push(line);out.textContent=logs.join('\n');};
+async function until(fn,limit=14000){const end=performance.now()+limit;while(!fn()){if(performance.now()>end)throw Error('camera never ready');await sleep(60);}}
+run.onclick=async()=>{
+ run.disabled=true;logs.length=0;
+ const cases=[['stone-ripples',7,-7,0],['stone-ripples',7,-7,Math.PI],['blueberries',-5,-10,0],['first-morning',0,4,0],['ordinary-day',6,10,1.1],['last-image',3,-4,0]];
+ for(const [id,x,z,heading] of cases){
+  try{
+   cameraActive=false;world.reset();world.setMode('game');world.restoreCheckpoint({position:{x,z,heading}});
+   if(['stone-ripples','blueberries'].includes(id)){
+    world.setToolMode(id);world.setEvidence(id);await sleep(150);
+    world.setToolMode(null);world.setEvidence(null);
+   }
+   sample=null;physicalError=0;entryMax=0;measuringEntry=true;cameraActive=true;
+   world.setDiscoveryCamera(id,{aspect:4/3});
+   // Match main's second measured-frame update without restarting transition.
+   world.setDiscoveryCamera(id,{aspect:4/3,frame:{left:innerWidth*.1,top:50,width:innerWidth*.8,height:400}});
+   await until(()=>sample?.ready);measuringEntry=false;await sleep(150);
+   const initialError=physicalError;
+   world.setLook({x:.8,y:.4});await sleep(400);world.setLook({});await sleep(150);
+   const aimedError=physicalError,yaw=sample.yaw;
+   world.setDiscoveryCameraFrozen(true);const frozen=eye.clone();await sleep(250);
+   const drift=eye.distanceTo(frozen);
+   print(`${entryMax<.03&&initialError<.03&&aimedError<.03&&Math.abs(yaw)>.03&&drift<.001?'PASS':'FAIL'} ${id} heading ${heading.toFixed(2)}: ready; entry error ${entryMax.toFixed(4)}m; mast error ${initialError.toFixed(4)}→${aimedError.toFixed(4)}m; yaw ${yaw.toFixed(3)}; frozen drift ${drift.toFixed(4)}m`);
+   cameraActive=false;measuringEntry=false;world.setDiscoveryCamera(null,{immediate:true});
+  }catch(error){print(`FAIL ${id}: ${error.message}; mast error ${physicalError.toFixed(4)}m`);}
+ }
+ cameraActive=false;print('Complete. Capture/reveal pacing and native tracing are checked separately in the game.');run.disabled=false;
+};
+</script>

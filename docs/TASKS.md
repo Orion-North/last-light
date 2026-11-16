@@ -1068,3 +1068,39 @@ on desktop/portrait. Terminal audio started natively; pause held partial text,
 reduced motion showed full text without pulses, mute preserved text progression.
 Audio test harness updated for real playbackRate and bounded phrase-start cue.
 Camera deferral and unpublished status retained.
+
+## ROOM-48 — single Astra control-room art direction
+User requests exactly one Astra subagent due cost. room_art_direction owns
+src/ui/earth-room.js only (new public room assets coordinated with root), improves
+physical NASA mission-control atmosphere and adds a personal Oppy + heart note.
+No further subagents. Root owns official identity asset research/provenance,
+fixtures/CSS/integration, critical browser QA and publication. Preserve the real
+storm screen, monitor-local signal and typed voice. Camera bug deferral stands.
+
+ROOM-48 complete: exactly one Astra, desktop/portrait critical review and all
+three short-screen reduced-motion simulated-controller calls passed. All 32 engine
+files, 78 syntax checks, assets/contracts and build pass.
+
+## CAMERA-49 / INPUT-50 — pacing, handoff bug audit and bumper shutter
+After testing published game, user requests readable photo timing and a team audit
+of the camera after Last Chance. Three Sol lanes: station_critic owns main/handoff/
+camera UI and related tests; station_render owns landscape/mast regression fixture;
+station_integration audits read-only then owns controller runtime/prompts/tests.
+Root owns native reproduction, integration, docs and publication. No extra Astra.
+Native two-path tracing/Compare reproduced entry through neck/deck; settled camera
+was ready and clear. Switch physical sensor views directly, not a fly-through.
+Audit also found held tool arrows carried into mast aiming. Add context release
+guards. Explicit newest mapping: right bumper shutter (R1/RB); primary cannot take
+picture. Preserve active-input glyph switching, original sending ritual and audio.
+
+## SIGNAL-51 — reuse original instrument on the physical monitor
+User requires exact earlier Earth/Mars animation. Removed bespoke canvas visual.
+Root owns earth-station DOM projection, CSS and homography tests; Sol renderer
+owner exposes projected monitor corners; main owner synchronizes original signal
+markup/state with the projection. Same map, dialogue, packet keyframes and pressure
+variables; no second animation implementation. Native DOM equality checks pass.
+
+CAMERA-49 / INPUT-50 / SIGNAL-51 complete: native tracing comparison, six mast
+entry/aim/freeze cases, all five photo lifecycles, bumper/carryover/pause/cancel
+checks, exact signal markup equality and portrait controller recovery passed.
+Final 33 engine files, 79 syntax checks, assets/contracts and build passed.

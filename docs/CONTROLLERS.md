@@ -11,6 +11,7 @@ Connect a controller by USB or Bluetooth, then press a button. Last Light uses t
 | Left stick | Drive during travel; navigate menus |
 | R2 / L2 | Forward / reverse during travel |
 | Right stick | Look, aim tools, or scroll supported menus |
+| R1 / RB (right bumper) | Take a picture in the rover camera |
 | R2 | Trace, brush, or measure during investigations |
 | Both triggers | Release to arm, squeeze and hold to charge, release both to send |
 | Cross / A | Interact, compare readings, or continue after a result |

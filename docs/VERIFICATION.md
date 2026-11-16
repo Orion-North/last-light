@@ -973,8 +973,57 @@ Muted typing still progressed. These verify activation/scheduling behavior, not
 subjective loudness or emotional quality. Writer and audio lifecycle tests cover
 rerender continuity, punctuation timing, pause/mute/suspension and missing replies.
 
-Final integrated checks passed:32 engine files,78 syntax checks,12 scene
+Final integrated checks passed:32 engine files, 78 syntax checks,12 scene
 contracts, local assets and static build. The first full test run found an older
 audio fake missing playbackRate; the updated fake and bounded voice assertions
 pass without weakening mute/pause or missing-reply behavior. Native portrait
 calling also reached NO REPLY after the monitor integration.
+
+## v0.22 publication
+
+After explicit user authorization, commit f301564 was published to main. GitHub
+Actions run43806318668 passed source/assets, all engine tests, build and Pages
+deployment. The live main.js, earth-room.js, story-console.js and sound.js SHA-256
+hashes matched the tested source. This supersedes earlier unpublished notes.
+
+## ROOM-48 — single Astra art pass
+
+Exactly one Astra agent authored this room revision. Root reviewed full desktop
+and 390px portrait renders. The Oppy-heart note remains legible beside the monitor;
+the screen and signal layer remain unobstructed. Initial decals were hidden by
+bevels, caught in screenshot critique and corrected. New materials, geometry and
+procedural textures are original in-module art; no logo/download/dependency added.
+32 engine files, 78 source syntax checks, contracts/assets and static build pass.
+Native desktop calling reached NO REPLY/Continue. The short-screen reduced-motion
+simulated-controller test passed the first recovery call, then the preview server
+exited143 and the next title load timed out. The remaining two checks were restarted
+on a fresh server; connection failure is not treated as a gameplay result.
+
+ROOM-48 remaining two short-screen simulated-controller recovery checks passed
+after restart. All three call modes retain correct receipts.
+
+## CAMERA-49 / INPUT-50 / SIGNAL-51
+
+Native Last Chance two-path trace and Compare reproduced entry passing through
+rover hardware; the settled camera was ready. Sensor entry now cuts directly.
+Six renderer scene/heading cases passed with 0.0000m entry/settled/aimed mast error
+and 0.0000m frozen drift. Native held-key/controller fixture passed every lifecycle
+check: prior arrow repeat ignored, fresh arrow works, preheld bumper requires
+release, primary cannot capture, right bumper captures, pause/cancellation and
+premature-send guards hold, and original receipt saves without runtime errors.
+
+Last Chance and Berry photo capture/source/aspect/uplink/receipt matrix passed.
+The remaining three photo scenes were checked separately. Original-image dwell,
+loading bounds, reduced motion and the paint boundary pass engine tests.
+
+Replaced the monitor's separate signal implementation with the original instrument
+markup/CSS/keyframes projected onto its actual screen corners. Native DOM checks
+confirmed identical map and dialogue markup; the reflected state reached received
+with NO ANSWER and cleared on title. Homography tests map all four screen corners
+and reject collapsed geometry. Original DOM descriptions remain accessible while
+the monitor copy is decorative. All 33 engine files, 79 syntax checks, contracts,
+assets and build passed after integration. Physical controller feel remains untested.
+
+All five photo lifecycles passed (two geology scenes plus the other three).
+Final monitor projection passed a 390px portrait reduced-motion recovery call
+with simulated triggers, reached NO REPLY and retained the Oppy-heart note.

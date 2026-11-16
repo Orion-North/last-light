@@ -19,6 +19,7 @@ export function controllerButtonName(action, family = 'generic') {
   const face = faceActions.indexOf(action);
   if (face >= 0) return (faceLabels[family] || faceLabels.generic)[face];
   return { move: 'Left stick', look: 'Right stick', swipe: 'Touchpad', select: 'D-pad',
+    shutter: family === 'playstation' ? 'R1' : family === 'xbox' ? 'RB' : 'Right bumper',
     pause: family === 'playstation' ? 'Options' : 'Menu',
     forward: family === 'playstation' ? 'R2' : 'Right trigger',
     reverse: family === 'playstation' ? 'L2' : 'Left trigger' }[action] || 'Controller';
@@ -42,6 +43,9 @@ export function controllerGlyph(action, family = 'generic') {
     shape = `<path d="M16 2v3m0 22v3M2 16h3m22 0h3"/><circle cx="16" cy="16" r="10"/><text x="16" y="20.5" text-anchor="middle" fill="currentColor" stroke="none" font-size="13" font-family="sans-serif">${action==='move'?'L':'R'}</text>`;
   } else if (action === 'select') {
     shape = '<path d="M12 3h8v9h9v8h-9v9h-8v-9H3v-8h9Z"/>';
+  } else if (action === 'shutter') {
+    const label = family === 'playstation' ? 'R1' : 'RB';
+    shape = `<path d="M4 13Q6 7 14 7h10q4 0 4 5v9H4Z"/><text x="16" y="18" text-anchor="middle" fill="currentColor" stroke="none" font-size="10" font-family="sans-serif">${label}</text>`;
   } else if (action === 'forward' || action === 'reverse') {
     const label = action === 'forward' ? (family==='playstation'?'R2':'RT') : (family==='playstation'?'L2':'LT');
     shape = `<path d="M5 12Q5 4 13 4h10q4 0 4 7v17H5Z"/><text x="16" y="22" text-anchor="middle" fill="currentColor" stroke="none" font-size="12" font-family="sans-serif">${label}</text>`;

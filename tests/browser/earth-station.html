@@ -48,7 +48,7 @@ $('#size').onchange=size;
 $('#preview').onclick=async()=>{try{const id=$('#scene').value;await load(id==='handover'?'last-image':id,id==='handover'?'received':$('#phase').value);if(id==='handover')click('[data-action="next"]');else await station();out.textContent='PREVIEW '+id+' · '+$('#phase').value;}catch(e){out.textContent='FAIL '+e.message;}};
 $('#recovery').onclick=async()=>{
  const buttons=['#preview','#run','#recovery'].map($);buttons.forEach(button=>button.disabled=true);const quick=[];
- try{for(const [id,mode] of [['earth-listens','silence'],['months','archive'],['last-call','silence']]){
+ try{for(const [id,mode] of [['earth-listens','silence'],['months','archive'],['last-call','silence']].filter(([id])=>!params.has('scenes') || params.get('scenes').split(',').includes(id))){
  out.textContent=quick.join('\n')+'\nRUNNING '+id+' recovery controls';await load(id,'transmit');await station();await send(mode);await station();
  quick.push('PASS '+id+' · '+mode+' · '+($('#controller').checked?'simulated triggers':'button')+' · '+($('#reduced').checked?'reduced motion':'motion'));
  }}catch(e){quick.push('FAIL '+e.message);}finally{out.textContent=quick.join('\n')+'\nDONE';buttons.forEach(button=>button.disabled=false);}

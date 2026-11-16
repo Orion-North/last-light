@@ -1,5 +1,5 @@
 import { discoveryPhotos } from './content/discovery-photos.js';
-import { advanceDiscoveryHandoff } from './engine/discovery-handoff.js';
+import { advanceDiscoveryHandoff, waitForDiscoveryPaint } from './engine/discovery-handoff.js';
 import { renderDiscoveryCamera, renderPhotoUplink } from './ui/discovery-camera.js';
 import { scenes, sources, credits, recordedChoice } from './content/story.js';
 import { storyLine } from './content/terminal-story.js';
@@ -9,7 +9,7 @@ import { createBriefing, briefingBeats } from './engine/briefing.js';
 import { missionTime, timePassage } from './content/time.js';
 import { createSound } from './audio/sound.js';
 import { createLandscape } from './ui/landscape.js';
-import { renderEarthStation } from './ui/earth-station.js';
+import { renderEarthStation, createEarthSignalMonitor } from './ui/earth-station.js';
 import { restoreSession, serializeSession, restoreCheckpoint, restoreAssistedScenes } from './session.js';
 import { createActiveInput } from './input/active-input.js';
 import { initialSoundPreference } from './engine/first-run-preferences.js';
@@ -30,6 +30,8 @@ const $ = (selector) => document.querySelector(selector);
 const app = $('#app');
 const canvas = $('#atmosphere');
 $('#earth-station').innerHTML = renderEarthStation();
+const earthSignalMonitor = createEarthSignalMonitor($('#earth-station'));
+canvas.addEventListener('earth-signal-frame',event=>earthSignalMonitor.setFrame(event.detail));
 const escape = (value) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const paragraphs = (text) => String(text).split('\n\n').map(p => `<p>${escape(p)}</p>`).join('');
 const arrow = '<span aria-hidden="true">↗</span>';
@@ -107,6 +109,8 @@ let discoveryFrame=0, discoveryFrameAt=0;
 let assistanceIntent = null;
 const photoAssets = new Map();
 let inputContext = '';
+// Only keys physically carried from the previous activity need a release.
+const cameraReleaseKeys = new Set();
 function currentDiscovery() {
   return screen==='game' && ['transmit','received'].includes(state.phase) ? discoveryPhotos[scenes[state.sceneIndex].id] : null;
 }
@@ -117,7 +121,7 @@ function cameraAiming() { return !!currentDiscovery() && discoveryStage()==='aim
 function clearDiscovery() {
   captureGeneration++;cancelAnimationFrame(discoveryFrame);discoveryFrame=0;discoveryFrameAt=0;
   if(discoveryShot?.url)URL.revokeObjectURL(discoveryShot.url);
-  discoveryShot=null;discoveryReady=false;discoveryAligned=false;
+  discoveryShot=null;discoveryReady=false;discoveryAligned=false;cameraReleaseKeys.clear();
   view?.setDiscoveryCamera?.(null);
   document.body.dataset.discovery='false';
 }
@@ -125,7 +129,7 @@ function preloadDiscovery(id) {
   const photo=discoveryPhotos[id];if(!photo || photoAssets.has(id))return;
   const asset={state:'loading',image:new Image()};photoAssets.set(id,asset);
   const done=stateValue=>{asset.state=stateValue;if(currentDiscovery() && scenes[state.sceneIndex].id===id && ['revealing','handoff','uplink','sending','received'].includes(discoveryStage()))renderGame();};
-  asset.image.onload=()=>done('ready');asset.image.onerror=()=>done('error');asset.image.src=photo.src;
+  asset.image.onload=async()=>{try{await asset.image.decode();done('ready');}catch{done('error');}};asset.image.onerror=()=>done('error');asset.image.src=photo.src;
 }
 function syncDiscoveryFraming() {
   const photo=currentDiscovery(),windowRect=app.querySelector('.discovery-camera__view')?.getBoundingClientRect();
@@ -138,6 +142,7 @@ function syncDiscoveryProgress() {
   const root=app.querySelector('.discovery-camera,.photo-uplink');if(!root || !discoveryShot)return;
   const progress=discoveryShot.progress || 0;
   root.style.setProperty('--reveal-progress',discoveryShot.stage==='revealing'?progress:1);
+  root.style.setProperty('--shutter-opacity',discoveryShot.stage==='revealing'?Math.max(0,.75*(1-(discoveryShot.elapsed || 0)/220)):0);
   root.style.setProperty('--handoff-progress',discoveryShot.stage==='handoff'?progress:1);
   const rect=discoveryShot.frame;
   if(rect){
@@ -177,6 +182,8 @@ async function captureDiscovery() {
   discoveryShot.stage='capturing';discoveryShot.error='';
   view?.setDiscoveryCameraFrozen?.(true);view?.setLook?.({x:0,y:0});pressed.clear();
   renderGame();sound.cue('observe');controller?.feedback('observe');
+  const isCurrent=()=>token===captureGeneration && scenes[state.sceneIndex].id===id && screen==='game';
+  if(!await waitForDiscoveryPaint(isCurrent))return;
   let blob;
   try {
     const windowRect=app.querySelector('.discovery-camera__view')?.getBoundingClientRect(),canvasRect=canvas.getBoundingClientRect();
@@ -268,7 +275,7 @@ function setExploring(value) {
   if (panel) panel.inert = value;
 }
 function setWorld(environment, mode) {
-  if(mode!=='game'){document.body.dataset.perspective='rover';clearDiscovery();view?.setRemoteView?.(false);view?.setEvidence?.(null);}
+  if(mode!=='game'){earthSignalMonitor.clear();document.body.dataset.perspective='rover';clearDiscovery();view?.setRemoteView?.(false);view?.setEvidence?.(null);}
   document.body.dataset.environment = environment;
   if(mode!=='game')document.body.dataset.upload='false';
   document.body.dataset.screen = mode;
@@ -384,7 +391,7 @@ function updateInputHint() {
   if(screen==='game')hints+=row('journal','Memories','J');
   if(inputDevice==='touch'&&!pad) hints=contacting?'<span class="controller-hint"><kbd>·</kbd>Tap Send</span>':investigating?'<span class="controller-hint"><kbd>↔</kbd>Drag to look</span><span class="control-rest">Hold still to record</span>':moving?'<span class="controller-hint"><kbd>↔</kbd>Drag to look</span>':'<span class="controller-hint"><kbd>·</kbd>Tap to choose</span>';
   if(usingController() && (!investigating || toolState?.stage==='compare') && controllerScrollTarget(app)) hints+=row('look','Read more','Scroll');
-  if(currentDiscovery())hints=cameraAiming()?row('look','Aim','Arrow keys / drag')+row('primary','Take picture','Enter'):discoveryStage()==='uplink'?(usingController()?'<span class="control-rest">Squeeze both triggers and release, or select Send</span>':'<span class="control-rest">Send your discovery home</span>'):'';
+  if(currentDiscovery())hints=cameraAiming()?row('look','Aim','Arrow keys / drag')+row('shutter','Take picture','Enter'):discoveryStage()==='uplink'?(usingController()?'<span class="control-rest">Squeeze both triggers and release, or select Send</span>':'<span class="control-rest">Send your discovery home</span>'):'';
   if(cameraAiming() && inputDevice==='touch' && !usingController())hints='<span class="control-rest">Drag to frame · Tap Take picture</span>';
   $('#input-hint').innerHTML=hints;
 }
@@ -411,7 +418,7 @@ function refreshControllerPrompts() {
     button.classList.toggle('with-controller-glyph',show);
     button.insertAdjacentHTML('afterbegin',show?controllerGlyph(action,family):`<kbd class="input-keycap" aria-hidden="true">${{primary:'Enter',journal:'J',pause:'Esc',back:'Esc'}[action] || 'Enter'}</kbd>`);
   };
-  app.querySelectorAll('[data-action]').forEach(button=>{if(button.matches('button') && button.dataset.action!=='restart')decorate(button,button.dataset.action==='journal'?'journal':'primary');});
+  app.querySelectorAll('[data-action]').forEach(button=>{if(button.matches('button') && button.dataset.action!=='restart')decorate(button,button.dataset.action==='journal'?'journal':button.dataset.action==='capture-discovery'?'shutter':'primary');});
   for(const [side,action] of [['left','reverse'],['right','forward']]){const icon=app.querySelector(`[data-trigger="${side}"]`);if(icon)icon.innerHTML=controllerGlyph(action,family);}
   decorate($('#settings-toggle'),'pause');
   $('#journal-toggle').hidden=usingController();
@@ -440,7 +447,10 @@ function renderGame({ focus = false } = {}) {
   const photo=discoveryPhotos[scene.id] && ['transmit','received'].includes(state.phase) ? discoveryPhotos[scene.id] : null;
   if(!photo && discoveryShot)clearDiscovery();
   if(photo && discoveryShot?.sceneId!==scene.id) {
-    clearDiscovery();discoveryShot={sceneId:scene.id,stage:state.phase==='received'?'uplink':'aim',url:'',error:''};
+    clearDiscovery();
+    for(const key of pressed)if(key.startsWith('arrow'))cameraReleaseKeys.add(key);
+    pressed.clear();toolPad={x:0,y:0,pressure:0};view?.setLook?.({x:0,y:0});controller?.rearmMenu?.();
+    discoveryShot={sceneId:scene.id,stage:state.phase==='received'?'uplink':'aim',url:'',error:''};
   }
   document.body.dataset.phase=state.phase;
   document.body.dataset.tool=String(geologyActive);
@@ -527,6 +537,7 @@ function renderGame({ focus = false } = {}) {
   $('.drive-pad').hidden = state.phase!=='observe' || reached;
   document.querySelectorAll('[data-drive]').forEach(b=>b.disabled = scene.signal === 0 || state.phase!=='observe' || reached || scanning || transmitting);
   refreshControllerPrompts();
+  earthSignalMonitor.sync(scene.signal===0 && !graphicsError?app.querySelector('.upload-terminal'):null);
   controller?.setTerrain({moving:false,blocked:false,power:scene.power/100});
   if (focus) focusContent(photo?((graphicsError || discoveryShot?.error) && discoveryStage()==='aim'?'[data-action="use-discovery-photo"]':discoveryStage()==='aim'?'[data-action="capture-discovery"]':state.phase==='received'?'[data-action="next"]':'[data-action="transmit"]'):state.phase==='choose' ? '.choice' : state.phase==='received' ? '[data-action="next"]' : state.phase==='transmit' ? '[data-action="transmit"]' : '[data-action="observe"]');
 }
@@ -908,6 +919,7 @@ window.addEventListener('keydown',event=>{
   if (event.key.toLowerCase()==='j' && !document.querySelector('dialog[open]') && screen==='game') {event.preventDefault();openJournal();return;}
   if (['INPUT','TEXTAREA','SELECT'].includes(event.target.tagName) || document.querySelector('dialog[open]')) return;
   const key=event.key.toLowerCase();
+  if(cameraAiming() && cameraReleaseKeys.has(key)){event.preventDefault();return;}
   if(cameraAiming() && ['arrowup','arrowdown','arrowleft','arrowright'].includes(key)){event.preventDefault();pressed.add(key);inspectionLook();return;}
   if(cameraAiming() && key==='enter' && !event.target.closest('button,a,input,summary')){event.preventDefault();captureDiscovery();return;}
   if(geologyActive && ['arrowup','arrowdown','arrowleft','arrowright',' '].includes(key)){event.preventDefault();pressed.add(key);syncToolInput(true);return;}
@@ -918,8 +930,8 @@ window.addEventListener('keydown',event=>{
   if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(key) && screen==='game') {event.preventDefault();pressed.add(key);drive();}
 });
 function inspectionLook() {if(geologyActive){syncToolInput(true);return;}const value={x:(pressed.has('arrowright')?1:0)-(pressed.has('arrowleft')?1:0),y:(pressed.has('arrowdown')?1:0)-(pressed.has('arrowup')?1:0)};if(investigating || cameraAiming())view?.setLook?.(value);}
-window.addEventListener('keyup',event=>{pressed.delete(event.key.toLowerCase());if(investigating || cameraAiming())inspectionLook();else drive();});
-window.addEventListener('blur',()=>{pressed.clear();view?.setLook?.({x:0,y:0});drive();});
+window.addEventListener('keyup',event=>{cameraReleaseKeys.delete(event.key.toLowerCase());pressed.delete(event.key.toLowerCase());if(investigating || cameraAiming())inspectionLook();else drive();});
+window.addEventListener('blur',()=>{pressed.clear();cameraReleaseKeys.clear();view?.setLook?.({x:0,y:0});drive();});
 document.querySelectorAll('[data-drive]').forEach(button=>{
   const key={forward:'w',back:'s',left:'a',right:'d'}[button.dataset.drive];
   button.addEventListener('pointerdown',event=>{event.preventDefault();button.setPointerCapture(event.pointerId);pressed.add(key);drive();});
@@ -1032,8 +1044,9 @@ function controllerAction(action) {
     const next=index<0 ? (step>0?0:targets.length-1) : (index+step+targets.length)%targets.length;
     targets[next]?.focus({preventScroll:false}); return;
   }
+  if(action==='shutter'){if(cameraAiming() && !dialog)captureDiscovery();return;}
   if(action==='primary') {
-    if(cameraAiming() && !dialog){if(document.activeElement?.dataset.action==='use-discovery-photo')useHistoricalObservation();else captureDiscovery();return;}
+    if(cameraAiming() && !dialog){if(document.activeElement?.dataset.action==='use-discovery-photo')useHistoricalObservation();return;}
     if(geologyActive && !dialog && toolState?.stage==='compare'){
       view?.compareToolSamples?.();
       return;

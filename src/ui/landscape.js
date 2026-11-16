@@ -101,6 +101,27 @@ export function createLandscape(canvas) {
     earthRoom?.setSignal(earthSignalState);
   }
   let earthTarget = null;
+  let earthSignalFrame = null;
+  function publishEarthSignalFrame() {
+    if (!remoteView || !earthRoom) {
+      if (earthSignalFrame !== null) {
+        earthSignalFrame = null;
+        canvas.dispatchEvent(new CustomEvent('earth-signal-frame', { bubbles: true, detail: { visible: false } }));
+      }
+      return;
+    }
+    earthRoom.camera.updateMatrixWorld();
+    const rect = canvas.getBoundingClientRect();
+    const corners = earthRoom.getSignalQuad().map(point => {
+      point.project(earthRoom.camera);
+      return { x: Math.round((rect.left + (point.x + 1) * rect.width / 2) * 10) / 10,
+        y: Math.round((rect.top + (1 - point.y) * rect.height / 2) * 10) / 10 };
+    });
+    const signature = JSON.stringify(corners);
+    if (signature === earthSignalFrame) return;
+    earthSignalFrame = signature;
+    canvas.dispatchEvent(new CustomEvent('earth-signal-frame', { bubbles: true, detail: { visible: true, corners } }));
+  }
   let viewportWidth = 1, viewportHeight = 1;
   const monitorAspect = 4.98 / 2.76;
   const earthExposure = 1.15;
@@ -594,8 +615,8 @@ export function createLandscape(canvas) {
     }
     render();
   }
-  // The same eye, scene and atmosphere used while driving. Photo framing moves
-  // from the current world view to the actual rover mast; only its gaze changes.
+  // The same scene and atmosphere used while driving. Photo framing switches
+  // to the actual rover mast; only its gaze changes while aiming.
   function setDiscoveryCamera(sceneId, { immediate = false, aspect, frame: photoFrame } = {}) {
     if (!sceneId) {
       const previous = discoveryCamera;
@@ -621,8 +642,8 @@ export function createLandscape(canvas) {
       render(); return true;
     }
     if (discoveryCamera) setDiscoveryCamera(null, { immediate: true });
-    // Save the rendered view before changing survey/tool state. Returning from
-    // the mast retraces this move instead of jumping to an unrelated composition.
+    // Save the rendered view before changing survey/tool state. Leaving the
+    // mast restores this composition rather than an unrelated orbit viewpoint.
     const returnPosition = camera.position.clone(), returnTarget = controls.target.clone(), returnFov = camera.fov;
     setSurvey(false); stopDrive(); tool?.stop(); emitToolFeedback();
     toolPointer = null; discoveryPointer = null; look = { x: 0, y: 0 };
@@ -667,9 +688,12 @@ export function createLandscape(canvas) {
     // mast view. Projection remains the normal, full-viewport world projection.
     const damping = controls.enableDamping; controls.enableDamping = false;
     controls.update(); controls.enableDamping = damping;
-    camera.position.copy(returnPosition); controls.target.copy(returnTarget);
-    cameraTween = { position: eye.clone(), target: target.clone() };
-    if (immediate) { camera.position.copy(eye); controls.target.copy(target); camera.fov = discoveryCamera.fov; camera.updateProjectionMatrix(); cameraTween = null; }
+    // This is a switch to a different physical sensor, not an orbit-camera
+    // flight. Interpolating from a close rock inspection to the mast crosses
+    // the rover's deck and neck before reaching the otherwise clear lens.
+    camera.position.copy(eye); controls.target.copy(target);
+    camera.fov = discoveryCamera.fov; camera.updateProjectionMatrix();
+    cameraTween = null;
     render(); return true;
   }
   function discoveryCrop(d) {
@@ -1460,6 +1484,7 @@ export function createLandscape(canvas) {
     inspecting = investigation = false; roverFrame = null; memoryPreview = null;
     setSurvey(false);
     remoteView = next;
+    if (!remoteView) publishEarthSignalFrame();
     if (remoteView) prepareEarthRoom();
     // The Mars camera fits the monitor, while the room camera fits the window.
     camera.aspect = remoteView ? monitorAspect : viewportWidth / viewportHeight;
@@ -1900,6 +1925,7 @@ export function createLandscape(canvas) {
         renderer.toneMappingExposure = exposure;
       }
     } else renderer.render(scene, camera);
+    publishEarthSignalFrame();
     sampleWaypointGuidance();
   }
   function animate(now) {
@@ -2102,7 +2128,7 @@ export function createLandscape(canvas) {
       const nextMode = ['title', 'game', 'ending'].includes(value) ? value : 'title';
       if (nextMode === mode) return;
       mode = nextMode;
-      if (mode !== 'game') { setDiscoveryCamera(null, { immediate: true }); setToolMode(null); setSurvey(false); remoteView = false; memoryPreview = null; camera.aspect = viewportWidth / viewportHeight; camera.updateProjectionMatrix(); }
+      if (mode !== 'game') { setDiscoveryCamera(null, { immediate: true }); setToolMode(null); setSurvey(false); remoteView = false; publishEarthSignalFrame(); memoryPreview = null; camera.aspect = viewportWidth / viewportHeight; camera.updateProjectionMatrix(); }
       controls.enabled = !tool && !evidence && !survey && !remoteView && !paused && !intro && !contactActive && !contactPulse;
       stopDrive();
       marker.visible = mode === 'game' && Boolean(waypoint && !waypoint.reached);
@@ -2174,6 +2200,7 @@ export function createLandscape(canvas) {
       if (disposed) return;
       cancelContactPulse();
       survey = null; inspectionOrigin = null;
+      remoteView = false; publishEarthSignalFrame();
       disposed = true;
       if (frame) cancelAnimationFrame(frame);
       resizeObserver?.disconnect();

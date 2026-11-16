@@ -7,8 +7,7 @@ const safeUrl = value => /^(?:https?:|blob:|data:image\/|\.\.?\/|\/)/i.test(Stri
 export function renderDiscoveryCamera({photo={},stage='aim',captureUrl='',ready=false,aligned=false,controller=false,family='playstation',imageState='loading',reducedMotion=false,error=''} = {}) {
   const aiming=stage==='aim' || stage==='capturing', unavailable=stage==='unavailable';
   const authentic=stage==='revealing' && imageState==='ready' && !!safeUrl(photo.src);
-  const glyph=controller?controllerGlyph('primary',family):'';
-  const button=(action,label,disabled=false,primary=true)=>`<button class="${primary?'primary-button':'quiet-button'} discovery-camera__action" data-action="${action}"${disabled?' disabled':''}>${primary?glyph:''}<span>${label}</span></button>`;
+  const button=(action,label,disabled=false,primary=true)=>`<button class="${primary?'primary-button':'quiet-button'} discovery-camera__action" data-action="${action}"${disabled?' disabled':''}>${primary && controller?controllerGlyph(action==='capture-discovery'?'shutter':'primary',family):''}<span>${label}</span></button>`;
   const visibleError=error || (unavailable?'Camera unavailable.':'');
   const status=visibleError || (stage==='capturing'?'Recording picture.':stage==='revealing'?'Original mission image.':ready?'Camera ready.':'Positioning camera.');
   const name=photo.frameLabel || (/berry|blueberr/i.test(photo.title || '')?'BERRY BOWL':/chance|layer/i.test(photo.title || '')?'LAST CHANCE':photo.title || '');
@@ -18,7 +17,7 @@ export function renderDiscoveryCamera({photo={},stage='aim',captureUrl='',ready=
       ${authentic?`<img class="discovery-camera__original" data-discovery-photo="true" src="${safeUrl(photo.src)}" alt="${escape(photo.alt || photo.title || 'Opportunity’s actual observation')}">`:''}
       <div class="discovery-camera__brackets" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
       ${aiming?`<span class="discovery-camera__target">${escape(name)}</span><span class="discovery-camera__crosshair" aria-hidden="true"></span>`:''}
-      ${stage==='capturing'?'<div class="discovery-camera__exposure" aria-hidden="true"></div>':''}
+      ${['capturing','revealing'].includes(stage)?'<div class="discovery-camera__exposure" aria-hidden="true"></div>':''}
 
 
     </div>

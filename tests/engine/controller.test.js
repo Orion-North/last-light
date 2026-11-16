@@ -921,3 +921,34 @@ test('focus consumes a held input from a fresh browser gamepad snapshot', async 
   assert.deepEqual(f.activities, [1032]);
   await f.driver.destroy();
 });
+
+
+test('right bumper shutter requires a fresh edge after connection and context rearm', () => {
+  const f=fixture();
+  f.pad.buttons[5].pressed=true; f.pads([f.pad]); f.tick(0); f.tick(16);
+  assert.deepEqual(f.actions,[], 'preheld bumper cannot take a photograph on connection');
+  f.pad.buttons[5].pressed=false; f.tick(32);
+  f.pad.buttons[5].pressed=true; f.tick(48); f.tick(64);
+  assert.deepEqual(f.actions,['shutter'], 'holding creates one shutter action');
+  f.driver.rearmMenu(); f.tick(80);
+  assert.deepEqual(f.actions,['shutter'], 'rearming never replays a held bumper');
+  f.pad.buttons[5].pressed=false; f.tick(96);
+  f.pad.buttons[5].pressed=true; f.tick(112);
+  assert.deepEqual(f.actions,['shutter','shutter']);
+  f.pad.buttons[5].pressed=false; f.tick(128);
+  f.pad.buttons[0].pressed=true; f.tick(144);
+  assert.equal(f.actions.at(-1),'primary', 'face interaction remains a separate action');
+  f.driver.destroy();
+});
+
+test('context rearm consumes a simultaneously held bumper during another action', () => {
+  let f;
+  f=fixture(action=>{if(action==='primary')f.driver.rearmMenu();});
+  f.pads([f.pad]); f.tick(0);
+  f.pad.buttons[0].pressed=true; f.pad.buttons[5].pressed=true; f.tick(16);
+  assert.deepEqual(f.actions,['primary'], 'Compare or menu transition cannot also fire its preheld shutter');
+  f.pad.buttons[0].pressed=false; f.pad.buttons[5].pressed=false; f.tick(32);
+  f.pad.buttons[5].pressed=true; f.tick(48);
+  assert.deepEqual(f.actions,['primary','shutter']);
+  f.driver.destroy();
+});

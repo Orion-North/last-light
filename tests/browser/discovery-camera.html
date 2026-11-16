@@ -37,13 +37,49 @@ document.querySelector('#verify').onclick=async()=>{
  const check=(ok,message)=>{checks.push((ok?'PASS ':'FAIL ')+message);output.textContent=checks.join('\n');};
  try{
   await load();let d=frame.contentDocument,w=frame.contentWindow;
+  if(document.querySelector('#phase').value==='investigation') {
+   await waitFor(()=>d.querySelector('[data-action="compare-samples"]'));
+   d.body.dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));
+   d.querySelector('[data-action="compare-samples"]').click();
+   await waitFor(()=>d.querySelector('[data-action="capture-discovery"]:not(:disabled)'));
+   const neutral=samples.at(-1).yaw;
+   for(let i=0;i<5;i++){
+    d.body.dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowRight',repeat:true,bubbles:true}));await sleep(80);
+   }
+   check(Math.abs(samples.at(-1).yaw-neutral)<.005,'held tool arrow cannot steer the new mast');
+   const beforeFresh=samples.at(-1).yaw;
+   d.body.dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true}));await sleep(250);
+   d.body.dispatchEvent(new w.KeyboardEvent('keyup',{key:'ArrowLeft',bubbles:true}));
+   check(Math.abs(samples.at(-1).yaw-beforeFresh)>.02,'a different fresh arrow works without releasing the carried key');
+   d.body.dispatchEvent(new w.KeyboardEvent('keyup',{key:'ArrowRight',bubbles:true}));
+  }
   await waitFor(()=>d.querySelector('[data-action="capture-discovery"]:not(:disabled)'));
   check(samples.some(s=>s.ready),'camera becomes ready');
   check(!d.querySelector('[data-action="assist-observation"],[data-action="skip-intro"]'),'no inline skips');
-  const before=samples.at(-1).yaw;d.dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));await sleep(450);d.dispatchEvent(new w.KeyboardEvent('keyup',{key:'ArrowRight',bubbles:true}));await sleep(150);
+  const before=samples.at(-1).yaw;d.body.dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));await sleep(450);d.body.dispatchEvent(new w.KeyboardEvent('keyup',{key:'ArrowRight',bubbles:true}));await sleep(150);
   check(Math.abs(samples.at(-1).yaw-before)>.03,'keyboard changes framing');
-  const captureAt=performance.now();
+  // Cancel between the DOM shutter update and the scheduled GPU readback.
   d.querySelector('[data-action="capture-discovery"]').click();
+  d.querySelector('.brand').click();await sleep(400);
+  check(d.body.dataset.screen==='title' && !d.querySelector('.discovery-camera,.photo-uplink'),'canceled painted capture cannot reopen the game');
+  // Continue from the same production save; camera input must start fresh.
+  if(padEnabled){pad.buttons[5]={value:1,pressed:true};await sleep(100);}
+  d.querySelector('[data-action="begin"]').click();
+  await waitFor(()=>d.querySelector('[data-action="capture-discovery"]:not(:disabled)'));
+  if(padEnabled){
+   await sleep(180);check(!!d.querySelector('.discovery-camera[data-stage="aim"]'),'preheld bumper requires release after entering the camera');
+   pad.buttons[5]={value:0,pressed:false};await sleep(150);
+   pad.buttons[0]={value:1,pressed:true};await sleep(150);pad.buttons[0]={value:0,pressed:false};await sleep(150);
+   check(!!d.querySelector('.discovery-camera[data-stage="aim"]'),'primary button does not trigger the camera shutter');
+   pad.buttons[5]={value:1,pressed:true};await waitFor(()=>!d.querySelector('.discovery-camera[data-stage="aim"]'));pad.buttons[5]={value:0,pressed:false};
+   check(!!d.querySelector('.discovery-camera[data-stage="capturing"],.discovery-camera[data-stage="revealing"]'),'right bumper triggers the shutter');
+  }else d.querySelector('[data-action="capture-discovery"]').click();
+  d.querySelector('#settings-toggle').click();await sleep(500);
+  const held=d.querySelector('.discovery-camera');
+  check(!!held && ['capturing','revealing'].includes(held.dataset.stage),'pause during shutter keeps the captured/live camera present');
+  check(!d.querySelector('.photo-uplink'),'pause at shutter cannot consume the image beats');
+  d.querySelector('#settings-modal [data-close]').click();
+  const captureAt=performance.now();
   await waitFor(()=>d.querySelector('.discovery-camera[data-stage="revealing"]') || d.querySelector('.photo-uplink'));
   check(performance.now()-captureAt<2000,'capture becomes reveal in '+Math.round(performance.now()-captureAt)+' ms');
   // Capture and authentic-image proof belong to the reveal, before the original uplink takes over.

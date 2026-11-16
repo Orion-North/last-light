@@ -31,3 +31,16 @@ test('photo fades out during handoff and original terminal alone remains afterwa
  }
  assert.match(renderPhotoUplink({photo,stage:'handoff',terminal}),/--handoff-progress:0/);
 });
+
+test('the captured-frame reveal retains the shutter layer without introducing another action',()=>{
+ const html=renderDiscoveryCamera({photo,captureUrl:'blob:frame',stage:'revealing',imageState:'ready'});
+ assert.match(html,/discovery-camera__exposure/);assert.match(html,/discovery-camera__capture/);
+ assert.match(html,/discovery-camera__original/);assert.doesNotMatch(html,/data-action=/);
+});
+
+test('camera shutter uses the right bumper glyph while historical fallback keeps confirm',()=>{
+ const camera=renderDiscoveryCamera({photo,ready:true,controller:true,family:'xbox'});
+ assert.match(camera,/RB/);assert.doesNotMatch(camera,/aria-label="A"/);
+ const fallback=renderDiscoveryCamera({photo,stage:'unavailable',controller:true,family:'xbox'});
+ assert.doesNotMatch(fallback,/RB/);
+});

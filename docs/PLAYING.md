@@ -51,8 +51,8 @@ The landing site, Last Chance, Berry Bowl, Perseverance Valley and final sky
 observation each lead into the rover camera. The landing-site memory choice stays
 part of your archive.
 Drag or use the arrow keys/right stick to frame the discovery, then choose **Take
-picture** (Enter or the controller’s bottom face button). Framing is forgiving and
-has no timer. The picture dissolves into a credited original NASA image, then
+picture** (Enter or the controller’s right bumper: R1 / RB). Framing is forgiving and
+has no timer. The captured frame pauses, dissolves into a credited original NASA image, holds so you can see it, then
 fades into the original Mars–Earth sending instrument. **Send** or the usual
 two-trigger squeeze/release starts the familiar signal journey and Earth reply.
 The photo clears as the transmission begins; there is no extra review menu.
