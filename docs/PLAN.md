@@ -5,11 +5,13 @@ a controller is the primary target. The Windows/Electron edition and its build
 workflow are removed; earlier native-edition milestones below are historical.
 Browser Gamepad rumble and optional USB WebHID trigger effects remain supported.
 
-**v0.20.1 camera pass:** Two geological investigations now lead to rover-eye framing,
+**v0.20.2 camera pass:** Two geological investigations now lead to rover-eye framing,
 intentional capture and a credited real NASA image reveal, followed by the original
 Mars–Earth sending animation and call/reply ritual. Keep the screen
 immersive: minimal reticle/actions, with scientific explanations in the journal.
-Inline skipping is replaced by deliberate pause-menu assistance.
+Inline skipping is replaced by deliberate pause-menu assistance. Capture moves
+directly through the reveal into sending: no Retake or persistent photo panel.
+Detailed readings, photo provenance and source links stay in the journal.
 
 **Previous v0.19 focus:** controller scrolling and disconnect recovery, readable short-screen
 receipts, clearer Earth recovery actions, and a visible consequence for the archive

@@ -44,7 +44,9 @@ document.querySelector('#verify').onclick=async()=>{
   check(Math.abs(samples.at(-1).yaw-before)>.03,'keyboard changes framing');
   d.querySelector('[data-action="capture-discovery"]').click();
   await waitFor(()=>d.querySelector('.discovery-camera[data-stage="revealing"]') || d.querySelector('.photo-uplink'));
-  // Capture proof belongs to the reveal, before the authentic thumbnail takes over.
+  // Capture and authentic-image proof belong to the reveal, before the original uplink takes over.
+  await waitFor(()=>d.querySelector('.discovery-camera[data-stage="revealing"] [data-discovery-photo]')?.naturalWidth>0);
+  check(true,'authentic NASA photograph appears during reveal');
   if(!document.querySelector('#motion').checked){
    check(d.querySelector('.discovery-camera__capture')?.src.startsWith('blob:'),'actual WebGL frame captured during reveal');
    check(!d.querySelector('[data-action="transmit"]'),'no send action during reveal');
@@ -62,16 +64,13 @@ document.querySelector('#verify').onclick=async()=>{
   }
   await waitFor(()=>d.querySelector('.photo-uplink[data-stage="uplink"]'));
   check(!!d.querySelector('.upload-terminal[data-stage="ready"] .signal-map'),'original signal map restored before send');
-  d.querySelector('[data-action="retake-discovery"]').click();await waitFor(()=>d.querySelector('[data-action="capture-discovery"]:not(:disabled)'));
-  check(!d.querySelector('.discovery-camera__capture'),'retake returns to live view');
-  d.querySelector('[data-action="capture-discovery"]').click();
-  await waitFor(()=>d.querySelector('.photo-uplink[data-stage="uplink"]'));
+  check(!d.querySelector('[data-action="retake-discovery"]'),'uplink has no Retake action');
+  check(!d.querySelector('.photo-uplink__photo,[data-discovery-photo]'),'uplink has no persistent photo panel');
   if(padEnabled){pad.buttons[0]={value:1,pressed:true};await sleep(130);pad.buttons[0]={value:0,pressed:false};}else d.querySelector('[data-action="transmit"]').click();
   await waitFor(()=>d.querySelector('.upload-terminal[data-stage="received"] [data-action="next"]'));
   check(!!d.querySelector('.upload-terminal[data-stage="received"] .signal-map'),'original Mars–Earth receipt remains visible');
   const map=d.querySelector('.signal-map');check(map.textContent.includes('MARS') && map.textContent.includes('EARTH'),'receipt map names Mars and Earth');
-  await waitFor(()=>d.querySelector('[data-discovery-photo]')?.complete);
-  check(d.querySelector('[data-discovery-photo]').naturalWidth>0,'authentic NASA photograph remains the uplink image');
+  check(!d.querySelector('[data-action="retake-discovery"],.photo-uplink__photo,[data-discovery-photo]'),'receipt has no Retake action or persistent photo panel');
   check(errors.length===0,'no runtime errors '+errors.join('; '));
   const saved=JSON.parse(memory.get('last-light-journey-v1'));check(saved.phase==='received','receipt saved');
   output.textContent=checks.join('\n');

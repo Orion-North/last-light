@@ -16,7 +16,7 @@ A playable project developed for the **2026 NASA Space Apps storytelling challen
 
 - **Drive the rover yourself.** Cross a rocky landscape with a close camera, changing skies, and terrain feedback on compatible controllers.
 - **Work with the evidence.** Trace crossing rock layers, brush dust from a surface, and compare two sample readings.
-- **Frame a discovery.** Take a picture from the rover’s viewpoint at Last Chance and Berry Bowl; send it home to reveal the authentic NASA observation.
+- **Frame a discovery.** Take a picture from the rover’s viewpoint at Last Chance and Berry Bowl; reveal the authentic NASA observation, then send it home.
 - **Make contact.** Squeeze both triggers, hold the signal, then release to send your discovery toward Earth.
 - **Hear the journey.** An original adaptive score and musical call-and-response accompany the discoveries.
 
@@ -39,7 +39,7 @@ A playable project developed for the **2026 NASA Space Apps storytelling challen
 
 Connect a controller, press a button, and begin. Optional original-DualSense USB trigger effects are experimental and depend on browser and device support; see [setup and limits](docs/CONTROLLERS.md). Sound can be muted, progress saves locally, and the camera button downloads a HUD-free photo.
 
-The intended session is around 10–15 minutes; this is a design target, not a measured average. **Playable build: v0.20.1.**
+The intended session is around 10–15 minutes; this is a design target, not a measured average. **Playable build: v0.20.2.**
 
 ## Run locally
 

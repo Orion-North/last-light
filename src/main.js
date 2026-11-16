@@ -17,7 +17,6 @@ import { controllerMenuTargets } from './ui/controller-navigation.js';
 import { renderGeologyPanel } from './ui/geology-panel.js';
 import { renderUploadTerminal } from './ui/upload-terminal.js';
 import { createSqueeze } from './engine/squeeze.js';
-import { createGeologyTool } from './engine/geology-tool.js';
 import { createSurvey, surveyProfiles } from './engine/fieldwork.js';
 import { createInvestigation } from './engine/investigation.js';
 import { createInteractionWait } from './engine/interaction-wait.js';
@@ -121,13 +120,19 @@ function syncDiscoveryProgress() {
   root.style.setProperty('--reveal-progress',discoveryShot.stage==='revealing'?progress:1);
   root.style.setProperty('--handoff-progress',discoveryShot.stage==='handoff'?progress:1);
   const rect=discoveryShot.frame;
-  if(rect)for(const [key,value] of Object.entries({left:rect.left,top:rect.top,width:rect.width,height:rect.height,scale:160/rect.width}))root.style.setProperty('--photo-'+key,key==='scale'?value:value+'px');
+  if(rect){
+    const mars=root.querySelector('.signal-world--mars .planet')?.getBoundingClientRect();
+    const scale=(mars?.width || 48)/rect.width;
+    const geometry={left:rect.left,top:rect.top,width:rect.width,height:rect.height,scale};
+    if(mars){geometry['dest-x']=mars.left;geometry['dest-y']=mars.top+(mars.height-rect.height*scale)/2;}
+    for(const [key,value] of Object.entries(geometry))root.style.setProperty('--photo-'+key,key==='scale'?value:value+'px');
+  }
   const terminal=root.querySelector('.photo-uplink__terminal');
   if(terminal)terminal.inert=discoveryShot.stage==='handoff';
 }
 function beginDiscoveryReveal() {
   cancelAnimationFrame(discoveryFrame);discoveryFrameAt=0;
-  discoveryShot.stage='revealing';discoveryShot.elapsed=0;discoveryShot.progress=0;
+  discoveryShot.stage='revealing';discoveryShot.elapsed=0;discoveryShot.progress=0;discoveryShot.imageWait=0;
   const rect=app.querySelector('.discovery-camera__view')?.getBoundingClientRect();
   if(rect)discoveryShot.frame={left:rect.left,top:rect.top,width:rect.width,height:rect.height};
   const token=captureGeneration;
@@ -135,7 +140,7 @@ function beginDiscoveryReveal() {
     if(token!==captureGeneration || !currentDiscovery() || !['revealing','handoff'].includes(discoveryShot?.stage)){discoveryFrame=0;return;}
     const paused=state.paused || document.hidden || !!document.querySelector('dialog[open]');
     const previous=discoveryShot.stage;
-    const next=advanceDiscoveryHandoff(discoveryShot,discoveryFrameAt?now-discoveryFrameAt:0,{paused,reducedMotion:settings.reducedMotion});
+    const next=advanceDiscoveryHandoff(discoveryShot,discoveryFrameAt?now-discoveryFrameAt:0,{paused,reducedMotion:settings.reducedMotion,imageLoading:photoAssets.get(discoveryShot.sceneId)?.state==='loading'});
     discoveryFrameAt=paused?0:now;Object.assign(discoveryShot,next);
     if(next.stage!==previous){
       pressed.clear();controller?.rearmMenu?.();
@@ -179,12 +184,6 @@ async function captureDiscovery() {
     view?.setDiscoveryCameraFrozen?.(false);announce(discoveryShot.error);
   }
   renderGame({focus:!state.paused});
-}
-function retakeDiscovery() {
-  if(!currentDiscovery() || discoveryStage()!=='uplink' || state.paused)return;
-  if(discoveryShot.url)URL.revokeObjectURL(discoveryShot.url);
-  discoveryShot.url='';discoveryShot.stage='aim';discoveryShot.error='';discoveryReady=false;discoveryAligned=false;
-  stopContact();view?.setDiscoveryCameraFrozen?.(false);pressed.clear();renderGame({focus:true});
 }
 function useHistoricalObservation() {
   if(!currentDiscovery() || state.paused)return;
@@ -462,10 +461,10 @@ function renderGame({ focus = false } = {}) {
   const terminalHTML=()=>renderUploadTerminal({title:recalled?`Remember: ${recalled.title}`:choice?.memory?.title || scene.title,mode:contact.mode,
       stage:state.phase==='received'?'received':transmitting?'sending':'ready',
       prompt:state.phase==='received'?'':transmitting?contact.waiting:contacting?uploadPrompt():contact.mode==='archive'?'Keep this moment in the mission archive.':'Send a call. Listen for a reply.',
-      response:scene.response || scene.transmission,meaning:recalled?'The first view you sent is still on Earth. The storm cannot take it back.':contact.mode==='partial'?'A sky full of dust. Send what light remains.':recordedChoice(scene,state)?scene.discovery:choice?.shortReply || '',input:controllerConnected?'controller':'pointer',sceneId:scene.id,findings:evidence?createGeologyTool(scene.id).snapshot().targets.toSorted((a,b)=>a.x-b.x):[],family:controllerFamily(controllerId,settings.prompts),story:consoleHTML,voice:!!thought.text});
+      response:scene.response || scene.transmission,meaning:recalled?'The first view you sent is still on Earth. The storm cannot take it back.':contact.mode==='partial'?'A sky full of dust. Send what light remains.':recordedChoice(scene,state)?scene.discovery:choice?.shortReply || '',input:controllerConnected?'controller':'pointer',sceneId:scene.id,family:controllerFamily(controllerId,settings.prompts),story:consoleHTML,voice:!!thought.text});
   let content = '';
   if(photoTerminal) {
-    content=renderPhotoUplink({photo,captureUrl:discoveryShot?.url || '',imageState:photoAssets.get(scene.id)?.state || 'loading',stage:discoveryStage(),terminal:terminalHTML(),reducedMotion:settings.reducedMotion,retake:discoveryStage()==='uplink'});
+    content=renderPhotoUplink({photo,captureUrl:discoveryShot?.url || '',imageState:photoAssets.get(scene.id)?.state || 'loading',stage:discoveryStage(),terminal:terminalHTML(),reducedMotion:settings.reducedMotion});
   } else if (photo) {
     content=renderDiscoveryCamera({photo,stage:graphicsError && discoveryStage()==='aim'?'unavailable':discoveryStage(),captureUrl:discoveryShot?.url || '',ready:discoveryReady,aligned:discoveryAligned,controller:controllerConnected,family:controllerFamily(controllerId,settings.prompts),imageState:photoAssets.get(scene.id)?.state || 'loading',reducedMotion:settings.reducedMotion,error:discoveryShot?.error || ''});
   } else if (geologyActive) {
@@ -503,8 +502,8 @@ function openJournal() {
   const scene = scenes[state.sceneIndex];
   const discoveries = discoveredScenes(state, scenes);
   $('#journal-content').innerHTML = `<p class="hint">Inner thoughts and Earth replies are fiction. Travel, conditions, and communication timing are dramatized. Exploring does not spend power. Tool readings are simplified comparisons, not instrument telemetry.</p><p class="hint">${missionConditions(scene).join(' · ')} · ${state.memories.length} memories</p>${state.phase==='observe' ? `<p class="journal-locked">${escape(scene.approachTitle || scene.title)}<br>Look closely to add this discovery.</p>` : ''}<h3>Discoveries · ${discoveries.length}</h3>${discoveries.map(item=>{
-    const source=sources.find(s=>s.id===item.observation.sourceId);
-    return `<details class="discovery-entry" ${item.id===scene.id?'open':''}><summary>${escape(item.observation.title)}${assistedScenes.has(item.id)?' · Assisted':''}</summary><p>${escape(item.discovery)}</p>${paragraphs(item.observation.text)}<p>${escape(item.observation.fact || '')}</p>${source?`<a href="${escape(source.url)}" target="_blank" rel="noreferrer">NASA source ↗</a>`:''}</details>`;
+    const source=sources.find(s=>s.id===item.observation.sourceId),photo=discoveryPhotos[item.id];
+    return `<details class="discovery-entry" ${item.id===scene.id?'open':''}><summary>${escape(item.observation.title)}${assistedScenes.has(item.id)?' · Assisted':''}</summary><p>${escape(item.discovery)}</p>${paragraphs(item.observation.text)}<p>${escape(item.observation.fact || '')}</p>${source?`<a href="${escape(source.url)}" target="_blank" rel="noreferrer">NASA source ↗</a>`:''}${photo?`<p class="hint">${escape(photo.caption)}</p><p class="hint">${escape(photo.credit)} · <a href="${escape(photo.sourceUrl)}" target="_blank" rel="noreferrer">Original mission photograph ↗</a></p>`:''}</details>`;
   }).join('') || '<p>Your observations will appear here after you make them.</p>'}<h3>Your memories · ${state.memories.length}</h3><div class="archive-grid">${state.memories.map(m=>`<article class="memory-card"><h4>${escape(m.title)}</h4><p>${escape(m.text)}</p></article>`).join('') || '<p>Something worth remembering is waiting out there.</p>'}</div>`;
   openModal('#journal-modal');
 }
@@ -829,7 +828,6 @@ app.addEventListener('click',event=>{
   switch(button.dataset.action) {
     case 'begin': { const fresh=!saved;if(!soundPreferenceSet)toggleSound(true); state=saved || createState(); state={...state,paused:false}; lastScene=null;pendingCheckpoint=savedCheckpoint;if(fresh)startBriefing();else renderGame({focus:true});save();break; }
     case 'capture-discovery': captureDiscovery();break;
-    case 'retake-discovery': retakeDiscovery();break;
     case 'use-discovery-photo': useHistoricalObservation();break;
     case 'observe': scan(); break;
 
@@ -904,7 +902,6 @@ canvas.addEventListener('discovery-camera-sample',event=>{
   discoveryReady=event.detail.ready;discoveryAligned=event.detail.aligned;
   const button=app.querySelector('[data-action="capture-discovery"]');if(button)button.disabled=!discoveryReady;
   const panel=app.querySelector('.discovery-camera');if(panel)panel.dataset.aligned=String(discoveryAligned);
-  const alignment=$('#discovery-camera-alignment');if(alignment && alignment.dataset.aligned!==String(discoveryAligned)){alignment.dataset.aligned=String(discoveryAligned);alignment.innerHTML='<i></i>'+(discoveryAligned?'FRAMED':'LIVE VIEW');}
   const status=$('#discovery-camera-status'),text=discoveryShot?.error || (!discoveryReady?'Positioning the mast…':discoveryAligned?'Discovery in frame · Take your picture':'Adjust the frame, or capture your own composition');
   if(status && status.textContent!==text)status.textContent=text;
 });
@@ -1001,8 +998,7 @@ function controllerAction(action) {
       return;
     }
     if(contacting && !dialog) {
-      const selected=targets.includes(document.activeElement)?document.activeElement:null;
-      if(selected?.matches('[data-action="retake-discovery"],a[href]'))selected.click();else sendMemory();
+      sendMemory();
       return;
     }
     if(!dialog && screen==='game' && state.phase==='observe' && !reached && !targets.includes(document.activeElement)) {announce(`Drive to ${goals[state.sceneIndex]?.label || 'the beacon'}. Use the left stick or WASD.`);return;}

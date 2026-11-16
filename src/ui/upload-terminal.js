@@ -20,7 +20,7 @@ export function renderUploadTerminal({ sceneId = '', findings = [], title, mode,
   const operationalResponse = /^Earth[’']s call, imagined:/i.test(response || '') ? 'No signal is received from Opportunity.' : response;
   // An absent rover thought is authored silence, not a request for Earth dialogue.
   const showOperationalResponse = !voice && (mode === 'silence' || mode === 'archive');
-  const buttonLabel = upload ? 'Upload memory' : mode === 'silence' ? 'Call Opportunity' : 'Keep memory';
+  const buttonLabel = upload ? (['stone-ripples','blueberries'].includes(sceneId)?'Send':'Upload memory') : mode === 'silence' ? 'Call Opportunity' : 'Keep memory';
   const commitmentLabel = mode === 'silence' ? 'Call commitment' : mode === 'archive' ? 'Archive commitment' : 'Send commitment';
   const action = stage === 'ready' && !controller
     ? `<button class="upload-terminal__button" type="button" data-action="transmit">${buttonLabel} <span aria-hidden="true">→</span></button>`

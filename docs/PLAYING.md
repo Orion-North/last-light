@@ -51,9 +51,10 @@ At Last Chance and Berry Bowl, completing the investigation opens the rover came
 Drag or use the arrow keys/right stick to frame the discovery, then choose **Take
 picture** (Enter or the controller’s bottom face button). Framing is forgiving and
 has no timer. The picture dissolves into a credited original NASA image, then
-contracts into the original Mars–Earth sending instrument. **Retake** returns to
-the live view. **Send** or the usual two-trigger squeeze/release starts the familiar
-signal journey and Earth reply. The reconstructed terrain is not an exact recreation of the historic photo.
+fades into the original Mars–Earth sending instrument. **Send** or the usual
+two-trigger squeeze/release starts the familiar signal journey and Earth reply.
+The photo clears as the transmission begins; there is no extra review menu.
+Photo credits and source links remain in Memories. The reconstructed terrain is not an exact recreation of the historic photo.
 
 Pause preserves the captured frame. Reload before sending returns to camera framing
 without repeating the investigation; received observations remain available after

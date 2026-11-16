@@ -775,3 +775,24 @@ All seven recovery cases also pass, including historical-image fallback followed
 by the original two-trigger send and missing NASA imagery followed by Continue.
 The trigger fixture waits for actual ready/charged states instead of assuming
 850 milliseconds guarantees enough rendered samples on a slow preview device.
+
+## IMMERSION-39 — v0.20.2 uncluttered capture flow (2026-11-15)
+
+Three GPT-6.1 Sol lanes handled presentation, browser fixtures and independent
+review. Retake and its runtime path are removed. The camera keeps the reticle,
+scene label and one capture action; redundant help and alignment grading are gone.
+The authentic photograph fades toward Mars, then clears completely. The original
+signal apparatus, trigger charge/release, musical call/reply and receipt remain.
+Repeated science readings and persistent photo/source panels no longer occupy the
+uplink. Full photo credit and provenance are available in Memories. The discovery
+button says Send. Loading imagery gets a bounded, pause-safe wait; failures never
+trap the player.
+
+Both discovery lifecycle browser checks pass, including keyboard aiming, captured
+WebGL frame, authentic photo during reveal, pause during both transitions, early-send
+protection and original Mars/Earth receipt. Berry Bowl uses a simulated controller
+face button. Checks explicitly reject Retake and persistent photo panels. The
+journal's original-photo link and full credit were observed. 28 engine test files,
+69 source syntax checks, scene/assets and static build pass; the image-wait regression
+also passes. Physical controller feel and a full fresh story playthrough are untested.
+Received-save reload also passes with the original receipt and no photo panel.

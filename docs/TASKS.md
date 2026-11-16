@@ -898,3 +898,25 @@ handoff. Both discoveries, desktop and simulated controller sending, retake,
 received reload and all seven recovery scenarios pass. Sol review fixes included.
 28 engine test files and source/asset/build checks pass. Physical controller feel
 and a fresh uninterrupted full story remain unverified.
+
+## IMMERSION-39 — remove photo-flow clutter
+
+User requests no Retake or arbitrary filler; use fast GPT-6.1 Sol lanes.
+Shared branch polish/immersive-photo-flow, disjoint writes, no agent commits.
+- PRESENT-39 / technical_review (Sol): src/ui/discovery-camera.js/css and
+  tests/engine/discovery-camera.test.js. Remove Retake and persistent photo/source
+  thumbnail UI. Keep brief authentic-image reveal and photo handoff fading away
+  into untouched original terminal. Only essential capture/action cues on screen.
+- QA-39 / gameplay_review (Sol): tests/browser/discovery-camera.html and
+  tests/browser/discovery-edge-cases.html. Remove obsolete retake assertions;
+  verify reveal, original sending and no leftover photo controls after handoff.
+- AUDIT-39 / challenge_review (Sol): read-only immersive UI audit; identify
+  redundant on-screen material without removing narrative or sending ritual.
+- Root: remove unused retake lifecycle, move source access to journal, remove
+  redundant discovery readings from uplink, simplify the photo send label,
+  bound slow-image waiting, integrate/check/publish.
+
+IMMERSION-39 complete: Retake, persistent thumbnail/source controls, alignment
+labels and duplicate science readouts removed. Photo enters the existing Mars
+signal and clears; sources remain in Memories. Both discovery lifecycles and
+receipt reload verified in browser; 28 engine files/source/assets/build pass.
