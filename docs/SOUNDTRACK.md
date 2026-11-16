@@ -184,3 +184,17 @@ Stereo gusts swell slowly under a fixed master/compressor. They yield around
 the original radio question and reply, then return. Earth contact-loss silence
 remains explicit. Oppy's current terminal ticks are unchanged by this release;
 emotion-specific speaking tones are planned separately.
+
+## Oppy's nonverbal voice (VOICE-54)
+Authored thoughts carry neutral, curious, hopeful, strained, reassuring or
+exhausted inflection. The same soft triangle carrier and filtered air onset give
+each a recognizable identity; contours alter shape, colour, duration and effort.
+A thought has one onset and at most one quieter clause accent, spaced at least
+1.2 seconds apart. Letter-by-letter visual typing remains, without continuous
+per-character audio. Reassurance stays steady/hopeful; final-image thoughts use
+the shortest, quietest articulation rather than a dramatic farewell.
+
+The voice is distinct from the learned discrete radio question/reply. Muting,
+pause, hidden tabs, sending and post-contact silence cancel/suppress it. Reduced
+motion keeps the full thought immediate and silent. No spoken telemetry, voice
+recordings, new controls or text panels are introduced.

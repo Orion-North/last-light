@@ -1,3 +1,4 @@
+import { voiceContour } from './voice.js';
 import { createInstrumentBank } from './instruments.js';
 import { createScoreSpace } from './space.js';
 import { SECTIONS as sections, phrase, SIGNAL_QUESTION, SIGNAL_ANSWER, ANSWER_WINDOW } from './score.js';
@@ -47,6 +48,7 @@ export function createSound() {
   let scoreSpace = null;
   let textBuffer = null;
   let lastTextTime = -Infinity;
+  let textBursts = 0;
   const doc = typeof document === 'undefined' ? null : document;
   let hidden = Boolean(doc?.hidden);
   const midi = note => 440 * Math.pow(2, (note - 69) / 12);
@@ -119,6 +121,7 @@ export function createSound() {
   function hush() {
     transmission = null;
     signalHoldUntil = 0;
+    textBursts = 0;
     stopScheduler();
     scoreSpace?.clear();
     updateVolume();
@@ -406,70 +409,53 @@ export function createSound() {
     updateWind();
   }
 
-  function textPulse({ speaker = 'rover', first = false, character = '', index = 0, punctuation = false } = {}) {
-    // These are local reading articulations, never radio receipts. Leave the
-    // learned signal and its missing answer completely exposed, including silence.
+  function textPulse({ speaker = 'rover', emotion = 'neutral', first = false, character = '', accent = '' } = {}) {
+    // Live phrase accents only. There is no queue, and radio/silence never gain
+    // a surrogate voice. The writer supplies at most a start and one clause.
     if (!canPlay() || section === 'silence' || transmission !== null || context.currentTime < signalHoldUntil) return;
-    const now = context.currentTime;
     if (character && !character.trim()) return;
-    // Articulate the live character only. Never schedule a backlog, even when
-    // the writer catches up after a slow frame or the audio context resumes.
-    if (now - lastTextTime < .065) return;
-    lastTextTime = now;
+    const now=context.currentTime;
+    if (first) {
+      if (now-lastTextTime < .24) return;
+      textBursts=0;
+      stopVoices('text');
+    } else if (accent !== 'clause' || textBursts !== 1 || now-lastTextTime < 1.2) return;
+    lastTextTime=now; textBursts++;
     if (!textBuffer) {
-      const rate = Math.min(context.sampleRate, 24000);
-      textBuffer = context.createBuffer(1, Math.ceil(rate * .065), rate);
-      const samples = textBuffer.getChannelData(0);
-      let seed = 1515;
-      for (let i = 0; i < samples.length; i++) {
-        seed = (seed * 1664525 + 1013904223) >>> 0;
-        samples[i] = seed / 4294967296 * 2 - 1;
+      const rate=Math.min(context.sampleRate,24000);
+      textBuffer=context.createBuffer(1,Math.ceil(rate*.24),rate);
+      const samples=textBuffer.getChannelData(0);
+      let seed=1515;
+      for (let i=0;i<samples.length;i++) {
+        seed=(seed*1664525+1013904223)>>>0;
+        samples[i]=seed/4294967296*2-1;
       }
     }
-    // A dry, rounded key rather than a pitched beep: Earth is softer/warmer,
-    // archive records are duller still. No melody, echo, panning or answering pair.
-    const colour = { rover: [1150, .030, .025], earth: [760, .038, .022], record: [440, .044, .020] }[speaker]
-      || [1150, .030, .025];
-    const [cutoff, tail, level] = colour;
-    const letter = character.codePointAt(0) || 79;
-    const step = Number.isFinite(index) ? Math.max(0, Math.floor(index)) : 0;
-    const variation = ((letter * 17 + step * 13) % 19) / 18;
-    const stop = punctuation || /[,.!?;:…]/u.test(character);
-    const duration = tail + (first ? .012 : 0) + (stop ? .008 : 0);
-    const source = context.createBufferSource();
-    source.buffer = textBuffer;
-    source.playbackRate.value = .88 + variation * .24;
-    const filter = context.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = cutoff * (.82 + variation * .36) * (stop ? .8 : 1);
-    filter.Q.value = .3 + variation * .12;
-    const gain = context.createGain();
-    gain.gain.value = 0;
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(level * (first ? 1 : .7) * (stop ? .65 : 1), now + .004);
-    gain.gain.exponentialRampToValueAtTime(.0001, now + duration);
-    gain.gain.setValueAtTime(0, now + duration + .002);
+    const contour=voiceContour({emotion,speaker,first});
+    const duration=contour.duration, airDuration=Math.min(.10,duration*.55);
+    const source=context.createBufferSource(), filter=context.createBiquadFilter(), gain=context.createGain();
+    source.buffer=textBuffer;
+    filter.type='lowpass';filter.frequency.value=contour.cutoff;filter.Q.value=.3;
+    gain.gain.value=0;gain.gain.setValueAtTime(0,now);
+    gain.gain.linearRampToValueAtTime(contour.airLevel,now+.008);
+    gain.gain.exponentialRampToValueAtTime(.0001,now+airDuration);
+    gain.gain.setValueAtTime(0,now+airDuration+.002);
     source.connect(filter).connect(gain).connect(master);
-    registerVoice([source], [source, filter, gain]);
-    source.start(now);
-    source.stop(now + duration + .003);
-    if (first) {
-      // A tiny rounded startup murmur gives Oppy a presence without turning
-      // each letter into a musical beep or borrowing the radio-answer motif.
-      const voice = context.createOscillator();
-      const envelope = context.createGain();
-      voice.type = 'sine';
-      const pitch = speaker === 'earth' ? 285 : speaker === 'record' ? 210 : 420;
-      voice.frequency.setValueAtTime(pitch, now);
-      voice.frequency.exponentialRampToValueAtTime(pitch * .88, now + .065);
-      envelope.gain.setValueAtTime(0, now);
-      envelope.gain.linearRampToValueAtTime(.006, now + .008);
-      envelope.gain.exponentialRampToValueAtTime(.0001, now + .075);
-      voice.connect(envelope).connect(master);
-      registerVoice([voice], [voice, envelope]);
-      voice.start(now);
-      voice.stop(now + .08);
-    }
+    registerVoice([source],[source,filter,gain],'text');
+    source.start(now);source.stop(now+airDuration+.003);
+    // A single continuous, sub-radio-register murmur, never a sequence of notes.
+    const voice=context.createOscillator(), envelope=context.createGain();
+    voice.type=contour.waveform;
+    voice.frequency.setValueAtTime(contour.pitch,now);
+    voice.frequency.exponentialRampToValueAtTime(contour.pitch*contour.turn,now+duration*.45);
+    voice.frequency.exponentialRampToValueAtTime(contour.pitch*contour.end,now+duration);
+    envelope.gain.value=0;envelope.gain.setValueAtTime(0,now);
+    envelope.gain.linearRampToValueAtTime(contour.toneLevel,now+.018);
+    envelope.gain.exponentialRampToValueAtTime(.0001,now+duration);
+    envelope.gain.setValueAtTime(0,now+duration+.002);
+    voice.connect(envelope).connect(master);
+    registerVoice([voice],[voice,envelope],'text');
+    voice.start(now);voice.stop(now+duration+.003);
   }
 
   function cancelTransmission() {

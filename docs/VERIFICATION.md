@@ -1057,3 +1057,13 @@ STORM-53 real Web Audio rendering: early/deep/final storm peak amplitudes were
 clipping in the sampled arc; perceived emotion still needs human listening.
 The separate explicit contact-loss silence case uses night/scene7/received;
 Earth observe is intentionally a waiting score, not the silence state.
+
+## v0.22.3 — emotional terminal tones (VOICE-54)
+
+All 33 engine test files pass; 80 JS syntax checks, 12 scene contracts and
+asset checks pass. Real browser writer/audio integration passed for all six
+contours: exactly two actual tone oscillators per long two-clause thought,
+with measured clause separation 1.71–2.10 s. Pause held text without new audio;
+muted writing allocated no tone nodes; reduced motion completed silently.
+Human interpretation of emotion and physical speaker/headphone balance remain
+playtest questions. v0.22.2 was live before this separate pass began.

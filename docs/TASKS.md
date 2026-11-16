@@ -1145,3 +1145,16 @@ real browser audio showed growing wind-to-music balance and bounded peaks.
 POLISH-52 final matrix has nine regular approaches plus cold model-load entry.
 Chassis alignment trial removed; driven pose stays unchanged. First-person
 Blueberries capture hides body intrusion and restores the rover on sending.
+
+## VOICE-54 — expressive nonverbal terminal voice
+v0.22.2 is confirmed live (795bbc7), including STORM-53 and POLISH-52. User can
+test it while this separate pass proceeds. Sol room_polish owns src/audio/voice.js,
+sound.js and audio lifecycle/music tests. Sol berry_angle owns terminal-story.js,
+story-console.js and narrative/writer tests. Root owns integration/main if needed,
+QA fixture/docs/build/publication. Shared checkout main; disjoint file ownership.
+Contract: line.emotion metadata is authored; writer sends bounded start/clause
+textPulse accents, sound uses deterministic quiet contours. Preserve silence
+post-contact, no backlog, mute/pause/hidden/transmission guards. No extra UI.
+VOICE-54 complete: authored emotion metadata and sparse start/clause gestures
+integrated; explicit accent contract checked end-to-end. Real browser six-tone,
+pause/mute/reduced-motion checks and all33 engine files pass. No extra UI.

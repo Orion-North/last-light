@@ -5,13 +5,13 @@ import { storyLine } from '../../src/content/terminal-story.js';
 import { scenes } from '../../src/content/story.js';
 
 function fixture() {
-  let queued = null, paused = false, reduced = false;
+  let queued = null, paused = false, reduced = false, clock = 0;
   const pulses = [];
   const writer = createStoryWriter({requestFrame:fn=>(queued=fn,1),cancelFrame:()=>{queued=null;},
-    paused:()=>paused,reducedMotion:()=>reduced,pulse:cue=>pulses.push(cue)});
+    paused:()=>paused,reducedMotion:()=>reduced,pulse:cue=>pulses.push({...cue,at:clock})});
   const target = () => ({textContent:'',isConnected:true,closest:()=>({classList:{toggle(){}}})});
-  const mount = (element,text='A thought that takes a little time to reach the screen.',key='first') => writer.mount({querySelector:()=>element},{speaker:'rover',text},key);
-  const step = now => { const fn=queued;queued=null;fn?.(now); };
+  const mount = (element,text='A thought that takes a little time to reach the screen.',key='first',emotion='neutral') => writer.mount({querySelector:()=>element},{speaker:'rover',text,emotion},key);
+  const step = now => { clock=now;const fn=queued;queued=null;fn?.(now); };
   return {writer,pulses,target,mount,step,setPaused:value=>{paused=value;},setReduced:value=>{reduced=value;},hasFrame:()=>!!queued};
 }
 
@@ -67,4 +67,37 @@ test('enabling reduced motion during a thought finishes silently',()=>{
  const count=f.pulses.length;f.setReduced(true);f.step(160);
  assert.equal(t.textContent,'A thought that takes a little time to reach the screen.');
  assert.equal(f.hasFrame(),false);assert.equal(f.pulses.length,count);
+});
+
+test('one onset and one spaced clause accent carry emotion without letter chatter',()=>{
+ const f=fixture(),t=f.target();
+ const text='The storm is blocking sunlight from my panels. There is less to work with today. I can wait.';
+ f.mount(t,text,'storm','strained');
+ for(let now=0;now<=6000;now+=80){
+  f.step(now);
+  if(now===320)f.mount(f.target(),text,'storm','strained');
+ }
+ assert.equal(f.pulses.length,2);
+ assert.deepEqual(f.pulses.map(p=>p.first),[true,false]);
+ assert.ok(f.pulses[1].at-f.pulses[0].at>=1200);
+ assert.ok(f.pulses.every(p=>p.emotion==='strained'));
+ assert.deepEqual(f.pulses.map(p=>p.accent),['start','clause']);
+ assert.equal(f.pulses[1].punctuation,false);
+ assert.equal(text[f.pulses[1].index],f.pulses[1].character);
+});
+
+test('paused reveal never catches up tones and same-line completed rerenders stay silent',()=>{
+ const f=fixture(),t=f.target();
+ const text='I can keep still and save a little warmth for morning. They will be there for the next picture.';
+ f.mount(t,text,'waiting','reassuring');f.step(0);f.step(80);
+ assert.equal(f.pulses.length,1);
+ f.setPaused(true);f.step(5000);f.step(10000);
+ assert.equal(f.pulses.length,1);
+ f.setPaused(false);f.step(15000);
+ assert.equal(f.pulses.length,1);
+ for(let now=15080;now<=21000;now+=80)f.step(now);
+ assert.ok(f.pulses.length<=2);
+ const count=f.pulses.length;
+ f.mount(f.target(),text,'waiting','reassuring');f.step(22000);
+ assert.equal(f.pulses.length,count);
 });

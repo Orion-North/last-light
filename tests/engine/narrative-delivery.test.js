@@ -91,3 +91,19 @@ test('storm thoughts progress from physical loss to reassurance and restrained r
     }
   }
 });
+
+test('authored emotion follows current storm intent without changing silence',()=>{
+ const emotion=(id,phase,options={})=>storyLine({scene:scene(id),phase,...options}).emotion;
+ assert.equal(emotion('stone-ripples','observe'),'curious');
+ assert.equal(emotion('blueberries','received'),'hopeful');
+ assert.equal(emotion('dust','observe'),'strained');
+ assert.equal(emotion('dust','transmit'),'reassuring');
+ assert.equal(emotion('smaller-world','observe'),'strained');
+ assert.equal(emotion('smaller-world','transmit',{recalled:{choiceId:'ground'}}),'reassuring');
+ assert.equal(emotion('last-image','transmit'),'exhausted');
+ for(const item of scenes)for(const phase of phases){
+  const thought=storyLine({scene:item,phase});
+  assert.ok(['neutral','curious','hopeful','strained','reassuring','exhausted'].includes(thought.emotion));
+  if(item.act===3 || phase==='complete')assert.equal(thought.text,'');
+ }
+});

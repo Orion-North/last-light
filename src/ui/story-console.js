@@ -11,8 +11,8 @@ export function renderStoryConsole({ line, time = '' }) {
 /** Rebinding a rerendered line preserves progress; controls never wait on the reveal. */
 export function createStoryWriter({ requestFrame = requestAnimationFrame, cancelFrame = cancelAnimationFrame,
   paused = () => false, reducedMotion = () => false, pulse = () => {} } = {}) {
-  let frame = 0, target = null, key = null, characters = [], deadlines = [], speaker = 'record';
-  let elapsed = 0, previous = null, lastPulse = -Infinity, count = 0, sounded = false;
+  let frame = 0, target = null, key = null, characters = [], deadlines = [], speaker = 'record', emotion = 'neutral', accentIndex = -1;
+  let elapsed = 0, previous = null, lastPulse = -Infinity, count = 0, sounded = false, accented = false;
   function paint() {
     if (!target) return;
     target.textContent = characters.slice(0, count).join('');
@@ -30,10 +30,13 @@ export function createStoryWriter({ requestFrame = requestAnimationFrame, cancel
       const before=count;
       while(count<characters.length && elapsed>=deadlines[count])count++;
       if(count>before) {
-        // One current key sound per frame, never a burst of overdue audio.
-        const character=characters.slice(before,count).findLast(c=>!/\s/.test(c));
-        if(character && elapsed-lastPulse>=65) {
-          pulse({speaker,first:!sounded,character,index:count-1,punctuation:/[,.!?;:…]/.test(character)});
+        // Articulate a thought, never its individual letters. A second cue is
+        // tied to one authored-text clause, with no pause/resume audio backlog.
+        const index = !sounded ? characters.findIndex(c=>!/\s/.test(c)) : accentIndex;
+        if (index >= before && index < count && (!sounded || !accented && elapsed-lastPulse>=1200)) {
+          const character=characters[index];
+          pulse({speaker,emotion,first:!sounded,accent:sounded?'clause':'start',character,index,punctuation:/[,.!?;:…]/.test(character)});
+          if(sounded)accented=true;
           sounded=true;lastPulse=elapsed;
         }
       }
@@ -46,9 +49,10 @@ export function createStoryWriter({ requestFrame = requestAnimationFrame, cancel
       if (frame) cancelFrame(frame);
       frame = 0; target = element?.querySelector('.story-console__typed') || null;
       if (!target || !line.text) return;
+      emotion = line.emotion || 'neutral';
       if (key !== nextKey) {
         key = nextKey; characters = Array.from(line.text); speaker = line.speaker;
-        elapsed = 0; lastPulse = -Infinity; count=0;sounded=false;
+        elapsed = 0; lastPulse = -Infinity; count=0;sounded=false;accented=false;
         let time=40;
         deadlines=characters.map((character,index)=>{
           const at=time;
@@ -59,6 +63,9 @@ export function createStoryWriter({ requestFrame = requestAnimationFrame, cancel
         });
         const scale=Math.min(1,4200/(deadlines.at(-1) || 1));
         deadlines=deadlines.map(at=>at*scale);
+        accentIndex=characters.findIndex((character,index)=>index>0 && !/\s/.test(character)
+          && deadlines[index]-deadlines[0]>=1200
+          && /[,.!?;:…]\s+$/.test(characters.slice(0,index).join('')));
       }
       previous = null;
       if(reducedMotion())complete();else paint();

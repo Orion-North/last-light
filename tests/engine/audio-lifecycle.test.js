@@ -235,36 +235,31 @@ test('partial and recovery signals leave the authored answer window empty', asyn
 });
 
 
-test('terminal articulation varies gently, continues long thoughts and never catches up', async () => {
-  await withMusic(async (sound, h) => {
+test('terminal emotion uses sparse start and clause accents instead of character beeps', async () => {
+  await withMusic(async (sound,h) => {
     await sound.start();
-    const before = h.sources.length;
-    sound.textPulse({ first: true, character: 'I', index: 0 });
-    const opening = h.sources.slice(before);
-    assert.equal(opening.length, 2, 'one key and one gentle phrase-start voice');
-    assert.ok(opening.every(source => source.stopped - source.started <= .08));
-    assert.ok(opening[1].connections[0].gain.events[0] <= .006);
-    const firstKey = opening[0];
-    const firstCutoff = firstKey.connections[0].frequency.value;
-    const afterOpening = h.sources.length;
-    sound.textPulse({ character: 'x', index: 1 });
-    sound.textPulse({ character: 'y', index: 2 });
-    assert.equal(h.sources.length, afterOpening, 'same-frame characters never create a burst');
-    h.advance(.07);
-    sound.textPulse({ character: 'a', index: 3 });
-    const nextKey = h.sources.at(-1);
-    assert.equal(h.sources.length, afterOpening + 1, 'ordinary characters have no pitched voice');
-    assert.notEqual(nextKey.playbackRate.value, firstKey.playbackRate.value);
-    assert.notEqual(nextKey.connections[0].frequency.value, firstCutoff);
-    for (let i = 4; i < 30; i++) { h.advance(.07); sound.textPulse({ character: 'e', index: i }); }
-    const count = h.sources.length;
-    h.advance(.07); sound.textPulse({ character: ' ', index: 30 });
-    assert.equal(h.sources.length, count, 'spaces stay silent');
-    assert.equal(h.sources.filter(source => source.buffer === firstKey.buffer).length, 28, 'later words remain articulated beyond the old sixteen-key limit');
-    h.advance(.07);
-    sound.textPulse({ character: ',', index: 31, punctuation: true });
-    const punctuation = h.sources.at(-1);
-    assert.ok(punctuation.connections[0].connections[0].gain.events[0] < .025 * .7, 'punctuation is softer than an ordinary key');
+    let before=h.sources.length;
+    sound.textPulse({first:true,character:'I',emotion:'curious'});
+    const opening=h.sources.slice(before);
+    const openingLevel=opening[1].connections[0].gain.events[0];
+    assert.equal(opening.length,2);
+    assert.ok(opening.every(source=>source.stopped-source.started<=.22));
+    assert.ok(opening[1].connections[0].gain.events[0]<=.0045);
+    sound.textPulse({first:true,character:'I'});
+    sound.textPulse({character:'x'});
+    assert.equal(h.sources.length,before+2,'same-frame input never creates a burst');
+    h.advance(1.21); before=h.sources.length;
+    sound.textPulse({character:'a'});
+    assert.equal(h.sources.length,before,'ordinary letters stay silent even after a long gap');
+    sound.textPulse({character:'a',accent:'clause',emotion:'curious'});
+    const clause=h.sources.slice(before);
+    assert.equal(clause.length,2,'one live clause accent');
+    assert.ok(clause[1].connections[0].gain.events[0]<openingLevel);
+    h.advance(1.3);before=h.sources.length;
+    sound.textPulse({character:'a',accent:'clause'});
+    assert.equal(h.sources.length,before,'a third phrase accent is never added');
+    sound.textPulse({first:true,character:' ',emotion:'hopeful'});
+    assert.equal(h.sources.length,before,'spaces stay silent');
   });
 });
 
@@ -279,16 +274,47 @@ test('terminal keys respect inactive audio and resume without deferred character
       { stop: () => h.setHidden(true), resume: () => h.setHidden(false) },
       { stop: () => { h.contexts[0].state = 'suspended'; }, resume: () => sound.start() },
     ]) {
-      h.advance(.1); sound.textPulse({ first: true, character: 'A' });
+      h.advance(.25); sound.textPulse({ first: true, character: 'A' });
       gate.stop();
       const count = h.sources.length;
       for (let i = 0; i < 5; i++) sound.textPulse({ first: i === 0, character: 'B', index: i });
       assert.equal(h.sources.length, count);
       await gate.resume();
       assert.equal(h.sources.length, count, 'resume cannot replay skipped characters');
-      h.advance(.1);
-      sound.textPulse({ character: 'C', index: 8 });
-      assert.equal(h.sources.length, count + 1, 'only a newly revealed character speaks');
+      h.advance(.25);
+      const fresh=h.sources.length;
+      sound.textPulse({ first: true, character: 'C', index: 8 });
+      assert.equal(h.sources.length, fresh + 2, 'only a newly revealed phrase speaks');
     }
+  });
+});
+
+
+test('authored writer clause accents reach real sound scheduling with no character chatter', async () => {
+  const {createStoryWriter}=await import('../../src/ui/story-console.js');
+  const {storyLine}=await import('../../src/content/terminal-story.js');
+  const {scenes}=await import('../../src/content/story.js');
+  await withMusic(async (sound,h) => {
+    await sound.start();
+    let queued=null, clock=0;
+    const accepted=[];
+    const writer=createStoryWriter({requestFrame:fn=>(queued=fn,1),cancelFrame:()=>{queued=null;},pulse:cue=>{
+      const before=h.sources.length;sound.textPulse(cue);
+      accepted.push({cue,added:h.sources.length-before});
+    }});
+    const target={isConnected:true,textContent:'',closest:()=>({classList:{toggle(){}}})};
+    const line=storyLine({scene:scenes.find(s=>s.id==='dust'),phase:'observe'});
+    writer.mount({querySelector:()=>target},line,'dust');
+    while(queued && clock<6000) {
+      const fn=queued;queued=null;fn(clock);h.advance(.08);clock+=80;
+    }
+    assert.equal(target.textContent,line.text);
+    assert.deepEqual(accepted.map(e=>e.cue.accent),['start','clause']);
+    assert.deepEqual(accepted.map(e=>e.added),[2,2],'both authored accents schedule air plus one continuous tone');
+    assert.ok(accepted.every(e=>e.cue.emotion==='strained'));
+    const count=h.sources.length;
+    writer.mount({querySelector:()=>target},line,'dust');
+    assert.equal(h.sources.length,count,'same-line rerender never resounds');
+    writer.stop();sound.destroy();
   });
 });

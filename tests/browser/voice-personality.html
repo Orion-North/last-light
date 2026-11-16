@@ -1,0 +1,26 @@
+<!doctype html><meta charset="utf-8"><title>Oppy voice review</title>
+<style>body{background:#121a1e;color:#f5dec0;font:17px monospace;margin:30px;max-width:900px}button{padding:12px;margin:8px}.sr-only,.story-console__reserve{display:none}.story-console__typed{display:block;min-height:120px;font-size:23px;line-height:1.5}output{white-space:pre-wrap;display:block;font-size:14px;line-height:1.7}</style>
+<h1>Oppy voice review</h1><p>Production writer and audio engine. This plays the six restrained voice contours, then checks pause, mute and reduced motion.</p><button id="run">Play and verify voices</button><button id="stop">Stop</button><article id="thought"></article><output>Ready.</output>
+<script type="module">
+import {createSound} from '../../src/audio/sound.js';
+import {createStoryWriter,renderStoryConsole} from '../../src/ui/story-console.js';
+const Native=window.AudioContext;let context,oscillators=[],sound,writer,canceled=false,paused=false,reduced=false,pulses=[],lines=[];
+window.AudioContext=class extends Native{constructor(){super();context=this;}createOscillator(){const o=super.createOscillator();oscillators.push(o);return o;}};
+const out=document.querySelector('output'),host=document.querySelector('#thought'),run=document.querySelector('#run');
+const sleep=ms=>new Promise(r=>setTimeout(r,ms)),log=line=>{lines.push(line);out.textContent=lines.join('\n');};
+function mount(emotion,key){const line={speaker:'rover',emotion,text:'The storm is blocking sunlight from my panels. There is less to work with today.'};host.innerHTML=renderStoryConsole({line,time:emotion});writer.mount(host.querySelector('.story-console'),line,key);return line;}
+function stop(){canceled=true;writer?.stop();sound?.destroy();}
+document.querySelector('#stop').onclick=stop;window.addEventListener('pagehide',stop);
+run.onclick=async()=>{run.disabled=true;lines=[];canceled=false;paused=reduced=false;try{
+ sound=createSound();sound.setScene('dawn');sound.setNarrative(0,'observe');if(!await sound.start())throw Error('Audio context did not start');
+ writer=createStoryWriter({paused:()=>paused,reducedMotion:()=>reduced,pulse:event=>{const before=oscillators.length;sound.textPulse(event);pulses.push({...event,at:context.currentTime,allocated:oscillators.length-before});}});
+ for(const emotion of ['neutral','curious','hopeful','strained','reassuring','exhausted']){
+  if(canceled)throw Error('Stopped');pulses=[];mount(emotion,emotion);await sleep(4600);
+  const ok=pulses.length===2&&pulses.every(p=>p.allocated===1&&p.emotion===emotion)&&pulses[1].at-pulses[0].at>=1.2;
+  log(`${ok?'PASS':'FAIL'} ${emotion}: ${pulses.length} accents, ${pulses.map(p=>p.allocated).join('/')} actual tone oscillators; spacing ${(pulses[1]?.at-pulses[0]?.at).toFixed(2)} s`);
+ }
+ pulses=[];mount('curious','pause');await sleep(120);paused=true;sound.pause();const text=host.querySelector('.story-console__typed').textContent,count=pulses.length;await sleep(300);log(`${text===host.querySelector('.story-console__typed').textContent&&pulses.length===count?'PASS':'FAIL'} pause holds typing and adds no voice`);paused=false;await sound.resume();await sleep(120);writer.stop();
+ sound.setMuted(true);pulses=[];mount('hopeful','muted');await sleep(4600);log(`${pulses.length===2&&pulses.every(p=>p.allocated===0)?'PASS':'FAIL'} muted writing produces no tone nodes`);
+ reduced=true;pulses=[];const line=mount('exhausted','reduced');await sleep(200);log(`${pulses.length===0&&host.querySelector('.story-console__typed').textContent===line.text?'PASS':'FAIL'} reduced motion shows full thought silently`);log('DONE');
+ }catch(e){log('FAIL '+e.message);}finally{writer?.stop();sound?.destroy();run.disabled=false;}};
+</script>

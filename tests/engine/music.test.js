@@ -556,48 +556,31 @@ test('explicit transaction cancellation releases indefinite hold without produci
   });
 });
 
-test('terminal text uses bounded dry noise with distinct speaker colour and no signal melody', async () => {
-  await withMusic(async (sound, h) => {
-    sound.textPulse({ first: true });
-    assert.equal(h.contexts.length, 0, 'text never starts audio without user activation');
+test('emotional terminal gestures remain quiet, finite and outside the radio register', async () => {
+  await withMusic(async (sound,h) => {
+    sound.textPulse({first:true});
+    assert.equal(h.contexts.length,0,'text never activates audio');
     await sound.start();
-    const colours = [];
-    for (const speaker of ['rover', 'earth', 'record']) {
-      const before = h.sources.length;
-      sound.textPulse({ speaker, first: true });
-      const pulse = h.sources[before];
-      assert.equal(h.sources.length, before + 2, 'one noise key and one quiet phrase-start voice');
-      const opening = h.sources[before + 1];
-      assert.equal(opening.kind, 'oscillator');
-      assert.equal(opening.type, 'sine');
-      assert.equal(opening.started, pulse.started, 'opening is immediate, never a delayed answering note');
-      assert.ok(opening.stopped - opening.started <= .081, 'phrase cue is short and finite');
-      assert.ok(opening.frequency.target > 0 && opening.frequency.target < 440);
-      assert.equal(pulse.kind, 'buffer');
-      assert.ok(pulse.stopped - pulse.started < .065);
-      assert.ok(pulse.buffer.getChannelData(0).some(sample => sample !== 0));
-      colours.push(pulse.connections[0].frequency.value);
-      sound.textPulse({ speaker, first: true });
-      assert.equal(h.sources.length, before + 2, 'duplicate line starts are throttled');
-      h.advance(.13);
-      assert.equal(pulse.connections.length, 0, 'ended text voices disconnect');
+    const shapes=[];
+    for (const emotion of ['neutral','curious','hopeful','strained','reassuring','exhausted']) {
+      h.advance(.25);
+      const before=h.sources.length;
+      sound.textPulse({first:true,character:'I',emotion});
+      const [air,tone]=h.sources.slice(before);
+      assert.equal(h.sources.length,before+2);
+      assert.equal(air.kind,'buffer');assert.equal(tone.type,'triangle');
+      assert.equal(air.started,tone.started,'no delayed answering note');
+      assert.ok(tone.frequency.target<250,'vocal murmur remains below learned radio pitches');
+      assert.ok(tone.stopped-tone.started<=.22);
+      assert.ok(air.buffer.getChannelData(0).some(sample=>sample!==0));
+      shapes.push({pitch:tone.frequency.target,duration:tone.stopped-tone.started,cutoff:air.connections[0].frequency.value});
+      sound.textPulse({first:true});
+      assert.equal(h.sources.length,before+2,'duplicate starts are throttled');
+      h.advance(.23);
+      assert.equal(air.connections.length,0);assert.equal(tone.connections.length,0);
     }
-    assert.ok(colours[0] > colours[1] && colours[1] > colours[2]);
-    const beforeLine = h.sources.length;
-    sound.textPulse({ first: true, character: 'I', index: 0 });
-    const lineBuffer = h.sources[beforeLine].buffer;
-    for (let i = 1; i <= 20; i++) { h.advance(.07); sound.textPulse({ character: 'e', index: i }); }
-    const keys = h.sources.slice(beforeLine).filter(source => source.buffer === lineBuffer);
-    assert.equal(keys.length, 21, 'later words remain articulated beyond sixteen characters');
-    assert.ok(keys.every(source => source.stopped - source.started < .065), 'every key has a finite short tail');
-    assert.ok(keys.every((source, i) => !i || source.started - keys[i - 1].started >= .065), 'noise density stays bounded');
-    assert.equal(h.sources.slice(beforeLine).filter(source => source.kind === 'oscillator').length, 1, 'ordinary letters add no pitched melody');
-    const count = h.sources.length;
-    for (let i = 0; i < 20; i++) sound.textPulse({ character: 'x', index: i });
-    assert.equal(h.sources.length, count, 'a catch-up burst cannot add voices');
-    h.advance(.07);
-    sound.textPulse({ first: true, character: 'N', index: 0 });
-    assert.equal(h.sources.length, count + 2, 'a fresh phrase receives one key and its short opening');
+    assert.equal(new Set(shapes.map(s=>s.pitch)).size,6,'authored emotions have distinct inflections');
+    assert.ok(shapes[5].duration<shapes[1].duration && shapes[5].cutoff<shapes[1].cutoff,'exhaustion conserves energy rather than adding alarm');
   });
 });
 
@@ -610,7 +593,7 @@ test('terminal articulation respects lifecycle gates and never fills missing rep
       { stop: () => h.setHidden(true), resume: () => h.setHidden(false) },
       { stop: () => { h.contexts[0].state = 'suspended'; }, resume: () => sound.start() },
     ]) {
-      h.advance(.13);
+      h.advance(.25);
       sound.textPulse({ first: true });
       const pulse = h.sources.at(-1);
       gate.stop();
