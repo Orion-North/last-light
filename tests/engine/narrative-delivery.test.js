@@ -60,12 +60,34 @@ test('recollection follows the actual first selection without repeating on recei
     assert.equal(line('smaller-world','received',{recalled}), '');
     assert.doesNotMatch(text, /storm cannot|whatever happens|already home/i);
   }
-  assert.equal(line('smaller-world','observe'), '');
+  assert.match(line('smaller-world','observe'), /still today.*warmth.*morning/);
 });
 
 test('travel suppresses observation only, preserving restored ready and receipt states', () => {
   for (const item of scenes) assert.equal(storyLine({scene:item,phase:'observe',travelling:true}).text, '');
   for (const phase of ['choose','transmit','received']) {
     assert.equal(line('stone-ripples',phase,{travelling:true}), line('stone-ripples',phase));
+  }
+});
+
+// These are phase-specific playable thoughts, not optional journal prose or
+// imagined words after the last signal. Text remains available with sound off.
+test('storm thoughts progress from physical loss to reassurance and restrained rest', () => {
+  assert.match(line('dust','observe'), /storm.*sunlight.*panels/);
+  assert.match(line('dust','transmit'), /wait this out.*light.*come back/);
+  assert.notEqual(line('dust','observe'),line('dust','transmit'));
+  assert.match(line('smaller-world','observe'), /warmth.*morning/);
+  for (const choiceId of ['ground','horizon']) {
+    assert.match(line('smaller-world','transmit',{recalled:{choiceId}}), /They’ll be there for the next one/);
+  }
+  assert.match(line('last-image','observe'), /one more look/);
+  assert.match(line('last-image','transmit'), /send.*picture.*rest/);
+  for (const id of ['dust','smaller-world','last-image']) {
+    for (const phase of ['observe','transmit']) {
+      const thought=storyLine({scene:scene(id),phase});
+      assert.equal(thought.channel,'OPPORTUNITY · imagined');
+      assert.ok(thought.text.length<=140);
+      assert.doesNotMatch(thought.text,/goodbye|dying|last words|save me/i);
+    }
   }
 });

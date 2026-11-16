@@ -175,3 +175,12 @@ voice articulations, separate from the learned radio call/reply motif. Mute,
 pause, hidden/suspended audio and narrative silence suppress them; reduced motion
 shows the complete line immediately with no typing cues. Controls remain usable
 while text types, and assistive technology receives the whole thought at once.
+
+## Storm pressure (STORM-53)
+The wind increasingly masks the music through the storm scenes. Early dust
+retains a recognizable phrase; the later storm loses pulse, strings and phrase
+endings, then the final-image scene leaves widely spaced, darkened fragments.
+Stereo gusts swell slowly under a fixed master/compressor. They yield around
+the original radio question and reply, then return. Earth contact-loss silence
+remains explicit. Oppy's current terminal ticks are unchanged by this release;
+emotion-specific speaking tones are planned separately.

@@ -1027,3 +1027,33 @@ assets and build passed after integration. Physical controller feel remains unte
 All five photo lifecycles passed (two geology scenes plus the other three).
 Final monitor projection passed a 390px portrait reduced-motion recovery call
 with simulated triggers, reached NO REPLY and retained the Oppy-heart note.
+
+## v0.22.2 — room clearance and photo handoff (POLISH-52)
+
+All 33 engine test files pass. Six physical-mast entry/aim/freeze cases pass,
+plus live sending and resumed receipts for both Last Chance headings and
+Blueberries (zero measured final drift, resumed range 5.34 m). Native Last
+Chance photo→send→receipt retains clear wide framing. Blueberries downward
+framing inspected against the local NASA reference. Desktop/portrait room
+signal clears the Oppy note; Earth text is unboxed. Portrait reduced-motion
+simulated-controller recovery and native portrait call passed. Initial portrait
+note clipping and heading-zero close framing were caught and corrected.
+Last Chance finish-investigation/controller lifecycle passed all 27 assertions:
+held-input carryover, keyboard aiming, release-armed right bumper, no face-button
+shutter, cancellation, pause/reveal/handoff, original uplink/receipt and saving.
+The preview process stopped externally (exit 143) before the first lifecycle
+attempt; the affected check was rerun successfully after restarting it.
+
+Final release extensions: cold model-load mast alignment and nine mast cases
+(including four Blueberries headings) passed; all outgoing/resumed geology
+views stayed stationary. Blueberries preserves the player's driven position and
+heading and excludes its first-person body only in the close sample photograph.
+A native first-pointer capture reached the original NASA image. The physical
+mast diagnostic was zero in the production Compare/photo flow.
+
+STORM-53 real Web Audio rendering: early/deep/final storm peak amplitudes were
+0.139/0.183/0.196. Music RMS fell 0.02439 → 0.00421 → 0.00103 while wind RMS was
+0.03639 → 0.06024 → 0.05694. This confirms increasing wind dominance without
+clipping in the sampled arc; perceived emotion still needs human listening.
+The separate explicit contact-loss silence case uses night/scene7/received;
+Earth observe is intentionally a waiting score, not the silence state.

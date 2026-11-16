@@ -1104,3 +1104,44 @@ CAMERA-49 / INPUT-50 / SIGNAL-51 complete: native tracing comparison, six mast
 entry/aim/freeze cases, all five photo lifecycles, bumper/carryover/pause/cancel
 checks, exact signal markup equality and portrait controller recovery passed.
 Final 33 engine files, 79 syntax checks, assets/contracts and build passed.
+
+## POLISH-52 — room occlusion, consistent text and overhead blueberries
+User reports clipping, signal over the Oppy note, new boxed text, and wants a
+more overhead Blueberries photograph. Shared checkout main with disjoint Sol lanes:
+- room_polish: src/ui/earth-room.js only; audit/fix intersecting physical props,
+  keep note outside signal area, preserve authored room and shared signal API.
+- berry_angle: src/ui/landscape.js only; improve Blueberries mast composition
+  toward overhead NASA image in the same playable world, preserve other cameras.
+- Root: earth-station CSS/DOM, integration, visual review, docs and verification.
+Done: room and signal clear at desktop/portrait, established unboxed game text,
+Blueberries top-down aiming and existing photo/sending flow verified.
+
+POLISH-52 also includes the user's subsequent crossing-layers sending zoom bug.
+Root owns main's explicit completed-photo context and decorative prompt pointer
+handling. Camera lane adds collision-aware wide outgoing views and resumed-save
+coverage. First QA caught portrait note cropping and a heading-zero camera
+retraction; both corrected. See reviews/POLISH-52.md for evidence and limits.
+POLISH-52 complete: final six-case camera matrix, outgoing and resumed receipt
+checks, native sending, 27-assertion controller photo lifecycle, desktop/portrait
+room review, 33 engine files, 79 syntax checks, assets/contracts and build pass.
+
+## STORM-53 — storm overwhelms score and Oppy's fading reassurance
+User extends current pass: growing wind should dominate music; score becomes
+sparser/exhausted; refine short imagined thoughts about blocked sunlight and
+hoping power lasts. Sol room_polish owns src/audio/ and related audio engine
+tests. Sol berry_angle hands camera ownership to root and owns src/content/
+plus narrative tests. Root owns integration, any main/UI hooks, remaining
+Blueberries visual polish, QA/docs/publication. No other agents/Astra.
+Preserve mute/pause/reduced-motion and original transmission/audio ritual;
+no unbounded volume, jump scares, filler, or invented NASA telemetry.
+
+STORM-53 implemented: growing stereo gusts dominate a thinning/darkening score;
+original radio pattern and post-contact silence remain. Playable terminal lines
+move from blocked sunlight to reassurance, saving warmth and one picture before
+rest. User requests publication before the next emotion-tone implementation.
+VOICE-54 planning is read-only until the current release is confirmed live.
+STORM-53 release validation: 33 engine files and source/build checks passed;
+real browser audio showed growing wind-to-music balance and bounded peaks.
+POLISH-52 final matrix has nine regular approaches plus cold model-load entry.
+Chassis alignment trial removed; driven pose stays unchanged. First-person
+Blueberries capture hides body intrusion and restores the rover on sending.

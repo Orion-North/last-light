@@ -55,3 +55,18 @@ test('home identity and foreground question/answer contract survive the richer s
   assert.deepEqual(SIGNAL_ANSWER,[[69,0,.32,.056],[66,.24,.32,.048],[64,.48,.34,.046],[62,.84,.65,.052]]);
   assert.equal(ANSWER_WINDOW,2.2);
 });
+
+test('late storm loses rhythmic drive, musical energy and phrase completion while rests grow', () => {
+  const energy = p => p.events.reduce((sum,e) => sum+e.volume*e.duration,0);
+  const rest = (p,section) => p.seconds-Math.max(...p.events.map(e => e.at*SECTIONS[section].eighth+e.duration));
+  for (let n=0;n<4;n++) {
+    const early=phrase('storm',n,0), late=phrase('storm',n,1), last=phrase('fading',n);
+    assert.ok(late.events.length < early.events.length/2,'later chapter cannot retain a busy ensemble');
+    assert.ok(energy(late)<energy(early)*.35,'musical energy yields to weather');
+    assert.ok(!late.events.some(e=>['pulse','strings','organ'].includes(e.instrument)));
+    assert.ok(late.seconds>early.seconds+15,'exhausted phrase restarts less often');
+    assert.ok(rest(late,'storm')>rest(early,'storm')+10,'extra time includes actual silence');
+    assert.ok(last.events.length<=5 && energy(last)<energy(late));
+    assert.ok(last.events.filter(e=>e.instrument==='pluck')[1].at*SECTIONS.fading.eighth>12,'last notes are separated by a long breath');
+  }
+});

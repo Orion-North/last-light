@@ -493,7 +493,7 @@ function renderGame({ focus = false } = {}) {
     }
   } else stopContact();
   const evidence=['stone-ripples','blueberries'].includes(scene.id) && ['choose','transmit','received'].includes(state.phase);
-  view?.setEvidence?.(evidence?scene.id:null);
+  view?.setEvidence?.(evidence?scene.id:null,{photoComplete:photoTerminal});
   document.body.dataset.evidence=String(evidence);
   document.body.dataset.discovery=String(!!photo);
   if(photo && !photoTerminal) {

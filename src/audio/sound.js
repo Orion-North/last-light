@@ -12,6 +12,7 @@ export function createSound() {
   let context = null;
   let master = null;
   let musicBus = null;
+  let musicTone = null;
   let cueDuckUntil = 0;
   let transmission = null;
   let signalHoldUntil = 0;
@@ -34,6 +35,7 @@ export function createSound() {
   let sceneIndex = -1;
   let phase = 'observe';
   let section = 'discovery';
+  let appliedWear = 0;
   let timer = null;
   let nextPhrase = 0;
   let phraseNumber = 0;
@@ -133,16 +135,38 @@ export function createSound() {
     return 'discovery';
   }
 
+  function stormWear() { return section === 'storm' && sceneIndex >= 6 ? 1 : 0; }
+
+  function scoreLevel() {
+    return section === 'storm' ? 1 - stormWear()*.45 : section === 'fading' ? .38 : 1;
+  }
+
+  function updateWind() {
+    if (!context) return;
+    const config=sections[section];
+    const storm=section === 'storm' || section === 'fading';
+    const base=config.wind + (section === 'storm' ? stormWear()*.28 : 0);
+    // Slow, nonperiodically aligned swells feel enveloping without raising the
+    // master. Critical radio/tool confirmations keep their foreground space.
+    const gust=storm ? .80 + .13*Math.sin(context.currentTime*.37) + .07*Math.sin(context.currentTime*.113+1.4) : 1;
+    const foreground=transmission !== null || context.currentTime < signalHoldUntil ? .18
+      : context.currentTime < cueDuckUntil || activity.contactActive && context.currentTime-activityTime<.8 ? .45 : 1;
+    smooth(windGain?.gain, base*gust*foreground, section === 'silence' ? .06 : foreground<1 ? .09 : .85);
+  }
+
   function applySection() {
     const next = selectSection();
     const changed = next !== section;
+    const previousWear = appliedWear;
     section = next;
+    appliedWear = stormWear();
     if (!context) return;
     const config = sections[section];
     updateActivity();
-    smooth(windGain?.gain, config.wind, section === 'silence' ? 0.06 : 1.4);
+    updateWind();
+    smooth(musicTone?.frequency, section === 'storm' ? 2000-stormWear()*1250 : section === 'fading' ? 460 : 16000, 1.6);
     smooth(windFilter?.frequency, config.cutoff, 1.5);
-    if (changed) {
+    if (changed || previousWear !== stormWear()) {
       // Continue may change the score while Earth is still answering. Only
       // authored silence (or an explicit lifecycle stop) cuts foreground voices.
       stopScheduler(section === 'silence');
@@ -167,7 +191,7 @@ export function createSound() {
   }
 
   function composePhrase(start) {
-    const composed = phrase(section, phraseNumber++);
+    const composed = phrase(section, phraseNumber++, stormWear());
     for (const event of composed.events) {
       queue.push({ ...event, when: start + event.at * sections[section].eighth });
     }
@@ -179,7 +203,8 @@ export function createSound() {
     if (!canPlay() || section === 'silence') return;
     const now = context.currentTime;
     updateActivity();
-    smooth(musicBus.gain, now < signalHoldUntil ? 0 : now < cueDuckUntil || activity.contactActive && now - activityTime < .8 ? .43 : 1, .16);
+    updateWind();
+    smooth(musicBus.gain, now < signalHoldUntil ? 0 : scoreLevel() * (now < cueDuckUntil || activity.contactActive && now - activityTime < .8 ? .43 : 1), .16);
     // A throttled/background tab never catches up by firing a burst of old notes.
     if (nextPhrase < now - 0.5) {
       queue = [];
@@ -209,7 +234,7 @@ export function createSound() {
     if (timer !== null) return;
     queue = [];
     nextPhrase = context.currentTime + delay;
-    instruments.prepare(phrase(section, phraseNumber).events);
+    instruments.prepare(phrase(section, phraseNumber, stormWear()).events);
     tick();
   }
 
@@ -218,7 +243,9 @@ export function createSound() {
     master.gain.value = 0;
     musicBus = context.createGain();
     musicBus.gain.value = 1;
-    musicBus.connect(master);
+    musicTone = context.createBiquadFilter();
+    musicTone.type = 'lowpass'; musicTone.Q.value = .3;
+    musicBus.connect(musicTone).connect(master);
     instruments = createInstrumentBank(context);
     scoreSpace = createScoreSpace(context, musicBus);
     const compressor = context.createDynamicsCompressor();
@@ -243,7 +270,11 @@ export function createSound() {
       samples[i] = last * 3.6 * edge;
     }
     windSource = context.createBufferSource();
-    windSource.buffer = buffer;
+    const stereoWind=context.createBuffer(2, samples.length, rate);
+    stereoWind.getChannelData(0).set(samples);
+    const right=stereoWind.getChannelData(1), shift=Math.floor(rate*.73);
+    for (let i=0;i<samples.length;i++) right[i]=samples[(i+shift)%samples.length];
+    windSource.buffer = stereoWind;
     windSource.loop = true;
     windFilter = context.createBiquadFilter();
     windFilter.type = 'lowpass';
@@ -313,7 +344,8 @@ export function createSound() {
     lastCueTimes.set(kind, now);
     if (['charged', 'observe'].includes(kind)) {
       cueDuckUntil = now + .85;
-      smooth(musicBus.gain, .43, .035);
+      smooth(musicBus.gain, scoreLevel()*.43, .035);
+      updateWind();
     }
     const third = sections[section].minor ? 65 : 66;
     const patterns = {
@@ -371,6 +403,7 @@ export function createSound() {
     smooth(musicBus.gain, 0, .025);
     const question = mode === 'partial' ? SIGNAL_QUESTION.slice(0, 3) : SIGNAL_QUESTION;
     playSignal(question);
+    updateWind();
   }
 
   function textPulse({ speaker = 'rover', first = false, character = '', index = 0, punctuation = false } = {}) {
@@ -444,7 +477,8 @@ export function createSound() {
     transmission = null;
     signalHoldUntil = 0;
     stopScheduler();
-    smooth(musicBus?.gain, 1, .12);
+    smooth(musicBus?.gain, scoreLevel(), .12);
+    updateWind();
     restartScheduler(.6);
   }
 
@@ -459,6 +493,7 @@ export function createSound() {
     if (mode === 'normal' && sent === 'normal' && sceneIndex < 8 && sceneIndex !== 7 && section !== 'silence') {
       playSignal(SIGNAL_ANSWER);
     }
+    updateWind();
     restartScheduler();
   }
 

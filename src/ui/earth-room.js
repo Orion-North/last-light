@@ -147,10 +147,12 @@ export function createEarthRoom(THREE) {
   const noteGeo=new THREE.PlaneGeometry(.73,.76,10,14),positions=noteGeo.attributes.position;
   for(let i=0;i<positions.count;i++) {const x=positions.getX(i),y=positions.getY(i),curl=Math.max(0,-y-.09);positions.setZ(i,curl*curl*1.15+.009*Math.sin(x*9)*(1-(y+.38)/.76));}
   noteGeo.computeVertexNormals();
+  // Keep the personal note inside the portrait framing; reserve its glass margin below.
   const note=mesh(noteGeo,noteMat,2.68,1.98,-.325);note.rotation.z=-.11;note.rotation.y=-.08;
-  // Small translucent tape corners catch light without covering the handwriting.
+  // A translucent tape strip catches light without covering the handwriting.
   const tape=material('#d8cba2',.8);tape.transparent=true;tape.opacity=.42;tape.depthWrite=false;
-  box(.3,.075,.003,tape,2.64,2.345,-.305).rotation.z=-.07;
+  // Parent the tape to the paper; the strip bridges its top edge onto the glass.
+  box(.3,.075,.003,tape,-.08,.365,.007,note).rotation.z=.04;
 
   // A proper low-profile keyboard: staggered rows, separate navigation cluster,
   // recessed deck, concave-looking caps and sparse, readable physical legends.
@@ -175,14 +177,14 @@ export function createEarthRoom(THREE) {
   contact(3.1,1.1,-.32,1.23,1.29);
   // A domed optical mouse with a split shell and a rubber wheel.
   contact(.9,.94,1.77,1.35,1.29);
-  const mouse=new THREE.Group();scene.add(mouse);mouse.position.set(1.77,1.32,1.35);mouse.rotation.y=-.13;
+  const mouse=new THREE.Group();scene.add(mouse);mouse.position.set(1.77,1.29,1.35);mouse.rotation.y=-.13;
   const mouseBody=mesh(new THREE.SphereGeometry(1,24,12,0,Math.PI*2,0,Math.PI/2),graphite,0,0,0,mouse);mouseBody.scale.set(.26,.19,.37);
   tube([[0,.186,-.04],[0,.16,-.22],[0,.075,-.34]],.006,edge,mouse,12);
   rod([0,.18,-.16],[0,.18,-.07],.025,edge,mouse);
   tube([[1.78,1.34,1.01],[1.9,1.29,.7],[2.16,1.29,.34],[1.94,1.28,-.23],[1.5,1.28,-1.2]],.012,edge);
 
   // A pool of task light, a half-used notebook and a pencil provide human scale.
-  const notebook=new THREE.Group();scene.add(notebook);notebook.position.set(-2.65,1.29,1.04);notebook.rotation.y=-.12;
+  const notebook=new THREE.Group();scene.add(notebook);notebook.position.set(-2.65,1.317,1.04);notebook.rotation.y=-.12;
   flat(.99,1.18,.065,.035,material('#6b7772',.85),0,.005,0,notebook);
   flat(.93,1.12,.028,.012,paper,.018,.054,-.008,notebook);
   const pageTexture=canvasTexture(512,640,(c,w,h) => {
@@ -217,7 +219,7 @@ export function createEarthRoom(THREE) {
   mesh(new THREE.CircleGeometry(.202,32),coffee,3.31,1.61,.15).rotation.x=-Math.PI/2;
   const handle=mesh(new THREE.TorusGeometry(.12,.033,8,20),mug,3.54,1.48,.15);handle.scale.set(.8,1,1);
   flat(.58,.58,.02,.19,material('#645847',.96),3.31,1.283,.15);contact(.85,.85,3.31,.15);
-  const headset=new THREE.Group();scene.add(headset);headset.position.set(3.13,1.32,1.17);headset.rotation.y=.24;
+  const headset=new THREE.Group();scene.add(headset);headset.position.set(3.13,1.298,1.17);headset.rotation.y=.24;
   const band=mesh(new THREE.TorusGeometry(.31,.023,7,32,Math.PI*1.5),silver,0,.04,0,headset);band.rotation.x=Math.PI/2;
   const padding=mesh(new THREE.TorusGeometry(.32,.045,8,22,Math.PI*.8),edge,0,.04,0,headset);padding.rotation.x=Math.PI/2;
   flat(.2,.28,.12,.07,fabric,-.27,.06,.14,headset);flat(.13,.22,.08,.05,graphite,.25,.04,.16,headset);
@@ -256,10 +258,10 @@ export function createEarthRoom(THREE) {
   area('#9cb7bc',18,-4,5,-3,-6.9,3.9,-7,1.05);
   const screenGlow=new THREE.PointLight('#c59b73',5,5,2);screenGlow.position.set(0,2.8,.2);scene.add(screenGlow);
   // The original game's DOM instrument is projected into this physical glass.
-  // Keep the lower edge inset from the bezel, leaving Opportunity visible above.
+  // Keep the lower edge inset and reserve the right glass margin for the Oppy note.
   function getSignalQuad() {
     screen.updateWorldMatrix(true,false);
-    return [[-2.375,-.285],[2.375,-.285],[2.375,-1.335],[-2.375,-1.335]]
+    return [[-2.375,-.285],[2.1,-.285],[2.1,-1.335],[-2.375,-1.335]]
       .map(([x,y])=>screen.localToWorld(new THREE.Vector3(x,y,.016)));
   }
   function setSignal() {} // Compatibility: animation remains the original DOM.

@@ -676,3 +676,35 @@ test('transmission, pause and explicit silence replace reverb processors without
     assert.equal(current().connections.length, 0, 'destroy removes the final reverb output');
   });
 });
+
+test('storm weather overtakes a darker score without swallowing the learned radio ritual', async () => {
+  await withMusic(async (sound,h) => {
+    await sound.start(); h.advance(3);
+    const note=h.notes().find(s=>s.kind==='buffer');
+    const input=note.connections[0].connections[0];
+    const bus=input.connections.find(n=>n.kind==='gain' && n.gain.value===.88).connections[0];
+    const tone=bus.connections[0];
+    const wind=h.sources.find(s=>s.loop);
+    const windLevel=wind.connections[0].connections[0].gain;
+    sound.setScene('storm'); sound.setNarrative(5,'observe'); h.advance(1);
+    const earlyWind=windLevel.target, earlyTone=tone.frequency.target;
+    sound.setNarrative(6,'observe'); h.advance(1);
+    assert.ok(windLevel.target>earlyWind*1.4,'later storm increases weather rather than the master');
+    assert.ok(bus.gain.target<.6 && tone.frequency.target<earlyTone/2,'score recedes and loses brilliance');
+    assert.equal(wind.buffer.numberOfChannels,2,'weather surrounds the stereo score');
+    const stormWind=windLevel.target;
+    const before=h.sources.length;
+    sound.beginTransmission('normal');
+    assert.equal(h.sources.slice(before).filter(s=>s.kind==='oscillator').length,4,'full familiar question survives');
+    assert.ok(windLevel.target<stormWind*.3,'wind yields around the learned signal');
+    sound.finishTransmission('normal'); h.advance(3);
+    assert.ok(windLevel.target>stormWind*.7,'storm returns after the reply window');
+    sound.setScene('night'); sound.setNarrative(7,'observe'); h.advance(1);
+    assert.ok(bus.gain.target<.4 && windLevel.target>.4,'final light is wind-dominated');
+    assert.ok(windLevel.target<=.6,'wind gain remains bounded');
+    sound.setNarrative(7,'received');
+    h.assertCanceled(); h.assertAmbienceSilent();
+    sound.setScene('earth'); sound.setNarrative(8,'observe'); h.advance(1);
+    assert.equal(windLevel.target,0,'Earth never inherits the storm');
+  });
+});

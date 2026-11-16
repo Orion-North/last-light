@@ -4,9 +4,9 @@ const thoughts = {
   blueberries: 'They call them blueberries. I have never seen the ones on Earth.',
   marathon: '',
   'ordinary-day': '',
-  dust: 'Dust blocks the sunlight my panels need.',
-  'smaller-world': '',
-  'last-image': '',
+  dust: 'The storm is blocking sunlight from my panels. There is less to work with today.',
+  'smaller-world': 'I’ll keep still today. Save a little warmth for morning.',
+  'last-image': 'A little light. Enough for one more look.',
 };
 
 // What the player observed, before Earth receives and interprets the record.
@@ -15,8 +15,8 @@ const observations = {
   blueberries: 'The grains read differently from the brushed rock.',
   marathon: 'Forty-two kilometres. There is more ground ahead.',
   'ordinary-day': 'Sunlight on the ground beside my wheels. I’ll send that.',
-  dust: 'I’ll send this sky.',
-  'last-image': 'The Sun is somewhere behind this dust. I’ll send what light remains.',
+  dust: 'I can wait this out. The light has always come back before.',
+  'last-image': 'The Sun is somewhere behind this dust. I’ll send this picture, then rest.',
 };
 
 // Mission-source interpretations, expressed as invented thoughts, not telemetry.
@@ -37,8 +37,8 @@ export function storyLine({ scene, phase, travelling = false, investigating = fa
   if (phase === 'choose' || phase === 'transmit') {
     if (scene.id === 'first-morning') return voice(selected?.shortReply || 'What shall I show them first?');
     if (scene.id === 'smaller-world' && recalled) return voice(recalled.choiceId === 'ground'
-      ? 'I remember the soil beneath my wheels. That was the first view I sent.'
-      : 'I remember the first crater rim. That was the first view I sent.');
+      ? 'I remember the soil beneath my wheels. My first view. They’ll be there for the next one, too.'
+      : 'I remember the first crater rim. My first view. They’ll be there for the next one, too.');
     return voice(observations[scene.id] || '');
   }
   if (scene.id === 'first-morning') return voice(purposeKnown

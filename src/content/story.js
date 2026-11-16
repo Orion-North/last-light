@@ -138,7 +138,7 @@ export const scenes = [
     response: 'Earth, imagined: We are watching the storm. We are still here.',
     sol: 'EARLY JUNE · 2018', title: 'The sky forgets its edges.',
     text: 'The horizon has become less certain. Dust settles between you and the Sun.\n\nYou turn toward the place where morning should be. Your solar panels wait for light that arrives more faintly than before.\n\nYou have known difficult days. Your people have helped you through so many of them.',
-    thought: 'The light has always come back before.',
+    thought: 'I can wait this out. The light has always come back before.',
     environment: 'storm', power: 46, signal: 74,
     actionLabel: 'Measure the fading light',
     observation: {
@@ -160,7 +160,7 @@ export const scenes = [
     response: 'Earth, imagined: We have your discoveries. We are listening.',
     sol: 'THE LAST DAYS OF CONTACT · 2018', title: 'A smaller world.',
     text: 'Once, a day could hold a drive, a panorama, a question hidden in a rock. Now the day gathers around the little warmth inside you.\n\nYour world becomes the space between one signal and the next. The valley disappears by degrees.\n\nThe story you have already sent is larger than the darkness gathering here.',
-    thought: 'Will they know how much there was to see?',
+    thought: 'I’ll keep still today. Save a little warmth for morning.',
     environment: 'storm', power: 22, signal: 38,
     actionLabel: 'Revisit what you sent home',
     observation: {
@@ -182,7 +182,7 @@ export const scenes = [
     response: 'Only part of the image arrives. Contact ends; there is no final spoken message.',
     sol: 'SOL 5111 · JUNE 10, 2018', title: 'One more look.',
     text: 'You point a camera toward the Sun. It is morning, but the sky is dark.\n\nA picture begins its journey home. Speckles of noise. A little light. A frame that will not finish arriving.\n\nFor all these years, looking has been something you could give.',
-    thought: 'There is still something here. Even if I cannot show all of it.',
+    thought: 'The Sun is somewhere behind this dust. I’ll send this picture, then rest.',
     environment: 'night', power: 5, signal: 8,
     actionLabel: 'Look once more',
     observation: {

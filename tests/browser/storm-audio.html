@@ -1,0 +1,35 @@
+<!doctype html><meta charset="utf-8"><title>Storm audio review</title>
+<style>body{background:#14191c;color:#eee;font:16px system-ui;max-width:900px;margin:30px auto}button{padding:12px;margin:8px}output{display:block;white-space:pre-wrap;line-height:1.7}small{color:#c0cbd0}</style>
+<h1>Storm audio review</h1><p>Actual production Web Audio: early storm → deep storm → final image → silence. This plays sound for about 45 seconds.</p>
+<button id="run">Run storm audio arc</button><button id="stop">Stop</button><output>Ready.</output><small>Measures real rendered audio, not perceived emotion. No game save is touched.</small>
+<script type="module">
+import {createSound} from '../../src/audio/sound.js';
+const Native=window.AudioContext;let context,sound,canceled=false;const edges=new WeakMap(),gains=[],sources=[],compressors=[];
+const track=node=>{const connect=node.connect.bind(node);node.connect=(to,...args)=>{const list=edges.get(node)||[];list.push(to);edges.set(node,list);return connect(to,...args);};return node;};
+window.AudioContext=class extends Native {
+ constructor(){super();context=this;}
+ createGain(){const node=track(super.createGain());gains.push(node);return node;}
+ createBiquadFilter(){return track(super.createBiquadFilter());}
+ createBufferSource(){const node=track(super.createBufferSource());sources.push(node);return node;}
+ createDynamicsCompressor(){const node=track(super.createDynamicsCompressor());compressors.push(node);return node;}
+};
+const out=document.querySelector('output'),run=document.querySelector('#run'),lines=[];
+const log=s=>{lines.push(s);out.textContent=lines.join('\n');};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const meter=node=>{const a=context.createAnalyser();a.fftSize=2048;node.connect(a);return a;};
+async function measure(meters,seconds){let count=0,peak=0,sums=meters.map(()=>0);const data=new Float32Array(2048),until=performance.now()+seconds*1000;while(performance.now()<until){if(canceled)throw Error('Stopped');meters.forEach((m,i)=>{m.getFloatTimeDomainData(data);let sum=0;for(const v of data){sum+=v*v;if(i===0)peak=Math.max(peak,Math.abs(v));}sums[i]+=sum/data.length;});count++;await sleep(50);}return {rms:sums.map(s=>Math.sqrt(s/count)),peak};}
+document.querySelector('#stop').onclick=()=>{canceled=true;sound?.destroy();};
+run.onclick=async()=>{run.disabled=true;lines.length=0;canceled=false;try{
+ sound=createSound();sound.setScene('storm');sound.setNarrative(5,'observe');if(!await sound.start())throw Error('Audio did not start from gesture');
+ const music=edges.get(gains[1])[0],windSource=sources.find(s=>s.loop&&s.buffer?.numberOfChannels===2),wind=edges.get(edges.get(windSource)[0])[0];
+ const meters=[meter(compressors[0]),meter(music),meter(wind)];
+ for(const [label,env,index,seconds] of (new URLSearchParams(location.search).has('silence') ? [] : [['early storm','storm',5,10],['deep storm','storm',6,12],['final image','night',7,16]])){
+  log('RUNNING '+label);sound.setScene(env);sound.setNarrative(index,'observe');await sleep(1800);const r=await measure(meters,seconds);
+  const audible=Number.isFinite(r.peak)&&r.peak>0&&r.peak<1;const dominates=index===5||r.rms[2]>r.rms[1];
+  log(`${audible&&dominates?'PASS':'FAIL'} ${label}: output peak ${r.peak.toFixed(3)}; music RMS ${r.rms[1].toFixed(5)}; wind RMS ${r.rms[2].toFixed(5)}`);
+ }
+ sound.setScene('night');sound.setNarrative(7,'received');await sleep(600);const quiet=await measure(meters,.5);log(`${quiet.rms[0]<.0001?'PASS':'FAIL'} contact-loss silence: RMS ${quiet.rms[0].toFixed(6)}`);
+ sound.setMuted(true);log('DONE — muted');
+ }catch(e){log('FAIL '+e.message);}finally{sound?.destroy();run.disabled=false;}};
+window.addEventListener('pagehide',()=>sound?.destroy());
+</script>

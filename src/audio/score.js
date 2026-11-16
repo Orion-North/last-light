@@ -5,8 +5,8 @@ export const SECTIONS = {
   discovery: { eighth: .48, piano: .19, strings: .05, wind: .035, cutoff: 330, gap: 5 },
   geology: { eighth: .48, piano: .16, strings: .04, wind: .025, cutoff: 300, gap: 6 },
   amber: { eighth: .53, piano: .17, strings: .045, wind: .04, cutoff: 350, gap: 6 },
-  storm: { eighth: .59, piano: .13, strings: .028, wind: .095, cutoff: 740, gap: 10, minor: true },
-  fading: { eighth: .67, piano: .10, strings: 0, wind: .045, cutoff: 220, gap: 15, minor: true },
+  storm: { eighth: .59, piano: .13, strings: .028, wind: .32, cutoff: 1050, gap: 10, minor: true },
+  fading: { eighth: .67, piano: .10, strings: 0, wind: .60, cutoff: 1250, gap: 15, minor: true },
   waiting: { eighth: .57, piano: .12, strings: .022, wind: 0, cutoff: 170, gap: 10 },
   remembrance: { eighth: .55, piano: .18, strings: .05, wind: .012, cutoff: 230, gap: 12 },
   silence: { eighth: .6, piano: 0, strings: 0, wind: 0, cutoff: 180, gap: 30 },
@@ -27,7 +27,7 @@ const HARMONY = {
   remembrance: [[43,[55,62,66],[69,74]], [38,[57,62,66],[69,76]], [35,[57,62,66],[71,78]], [38,[57,62,64],[69,78]]],
 };
 
-export function phrase(section, number = 0) {
+export function phrase(section, number = 0, exhaustion = 0) {
   const c = SECTIONS[section];
   if (!c || section === 'silence') return { events: [], seconds: 30 };
   const v = ((number % 4) + 4) % 4;
@@ -78,8 +78,31 @@ export function phrase(section, number = 0) {
     if (section === 'geology' && !thin) [[66,26],[64,32],[62,39]].forEach(([n,at]) => add('pluck',n,at,.065,3.7));
     if (section === 'remembrance' && !thin) [[86,25],[88,29],[81,35]].forEach(([n,at]) => add('glass',n,at,.041,3.5));
   }
+  // Later storm returns struggle to restart: the pulse and upper ensemble
+  // disappear, and even the familiar reaching line cannot finish its sentence.
+  const wear = section === 'storm' ? Math.max(0, Math.min(1, Number.isFinite(exhaustion) ? exhaustion : 0)) : 0;
+  if (wear > 0) {
+    for (let i=events.length-1;i>=0;i--) {
+      const event=events[i];
+      if (wear >= .5 && (event.instrument === 'pulse' || event.instrument === 'strings'
+        || event.at >= 12 || ['organ','pad'].includes(event.instrument) && event.note > 62)) {
+        events.splice(i,1); continue;
+      }
+      event.at *= 1 + wear*.75;
+      event.volume *= 1 - wear*.48;
+      event.duration *= 1 - wear*.30;
+      if (event.instrument === 'organ') event.instrument='pad';
+    }
+  }
+  if (section === 'fading') {
+    for (const event of events) {
+      event.at *= 1.8;
+      event.volume *= .52;
+      event.duration *= .7;
+    }
+  }
   events.sort((a,b) => a.at-b.at);
-  return { events, seconds: 48*c.eighth+c.gap+[0,3,1,5][v] };
+  return { events, seconds: 48*c.eighth+c.gap+[0,3,1,5][v]+wear*20+(section === 'fading' ? 12 : 0) };
 }
 
 // Foreground dialogue, in seconds: D–A–E–F♯ asks; A–F♯–E–D answers.

@@ -72,12 +72,12 @@ body[data-perspective="earth"][data-screen="game"] .recovery-trace,
 body[data-perspective="earth"][data-screen="game"] .journey-rail {display:none;}
 body[data-perspective="earth"][data-screen="game"] .interaction-dock {scrollbar-width:none;}
 body[data-perspective="earth"][data-screen="game"] .interaction-dock::-webkit-scrollbar {display:none;}
-/* A single restrained console keeps the call animation clear of physical props. */
+/* Earth keeps the same unboxed reading surface as the rover scenes. */
 body[data-perspective="earth"][data-screen="game"] .interaction-dock {
  top:auto!important;bottom:20px!important;height:auto;max-height:30svh!important;
- width:min(860px,calc(100vw - 64px));background:#071013e8;
- border:1px solid #9baea329;border-radius:8px;padding:10px 20px;
- box-shadow:0 12px 40px #0008;backdrop-filter:blur(12px);
+ width:min(860px,calc(100vw - 64px));background:none;
+ border:0;border-radius:0;padding:10px 20px;
+ box-shadow:none;backdrop-filter:none;text-shadow:0 2px 5px #000,0 0 20px #0009;
 }
 body[data-perspective="earth"][data-screen="game"] #input-hint {display:none;}
 body[data-perspective="earth"][data-screen="game"] .signal-map {height:70px;}
@@ -113,7 +113,7 @@ body[data-earth-monitor="true"] .upload-terminal__apparatus {padding-top:0!impor
 /* This is the same DOM instrument used on Mars, projected onto the 3D monitor. */
 #earth-station .earth-monitor-signal {
  position:absolute;left:0;top:0;width:580px;height:160px;transform-origin:0 0;
- padding:0 14px!important;overflow:hidden;pointer-events:none;
+ box-sizing:border-box;padding:0 14px!important;overflow:hidden;clip-path:inset(0);pointer-events:none;
  background:linear-gradient(transparent,#071014db 27%,#071014ed);
  text-align:center;color:#fff0d5;border:0;box-shadow:none;
 }

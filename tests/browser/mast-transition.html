@@ -6,13 +6,13 @@
 import * as THREE from 'three';
 import {createLandscape} from '../../src/ui/landscape.js';
 const canvas=document.querySelector('canvas'),out=document.querySelector('output'),run=document.querySelector('#run');
-const logs=[];let sample=null,eye=null,physicalError=0,worldReady=false,cameraActive=false,entryMax=0,measuringEntry=false;
+const logs=[];let sample=null,eye=null,roverCenter=null,physicalError=0,worldReady=false,cameraActive=false,entryMax=0,measuringEntry=false;
 // Read the camera actually used by the renderer; compare against the optical
 // eye on the real grounded rover rather than accepting readiness alone.
 THREE.Mesh.prototype.onBeforeRender=function(renderer,scene,camera){
  const rover=scene.children.find(child=>child.isGroup && child.children.some(o=>o.isPointLight));
  if(!rover || !camera.isPerspectiveCamera)return;
- eye=camera.position.clone();
+ eye=camera.position.clone();roverCenter=rover.position.clone();
  if(cameraActive){
   rover.updateMatrixWorld(true);
   const mount=rover.localToWorld(new THREE.Vector3(-.046,1.585,.487));
@@ -27,14 +27,29 @@ const world=createLandscape(canvas);world.setMode('game');
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const print=line=>{logs.push(line);out.textContent=logs.join('\n');};
 async function until(fn,limit=14000){const end=performance.now()+limit;while(!fn()){if(performance.now()>end)throw Error('camera never ready');await sleep(60);}}
+// Cold photo requests happen before GLB wheel-hull recovery/ground settlement.
+world.restoreCheckpoint({position:{x:-5,z:-10,heading:0}});
+cameraActive=true;world.setDiscoveryCamera('blueberries',{aspect:4/3});
+const coldEntryCheck=(async()=>{
+ await until(()=>worldReady && sample?.ready);await sleep(180);
+ const error=physicalError;cameraActive=false;world.setDiscoveryCamera(null,{immediate:true});
+ return `${error<.03?'PASS':'FAIL'} cold-entry physical mast after model load: ${error.toFixed(4)}m`;
+})();
 run.onclick=async()=>{
- run.disabled=true;logs.length=0;
- const cases=[['stone-ripples',7,-7,0],['stone-ripples',7,-7,Math.PI],['blueberries',-5,-10,0],['first-morning',0,4,0],['ordinary-day',6,10,1.1],['last-image',3,-4,0]];
+ run.disabled=true;logs.length=0;print(await coldEntryCheck);
+ const cases=[['stone-ripples',7,-7,0],['stone-ripples',7,-7,Math.PI],['blueberries',-5,-10,0],['blueberries',-5,-10,Math.PI],['blueberries',-5,-10,Math.PI/2],['blueberries',-5,-10,-Math.PI/2],['first-morning',0,4,0],['ordinary-day',6,10,1.1],['last-image',3,-4,0]];
  for(const [id,x,z,heading] of cases){
   try{
    cameraActive=false;world.reset();world.setMode('game');world.restoreCheckpoint({position:{x,z,heading}});
    if(['stone-ripples','blueberries'].includes(id)){
+    const beforeTool=world.getCheckpoint().position;
     world.setToolMode(id);world.setEvidence(id);await sleep(150);
+    if(id==='blueberries'){
+     const afterTool=world.getCheckpoint().position;
+     const shift=Math.hypot(afterTool.x-beforeTool.x,afterTool.z-beforeTool.z);
+     const turn=Math.abs(afterTool.heading-beforeTool.heading);
+     print(`${shift<.000001&&turn<.000001?'PASS':'FAIL'} Berry Bowl preserves driven pose: translation ${shift.toFixed(6)}m; turn ${turn.toFixed(6)}rad`);
+    }
     world.setToolMode(null);world.setEvidence(null);
    }
    sample=null;physicalError=0;entryMax=0;measuringEntry=true;cameraActive=true;
@@ -48,7 +63,24 @@ run.onclick=async()=>{
    world.setDiscoveryCameraFrozen(true);const frozen=eye.clone();await sleep(250);
    const drift=eye.distanceTo(frozen);
    print(`${entryMax<.03&&initialError<.03&&aimedError<.03&&Math.abs(yaw)>.03&&drift<.001?'PASS':'FAIL'} ${id} heading ${heading.toFixed(2)}: ready; entry error ${entryMax.toFixed(4)}m; mast error ${initialError.toFixed(4)}→${aimedError.toFixed(4)}m; yaw ${yaw.toFixed(3)}; frozen drift ${drift.toFixed(4)}m`);
-   cameraActive=false;measuringEntry=false;world.setDiscoveryCamera(null,{immediate:true});
+   cameraActive=false;measuringEntry=false;
+   if(['stone-ripples','blueberries'].includes(id)){
+    // Match renderGame's photo handoff, including its contact priming pair.
+    world.setEvidence(id);world.setDiscoveryCamera(null);
+    const outgoing=eye.clone();
+    world.setContact(true);world.setContact(false);world.setEvidence(id,{photoComplete:true});
+    await sleep(1300);
+    const outgoingDrift=eye.distanceTo(outgoing);
+    print(`${outgoingDrift<.03?'PASS':'FAIL'} ${id} sending: stable rover context; drift ${outgoingDrift.toFixed(4)}m`);
+    // Received saves enter the terminal directly, with no mast camera to exit.
+    world.reset();world.setMode('game');world.restoreCheckpoint({position:{x,z,heading}});
+    world.setDiscoveryCamera(null);world.setEvidence(id,{photoComplete:true});
+    const resumed=eye.clone(),range=eye.distanceTo(roverCenter);
+    world.setPaused(true);world.setEvidence(id,{photoComplete:true});world.setPaused(false);
+    await sleep(500);world.setEvidence(id,{photoComplete:true});
+    const resumedDrift=eye.distanceTo(resumed);
+    print(`${resumedDrift<.03&&range>3?'PASS':'FAIL'} ${id} resumed receipt: range ${range.toFixed(2)}m; drift ${resumedDrift.toFixed(4)}m`);
+   } else world.setDiscoveryCamera(null,{immediate:true});
   }catch(error){print(`FAIL ${id}: ${error.message}; mast error ${physicalError.toFixed(4)}m`);}
  }
  cameraActive=false;print('Complete. Capture/reveal pacing and native tracing are checked separately in the game.');run.disabled=false;

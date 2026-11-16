@@ -59,7 +59,7 @@ export function createLandscape(canvas) {
   const motion = createDriveMotion();
   let wasMoving = false;
   let roverFrame = null;
-  let evidence = null, retainedTool = null;
+  let evidence = null, retainedTool = null, evidencePhotoContext = null;
   let discoveryCamera = null, discoveryPointer = null, discoverySampleTime = -1;
   let tool = null, toolPointer = null, toolSampleTime = 0;
   let investigation = false;
@@ -585,6 +585,7 @@ export function createLandscape(canvas) {
     toolGroup.visible = Boolean(tool || evidence); traceGuidePositions = null;
     controls.enabled = !tool && !evidence && !survey && !remoteView && !paused && !intro && !contactActive;
     if (!tool) return false;
+    evidencePhotoContext = null;
     setSurvey(false); investigation = false; stopDrive(); look = { x: 0, y: 0 };
     toolBerry = sceneId === 'blueberries';
     toolGroup.position.copy(toolBerry ? berryBowl.position : lastChance.position);
@@ -595,8 +596,30 @@ export function createLandscape(canvas) {
     toolHead.visible = !evidence;
     updateToolVisual(tool.snapshot()); emitTool(tool.snapshot()); render(); return true;
   }
-  function setEvidence(sceneId) {
+  function evidencePhotoFrame() {
+    const preferred = desiredFrame(false);
+    const offset = preferred.position.clone().sub(preferred.target);
+    // A rover-follow azimuth can face through the outcrop. Orbit collision then
+    // retracts that eye all the way to the rover. Try other real world views
+    // before accepting an outgoing composition; never disable rock clearance.
+    const offsets = [offset, ...[Math.PI / 2, -Math.PI / 2, Math.PI].map(angle =>
+      offset.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), angle)),
+    new THREE.Vector3(1.2, Math.max(6, offset.length()), 2)];
+    let best = null, bestRange = -Infinity;
+    for (const candidate of offsets) {
+      const desired = preferred.target.clone().add(candidate);
+      desired.y = Math.max(desired.y, surfaceHeight(desired.x, desired.z) + .85);
+      const safe = clearCamera(preferred.target, desired, cameraRocks, cameraClearance(), surfaceHeight);
+      const position = new THREE.Vector3(safe.x, safe.y, safe.z);
+      const range = position.distanceTo(preferred.target);
+      if (range > bestRange) { best = { position, target: preferred.target }; bestRange = range; }
+      if (range >= Math.max(3.5, candidate.length() * .85)) return best;
+    }
+    return best;
+  }
+  function setEvidence(sceneId, { photoComplete = false } = {}) {
     evidence = sceneId === 'blueberries' || sceneId === 'stone-ripples' ? sceneId : null;
+    if (!evidence) evidencePhotoContext = null;
     if (evidence) emitToolFeedback();
     const source = tool?.sceneId === evidence ? tool : retainedTool?.sceneId === evidence ? retainedTool : null;
     toolGroup.visible = Boolean(tool || evidence && source);
@@ -612,6 +635,16 @@ export function createLandscape(canvas) {
       toolGroup.visible = Boolean(source);
       if (source) { source.stop(); updateToolVisual(source.snapshot()); }
       controls.enabled = false;
+      // A received save has no live mast to exit. Establish the same completed
+      // photo context once, then leave repeated HUD/pause renders stationary.
+      if (photoComplete && !discoveryCamera && evidencePhotoContext !== evidence) {
+        evidencePhotoContext = evidence;
+        camera.fov = cameraLensTarget = 43;
+        camera.updateProjectionMatrix();
+        const context = evidencePhotoFrame();
+        camera.position.copy(context.position); controls.target.copy(context.target);
+        cameraTween = null;
+      }
     }
     render();
   }
@@ -621,6 +654,19 @@ export function createLandscape(canvas) {
     if (!sceneId) {
       const previous = discoveryCamera;
       if (!previous) return true;
+      // Leave the narrow geological view for a grounded rover context during
+      // sending. Never fly through the host rock or reuse a half-settled tool
+      // pose; this is a physical camera switch, like entry into the mast.
+      if (evidence === previous.sceneId) {
+        evidencePhotoContext = evidence;
+        camera.fov = 43;
+        camera.updateProjectionMatrix();
+        const context = evidencePhotoFrame();
+        previous.returnPosition.copy(context.position);
+        previous.returnTarget.copy(context.target);
+        previous.returnFov = 43;
+        immediate = true;
+      }
       discoveryCamera = null; discoveryPointer = null; look = { x: 0, y: 0 };
       controls.enabled = false;
       cameraLensTarget = previous.returnFov;
@@ -649,6 +695,7 @@ export function createLandscape(canvas) {
     toolPointer = null; discoveryPointer = null; look = { x: 0, y: 0 };
     investigation = inspecting = false;
     cancelContactPulse(); contactActive = contactFraming = false; contactVisual.visible = false;
+    // Cold/restored photo saves can enter without deploying the sampling tool.
     vehicle.updateMatrixWorld(true);
     // The normalized NASA camera head fits a .26 m sphere around this mount.
     // Place the optical eye .34 m along its actual world-space gaze: the head
@@ -658,7 +705,12 @@ export function createLandscape(canvas) {
     const lensOffset = .34;
     const eye = mountCenter.clone();
     let target;
-    if (sceneId === 'blueberries') target = berryBowl.position.clone().add(new THREE.Vector3(0, .16, 0));
+    if (sceneId === 'blueberries') {
+      // Aim at the near half of the real host slab: a steeper downward gaze
+      // shows the nodules beside the brushed patch instead of its distant rim.
+      // The mast stays on the actual driven rover; no overhead substitute eye.
+      target = berryBowl.position.clone().add(new THREE.Vector3(0, bowlHeight(0, .65), .65));
+    }
     else if (sceneId === 'stone-ripples') target = lastChance.position.clone().add(new THREE.Vector3().copy(mapLastChancePoint(0, .67, .55)));
     else if (sceneId === 'first-morning') {
       // Look across the landing ground and its persistent low bedrock apron.
@@ -710,7 +762,13 @@ export function createLandscape(canvas) {
     if (!subject) return;
     // Measure the actual persistent landmark from the mast, then open the same
     // physical lens. The source-shaped HUD is a crop, never another projection.
-    const bounds = new THREE.Box3().setFromObject(subject);
+    const bounds = d.sceneId === 'blueberries'
+      // Photograph the comparison surface, not the entire surrounding outcrop.
+      // These bounds stay inside the persistent slab and include loose nodules
+      // on both sides of the brushed patch; the rear apron remains world context.
+      ? new THREE.Box3(berryBowl.position.clone().add(new THREE.Vector3(-.65, .12, -.34)),
+        berryBowl.position.clone().add(new THREE.Vector3(.85, .34, .78)))
+      : new THREE.Box3().setFromObject(subject);
     const forward = d.target.clone().sub(d.eye).normalize();
     const right = forward.clone().cross(new THREE.Vector3(0, 1, 0)).normalize();
     const up = right.clone().cross(forward).normalize();
@@ -745,6 +803,19 @@ export function createLandscape(canvas) {
     toolRings.forEach(ring => { ring.visible = false; });
     // Cleared dust remains on the same rock. Probe, rings and trace dots are UI.
     if (!cameraTween) {
+      // Model loading can settle the rover against its detailed wheel hulls
+      // after photography was requested. Read the real mount, not the earlier
+      // placeholder pose, while preserving the player's relative aiming.
+      vehicle.updateMatrixWorld(true);
+      const mount = vehicle.localToWorld(new THREE.Vector3(-.046, 1.585, .487));
+      if (mount.distanceToSquared(d.mountCenter) > 1e-10) {
+        d.mountCenter.copy(mount);
+        const baseDirection = d.target.clone().sub(mount).normalize();
+        d.eye.copy(mount).addScaledVector(baseDirection, d.lensOffset);
+        const gaze = new THREE.Spherical().setFromVector3(d.target.clone().sub(d.eye));
+        d.theta = gaze.theta; d.phi = gaze.phi; d.distance = gaze.radius;
+        fitDiscoveryLens();
+      }
       const direction = new THREE.Vector3().setFromSpherical(new THREE.Spherical(1,
         THREE.MathUtils.clamp(d.phi + d.pitch, .03, Math.PI - .03), d.theta + d.yaw));
       d.eye.copy(d.mountCenter).addScaledVector(direction, d.lensOffset);
@@ -1252,8 +1323,12 @@ export function createLandscape(canvas) {
     antennaCue.quaternion.copy(guide.quaternion);
     guideMaterial.color.set(options.mode === 'silence' ? '#cdd5db' : '#f7e7c9');
     contactVisual.visible = true;
-    contactCamera = contactFrame();
-    cameraTween = contactCamera;
+    // Evidence owns its stable view throughout the uplink (wide rover context
+    // after a photo). Contact priming must not replace that camera with a flight.
+    if (!evidence) {
+      contactCamera = contactFrame();
+      cameraTween = contactCamera;
+    }
     updateContact(0);
     render();
   }
@@ -1883,7 +1958,7 @@ export function createLandscape(canvas) {
   function render() {
     if (disposed) return;
     if (discoveryCamera) frameDiscovery();
-    if (evidence && !discoveryCamera && !cameraTween) {
+    if (evidence && evidencePhotoContext !== evidence && !discoveryCamera && !cameraTween) {
       const center = toolGroup.position.clone().add(toolPoint(0, 0));
       const offset = toolBerry ? new THREE.Vector3(0, 2.9, 1.8) : new THREE.Vector3(0, .2, 3.2);
       // After comparison, leave the lower reading/signal dock clear. Move the
@@ -1905,7 +1980,11 @@ export function createLandscape(canvas) {
     camera.lookAt(controls.target);
     // Dedicated evidence close-ups omit the foreground rover that otherwise
     // blocks the near-side rock/grains. Restored on every other world view.
-    vehicle.visible = Boolean(discoveryCamera || cameraTween?.restoreControls) || !investigation && !tool && !evidence;
+    // Exclude the player body from the close downward sample photograph. This
+    // keeps the real mast and ground view while preventing its own solar deck
+    // from filling the crop; the rover returns for the outgoing wide view.
+    const samplePhotograph = discoveryCamera?.sceneId === 'blueberries';
+    vehicle.visible = !samplePhotograph && (Boolean(discoveryCamera || cameraTween?.restoreControls || evidencePhotoContext === evidence && evidence) || !investigation && !tool && !evidence);
     anchorShadows();
     if (remoteView && earthRoom && earthTarget) {
       const target = renderer.getRenderTarget();
@@ -2169,7 +2248,7 @@ export function createLandscape(canvas) {
     setObservationTarget,
     reset() {
       setDiscoveryCamera(null, { immediate: true });
-      evidence = null; retainedTool = null;
+      evidence = null; retainedTool = null; evidencePhotoContext = null;
       setToolMode(null);
       retainedTool = null;
       setSurvey(false);

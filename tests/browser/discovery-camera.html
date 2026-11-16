@@ -1,10 +1,11 @@
 <!doctype html><meta charset="utf-8"><title>Discovery camera integration review</title>
 <style>body{margin:0;background:#171918;color:#eee;font:14px system-ui}nav{padding:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}button,select{padding:7px}output{white-space:pre-wrap;display:block;padding:8px;height:40px;overflow:auto}iframe{display:block;border:0;width:100%;height:calc(100vh - 96px);margin:auto}</style>
-<nav><select id="scene"><option value="first-morning">First morning</option><option value="stone-ripples">Last Chance</option><option value="blueberries">Berry Bowl</option><option value="ordinary-day">Perseverance Valley</option><option value="last-image">Last image</option></select><select id="phase"><option>transmit</option><option>observe</option><option>choose</option><option>received</option><option value="investigation">finish investigation</option></select><label><input type="checkbox" id="pad">Simulated controller</label><label><input type="checkbox" id="motion">Reduced motion</label><button id="load">Load scene</button><button id="desktop">Desktop</button><button id="portrait">Portrait</button><button id="short">Short</button><button id="verify">Verify lifecycle</button></nav><output>Loading</output><iframe title="Discovery camera game"></iframe>
+<nav><select id="scene"><option value="first-morning">First morning</option><option value="stone-ripples">Last Chance</option><option value="blueberries">Berry Bowl</option><option value="ordinary-day">Perseverance Valley</option><option value="last-image">Last image</option></select><select id="phase"><option>transmit</option><option>observe</option><option>choose</option><option>received</option><option value="investigation">finish investigation</option></select><label><input type="checkbox" id="pad">Simulated controller</label><label><input type="checkbox" id="motion">Reduced motion</label><button id="load">Load scene</button><button id="desktop">Desktop</button><button id="portrait">Portrait</button><button id="short">Short</button><button id="verify">Verify lifecycle</button></nav><output>Loading</output><div id="physical" style="padding:4px 8px">Physical mast: waiting for rendered camera</div><iframe title="Discovery camera game"></iframe>
 <script type="module">
 import {scenes} from '../../src/content/story.js';
 const frame=document.querySelector('iframe'),output=document.querySelector('output');
-let memory=new Map(),seed,padEnabled=false,samples=[],errors=[],captures=0;
+let memory=new Map(),seed,padEnabled=false,samples=[],errors=[],captures=0,physicalError=Infinity,physicalAt=0;
+window.recordDiscoveryPose=error=>{physicalError=error;if(performance.now()-physicalAt>150){physicalAt=performance.now();document.querySelector("#physical").textContent=`Physical mast error: ${error.toFixed(4)} m`;}};
 const pad={id:'DualSense',index:0,mapping:'standard',connected:true,axes:[0,0,0,0],buttons:Array.from({length:17},()=>({value:0,pressed:false})),vibrationActuator:{effects:['dual-rumble'],playEffect:async()=>{},reset:async()=>{}}};
 window.installDiscovery=win=>{
  const backing=memory;
@@ -25,7 +26,18 @@ async function load(preserve=false){
  samples=[];errors=[];padEnabled=document.querySelector('#pad').checked;pad.axes.fill(0);pad.buttons.forEach(b=>{b.value=0;b.pressed=false;});
  if(!preserve){const choices=scenes.slice(0,index+(['transmit','received'].includes(phase)?1:0)).map(s=>s.choices[0].id);
  memory=new Map([['last-light-settings',JSON.stringify({touch:false,haptics:false,prompts:'auto',reducedMotion:document.querySelector('#motion').checked})],['last-light-journey-v1',JSON.stringify({version:1,sceneIndex:index,phase,choices,checkpoint:{sceneId:id,reached:true,position:{x:id==='blueberries'?-5:7,z:id==='blueberries'?-10:-7,heading:0},...(selectedPhase==='investigation'?{tool:{sceneId:id,stage:'compare',cursor:{x:0,y:0},sampleIds:id==='blueberries'?['bedrock','grains']:['lower','upper'],visited:[Array(40).fill(true),Array(40).fill(true)],cleared:Array(576).fill(1)}}:{})}})]]);}
- const html=await(await fetch('../../index.html')).text();const loaded=new Promise(resolve=>frame.addEventListener('load',resolve,{once:true}));frame.srcdoc=html.replace('<head>','<head><base href="../../"><script>parent.installDiscovery(window);<\/script>');
+ const html=await(await fetch('../../index.html')).text();const loaded=new Promise(resolve=>frame.addEventListener('load',resolve,{once:true}));frame.srcdoc=html.replace('<head>','<head><base href="../../"><script>parent.installDiscovery(window);<\/script>').replace('<script type="module" src="./src/main.js"><\/script>', `<script type="module">
+ import * as THREE from 'three';
+ THREE.Mesh.prototype.onBeforeRender=function(renderer,scene,camera){
+  if(!document.querySelector('.discovery-camera') || !camera.isPerspectiveCamera)return;
+  const rover=scene.children.find(child=>child.isGroup && child.children.some(o=>o.isPointLight));
+  if(!rover)return;
+  rover.updateMatrixWorld(true);
+  const expected=rover.localToWorld(new THREE.Vector3(-.046,1.585,.487)).addScaledVector(camera.getWorldDirection(new THREE.Vector3()),.34);
+  parent.recordDiscoveryPose(camera.position.distanceTo(expected));
+ };
+ await import('./src/main.js');
+ <\/script>`);
  await loaded;
  await waitFor(()=>frame.contentDocument?.querySelector('[data-action="begin"]'));
  frame.contentWindow.focus();frame.contentDocument.querySelector('[data-action="begin"]').click();
@@ -55,6 +67,7 @@ document.querySelector('#verify').onclick=async()=>{
   }
   await waitFor(()=>d.querySelector('[data-action="capture-discovery"]:not(:disabled)'));
   check(samples.some(s=>s.ready),'camera becomes ready');
+  check(physicalError<.03,'production rendered eye matches real grounded mast: '+physicalError.toFixed(4)+'m');
   check(!d.querySelector('[data-action="assist-observation"],[data-action="skip-intro"]'),'no inline skips');
   const before=samples.at(-1).yaw;d.body.dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));await sleep(450);d.body.dispatchEvent(new w.KeyboardEvent('keyup',{key:'ArrowRight',bubbles:true}));await sleep(150);
   check(Math.abs(samples.at(-1).yaw-before)>.03,'keyboard changes framing');

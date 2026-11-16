@@ -56,3 +56,7 @@ body[data-input="keyboard"] :is(button,a,summary,input):focus{outline:2px solid 
 .discovery-camera__input{font:12px var(--sans);text-align:center;text-shadow:0 1px 5px #000;}
 
 .upload-terminal__button[hidden]{display:none!important;}
+
+/* Decorative prompts can change with active input during pointerdown. Keep the
+   pressed target on the persistent button so the first click still activates it. */
+button > :is(.controller-glyph,.input-keycap) {pointer-events:none;}
