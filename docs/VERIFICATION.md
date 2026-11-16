@@ -751,3 +751,27 @@ suspension, physical controller feel, every mobile device, or a fresh complete
 beginning-to-ending emotional playthrough. Existing save checkpoints preserve
 fieldwork; an unsent camera frame is retaken after reload instead of persisting
 a large image in localStorage. NASA image failure never blocks Continue.
+
+## UPLINK-38 — v0.20.1 original sending restored (2026-11-15)
+
+Capture now leads through a 1.4-second authentic-image dissolve and 0.7-second
+handoff into the existing upload terminal. The original terminal HTML, Mars/Earth
+map, moving packets, call/reply motif, transmission audio and trigger gesture are
+reused. A small source-linked photograph accompanies the terminal on large screens;
+compact layouts prioritize the signal instrument. No new explanatory prose is added.
+
+Both science-scene browser lifecycles pass: real capture, pause during reveal and
+handoff, blocked premature sending, retake, original map and receipt, decoded NASA
+photo and saved receipt. Berry Bowl also passes simulated face-button sending.
+The independent Sol review found and resolved stale readiness on retake and
+controller activation of the source link. Timeline unit checks cover ordered stages,
+paused time, background-stall clamping and reduced motion. 28 engine test files,
+69 JavaScript syntax checks, scene/assets and static build pass.
+
+As before, simulated input and isolated saves do not establish physical controller
+feel or actual background-tab behavior. No fresh full story playthrough was run.
+
+All seven recovery cases also pass, including historical-image fallback followed
+by the original two-trigger send and missing NASA imagery followed by Continue.
+The trigger fixture waits for actual ready/charged states instead of assuming
+850 milliseconds guarantees enough rendered samples on a slow preview device.

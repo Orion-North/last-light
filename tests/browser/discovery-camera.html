@@ -42,19 +42,36 @@ document.querySelector('#verify').onclick=async()=>{
   check(!d.querySelector('[data-action="assist-observation"],[data-action="skip-intro"]'),'no inline skips');
   const before=samples.at(-1).yaw;d.dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));await sleep(450);d.dispatchEvent(new w.KeyboardEvent('keyup',{key:'ArrowRight',bubbles:true}));await sleep(150);
   check(Math.abs(samples.at(-1).yaw-before)>.03,'keyboard changes framing');
-  d.querySelector('[data-action="capture-discovery"]').click();await waitFor(()=>d.querySelector('[data-action="retake-discovery"]'));
-  check(d.querySelector('.discovery-camera__capture')?.src.startsWith('blob:'),'actual WebGL frame captured');
-  const source=d.querySelector('.discovery-camera__capture').src;
-  d.querySelector('#settings-toggle').click();await sleep(100);d.querySelector('#settings-modal [data-close]').click();await sleep(200);
-  check(d.querySelector('.discovery-camera__capture')?.src===source,'pause preserves captured image');
+  d.querySelector('[data-action="capture-discovery"]').click();
+  await waitFor(()=>d.querySelector('.discovery-camera[data-stage="revealing"]') || d.querySelector('.photo-uplink'));
+  // Capture proof belongs to the reveal, before the authentic thumbnail takes over.
+  if(!document.querySelector('#motion').checked){
+   check(d.querySelector('.discovery-camera__capture')?.src.startsWith('blob:'),'actual WebGL frame captured during reveal');
+   check(!d.querySelector('[data-action="transmit"]'),'no send action during reveal');
+   const source=d.querySelector('.discovery-camera__capture')?.src;
+   d.querySelector('#settings-toggle').click();await sleep(1600);
+   check(!!d.querySelector('.discovery-camera[data-stage="revealing"]'),'pause holds reveal lifecycle');
+   check(d.querySelector('.discovery-camera__capture')?.src===source,'pause preserves captured image');
+   d.querySelector('#settings-modal [data-close]').click();
+   await waitFor(()=>d.querySelector('.photo-uplink[data-stage="handoff"]'));
+   d.querySelector('.photo-uplink [data-action="transmit"]')?.click();await sleep(60);
+   check(!d.querySelector('.upload-terminal[data-stage="sending"]') && JSON.parse(memory.get('last-light-journey-v1')).phase==='transmit','send cannot commit during handoff');
+   d.querySelector('#settings-toggle').click();await sleep(900);
+   check(!!d.querySelector('.photo-uplink[data-stage="handoff"]'),'pause holds handoff lifecycle');
+   d.querySelector('#settings-modal [data-close]').click();
+  }
+  await waitFor(()=>d.querySelector('.photo-uplink[data-stage="uplink"]'));
+  check(!!d.querySelector('.upload-terminal[data-stage="ready"] .signal-map'),'original signal map restored before send');
   d.querySelector('[data-action="retake-discovery"]').click();await waitFor(()=>d.querySelector('[data-action="capture-discovery"]:not(:disabled)'));
   check(!d.querySelector('.discovery-camera__capture'),'retake returns to live view');
-  d.querySelector('[data-action="capture-discovery"]').click();await waitFor(()=>d.querySelector('[data-action="transmit"]'));
+  d.querySelector('[data-action="capture-discovery"]').click();
+  await waitFor(()=>d.querySelector('.photo-uplink[data-stage="uplink"]'));
   if(padEnabled){pad.buttons[0]={value:1,pressed:true};await sleep(130);pad.buttons[0]={value:0,pressed:false};}else d.querySelector('[data-action="transmit"]').click();
-  await waitFor(()=>d.querySelector('[data-action="next"]'));
+  await waitFor(()=>d.querySelector('.upload-terminal[data-stage="received"] [data-action="next"]'));
+  check(!!d.querySelector('.upload-terminal[data-stage="received"] .signal-map'),'original Mars–Earth receipt remains visible');
+  const map=d.querySelector('.signal-map');check(map.textContent.includes('MARS') && map.textContent.includes('EARTH'),'receipt map names Mars and Earth');
   await waitFor(()=>d.querySelector('[data-discovery-photo]')?.complete);
-  check(d.querySelector('[data-discovery-photo]').naturalWidth>0,'authentic NASA photo decoded after sending');
-  check(d.querySelector('.discovery-camera__credit').textContent.includes('Actual mission image'),'actual image explicitly labeled');
+  check(d.querySelector('[data-discovery-photo]').naturalWidth>0,'authentic NASA photograph remains the uplink image');
   check(errors.length===0,'no runtime errors '+errors.join('; '));
   const saved=JSON.parse(memory.get('last-light-journey-v1'));check(saved.phase==='received','receipt saved');
   output.textContent=checks.join('\n');

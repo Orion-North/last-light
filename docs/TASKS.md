@@ -878,3 +878,23 @@ motion and accessible sending. Root incorporated independent lifecycle reviews.
 Both photo flows, pause/retake, seven edge cases, completed investigation handoff
 and portrait/short receipt layouts verified. Engine/source/build checks pass;
 physical controller feel and full uninterrupted journey remain unverified.
+
+## UPLINK-38 — preserve the story's original sending ritual
+
+User directs: photography must lead into the existing Mars–Earth sending
+animation, not replace it. Shared branch fix/photo-uplink-story; disjoint paths.
+- BRIDGE-38 / Sol: src/ui/discovery-camera.js/css, focused presentation tests
+  and the two discovery browser fixtures.
+  Authentic image reveal immediately after capture; image folds into original
+  uplink with minimal UI, no replacement signal animation.
+- Root: pause-safe capture→reveal→handoff→uplink lifecycle, original terminal
+  integration, browser regression checks, docs and GitHub Pages publication.
+- REVIEW-38 / Sol: read-only lifecycle/animation/input audit after integration.
+Done: both discoveries retain complete original Mars/Earth, packet, call/reply,
+trigger and receipt behavior after an animated photo handoff. No added filler.
+
+UPLINK-38 integrated: original terminal restored after pause-safe photo reveal and
+handoff. Both discoveries, desktop and simulated controller sending, retake,
+received reload and all seven recovery scenarios pass. Sol review fixes included.
+28 engine test files and source/asset/build checks pass. Physical controller feel
+and a fresh uninterrupted full story remain unverified.

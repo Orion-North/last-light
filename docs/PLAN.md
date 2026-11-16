@@ -5,8 +5,9 @@ a controller is the primary target. The Windows/Electron edition and its build
 workflow are removed; earlier native-edition milestones below are historical.
 Browser Gamepad rumble and optional USB WebHID trigger effects remain supported.
 
-**v0.20 camera pass:** Two geological investigations now lead to rover-eye framing,
-intentional capture, sending and a credited real NASA image reveal. Keep the screen
+**v0.20.1 camera pass:** Two geological investigations now lead to rover-eye framing,
+intentional capture and a credited real NASA image reveal, followed by the original
+Mars–Earth sending animation and call/reply ritual. Keep the screen
 immersive: minimal reticle/actions, with scientific explanations in the journal.
 Inline skipping is replaced by deliberate pause-menu assistance.
 
